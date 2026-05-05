@@ -1,60 +1,44 @@
-import * as React from 'react'
-import { Slot } from '@radix-ui/react-slot'
-import { cva, type VariantProps } from 'class-variance-authority'
 
-import { cn } from '@/lib/utils'
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+const button = cva(
+  "inline-flex items-center justify-center gap-2 font-mono text-xs tracking-wide transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:pointer-events-none select-none shrink-0",
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive:
-          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
-        outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
-        secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        flask:
+  "bg-transparent text-[#888] border border-[#2a2a2a] border-b-2 hover:border-[#c8ff00]/40 hover:border-b-[#c8ff00] hover:text-[#c8ff00] transition-all duration-200 rounded-sm active:border-[#c8ff00] active:[background:linear-gradient(to_top,rgba(200,255,0,0.06),transparent)]",
+        primary:
+          "bg-[#c8ff00] text-[#141414] border border-[#c8ff00] hover:bg-[#d4ff33] hover:shadow-[0_0_12px_rgba(200,255,0,0.3)] active:scale-[0.98]",
         ghost:
-          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
-        link: 'text-primary underline-offset-4 hover:underline',
+          "bg-transparent text-[#f0f0f0] border border-[#2a2a2a] hover:border-[#3a3a3a] hover:bg-[#1e1e1e] active:scale-[0.98]",
+        danger:
+          "bg-transparent text-red-400 border border-[#2a2a2a] hover:border-red-500/50 hover:bg-red-500/10 active:scale-[0.98]",
+        accent:
+          "bg-transparent text-[#c8ff00] border border-[#c8ff00]/30 hover:border-[#c8ff00]/60 hover:bg-[rgba(200,255,0,0.06)] hover:shadow-[0_0_8px_rgba(200,255,0,0.15)] active:scale-[0.98]",
+        muted:
+          "bg-transparent text-[#888] border border-[#2a2a2a] hover:text-[#f0f0f0] hover:border-[#3a3a3a] active:scale-[0.98]",
       },
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
-        icon: 'size-9',
-        'icon-sm': 'size-8',
-        'icon-lg': 'size-10',
+        sm: "h-7 px-3 text-[10px] rounded-md",
+        md: "h-8 px-4 text-[11px] rounded-md",
+        lg: "h-9 px-5 text-[12px] rounded-lg",
+        icon: "h-7 w-7 rounded-md",
       },
     },
     defaultVariants: {
-      variant: 'default',
-      size: 'default',
+      variant: "ghost",
+      size: "md",
     },
-  },
+  }
 )
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<'button'> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot : 'button'
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof button> & {
+    className?: string
+  }
 
-  return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
-}
-
-export { Button, buttonVariants }
+export const Button = ({ variant, size, className, ...props }: ButtonProps) => (
+  <button className={cn(button({ variant, size }), className)} {...props} />
+)
