@@ -15,24 +15,17 @@ import {
 import { Tab } from "./Tabbar"
 
 import { CollectionTree, CollectionNode } from "@/services/service.collections"
-import {InlineInput} from "@/components/Sidebar/SidebarElements"
-import { CollectionItem } from "@/components/Sidebar/SidebarElements"
-import { PromptFile } from "../Prompt/PromptElements"
+import { PendingCreate } from "../Sidebar/PromptSidebar"
 import { ViewType } from "@/lib/types/DashTypes"
-
-// const sectionFromTab: Record<ViewType, ViewType | null> = {
-//   home: null,
-//   prompt: "prompt",
-//   template: "template",
-//   library: "library",
-// }
+import { LibrarySidebarPanel } from "../Sidebar/LibSidebar"
+import { PromptSidebarPanel } from "../Sidebar/PromptSidebar"
 
 interface SidebarProps {
   isOpen: boolean
   activeTab: Tab | undefined
   collectionsTree: CollectionTree | null
   selectedId: string | null
-  activeView : ViewType
+  activeView: ViewType
   setSelectedId: (id: string | null) => void
   expandedCollections: Set<string>
   setExpandedCollections: (s: Set<string>) => void
@@ -40,7 +33,7 @@ interface SidebarProps {
   onCreatePrompt: (name: string, collectionId: string | null) => Promise<void>
   onCreateCollection: (name: string, parentId: string | null) => Promise<void>
   onRefreshTree: () => Promise<void>
-  setActiveView : (view : ViewType ) => void
+  setActiveView: (view: ViewType) => void
 }
 
 interface RailButtonProps {
@@ -50,9 +43,7 @@ interface RailButtonProps {
   onClick: () => void
 }
 
-export type PendingCreate =
-  | { type: "prompt"; parentCollectionId: string | null }
-  | { type: "collection"; parentCollectionId: string | null }
+
 
 
 function RailButton({ icon: Icon, label, isActive, onClick }: RailButtonProps) {
@@ -89,19 +80,19 @@ export function Sidebar({
   setActiveView,
   activeView
 }: SidebarProps) {
-  
-const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null)
 
-// const activeSection = activeView === "home" ? null : activeView
+  const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null)
 
-const panelOpen = isOpen && activeView !== null
+  // const activeSection = activeView === "home" ? null : activeView
+
+  const panelOpen = isOpen && activeView !== null
 
 
-// this toggles Section in sidebar 
- function toggleSection(section: ViewType) {
-  const newSection = activeView === section ? activeView : section
-  setActiveView(newSection)
-}
+  // this toggles Section in sidebar 
+  function toggleSection(section: ViewType) {
+    const newSection = activeView === section ? activeView : section
+    setActiveView(newSection)
+  }
   function toggleExpand(id: string) {
     const next = new Set(expandedCollections)
     next.has(id) ? next.delete(id) : next.add(id)
@@ -206,162 +197,84 @@ const panelOpen = isOpen && activeView !== null
             }}
           >
             {/* panel view bar */}
-           <motion.div className="flex gap-2 rounded-lg px-4 items-center pt-2 bg-background w-full">
+            <motion.div className="flex gap-2 rounded-lg px-4 items-center pt-2 bg-background w-full">
               <RailButton
-              icon={Home}
-              label="Home"
-              isActive={activeView  === "home"}
-              onClick={() => toggleSection("home")}
-            />
+                icon={Home}
+                label="Home"
+                isActive={activeView === "home"}
+                onClick={() => toggleSection("home")}
+              />
 
-            <RailButton
-              icon={FileText}
-              label="Prompts"
-              isActive={activeView === "prompt"}
-              onClick={() => toggleSection("prompt")}
-            />
-            <RailButton
-              icon={Layout}
-              label="Templates"
-              isActive={activeView === "template"}
-              onClick={() => toggleSection("template")}
-            />
-            <RailButton
-              icon={BookOpen}
-              label="Library"
-              isActive={activeView === "library"}
-              onClick={() => toggleSection("library")}
-            />
-           </motion.div>
+              <RailButton
+                icon={FileText}
+                label="Prompts"
+                isActive={activeView === "prompt"}
+                onClick={() => toggleSection("prompt")}
+              />
+              <RailButton
+                icon={Layout}
+                label="Templates"
+                isActive={activeView === "template"}
+                onClick={() => toggleSection("template")}
+              />
+              <RailButton
+                icon={BookOpen}
+                label="Library"
+                isActive={activeView === "library"}
+                onClick={() => toggleSection("library")}
+              />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Section panel */}
-      
-        {panelOpen && (
-          <div
-            key={activeView}
-            className="flex flex-col w-full h-full min-h-0 overflow-y-auto"
-            style={{ background: "var(--color-surface, #0d0d0d)" }}
-          >
-            <div className="flex flex-col h-full w-full ">
 
-              {/* Panel header */}
-              <div
-             
-                className="flex items-center justify-between px-3 py-2"
-                style={{ borderBottom: "0.5px solid var(--color-border, #222)" }}
-              >
-                <div
-                 onClick={() => {
-                cancelCreate()
-                setSelectedId(null)}} 
-                  style={{
-                    fontSize: 10,
-                    fontFamily: "'Syne', sans-serif",
-                    fontWeight: 700,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "var(--color-muted, #666)",
-                  }}
-                >
-                  {activeView}
-                </div>
+      {panelOpen && (
+        <div
+          key={activeView}
+          className="flex flex-col w-full h-full min-h-0 overflow-y-auto"
+          style={{ background: "var(--color-surface, #0d0d0d)" }}
+        >
+          <div className="flex flex-col h-full w-full ">
 
-                {/* Only show create buttons for prompts section */}
-                {activeView === "prompt" && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => startCreate("collection")}
-                      className="rounded p-0.5 transition-colors hover:bg-background"
-                      style={{ color: "var(--color-muted, #666)" }}
-                      title="New Collection"
-                    >
-                      <FolderPlus size={12} />
-                    </button>
-                    <button
-                      onClick={() => startCreate("prompt")}
-                      className="rounded p-0.5 transition-colors hover:bg-background"
-                      style={{ color: "var(--color-muted, #666)" }}
-                      title="New Prompt"
-                    >
-                      <FilePlus size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
 
-              {/* Panel body */}
-              <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
+            {activeView === "prompt" && (
+              <PromptSidebarPanel
+                collectionsTree={collectionsTree}
+                activeTab={activeTab}
+                selectedId={selectedId}
+                setSelectedId={setSelectedId}
+                expandedCollections={expandedCollections}
+                onToggleExpand={toggleExpand}
+                onOpenTab={onOpenTab}
+                pendingCreate={pendingCreate}
+                onStartCreate={startCreate}
+                onConfirmCreate={confirmCreate}
+                onCancelCreate={cancelCreate}
+              />
+            )}
 
-                {activeView === "prompt" && collectionsTree && (
-                  <>
-                    {/* Root prompts */}
-                    {collectionsTree.rootPrompts.map((p) => (
-                      <PromptFile
-                        key={p.id}
-                        prompt={p}
-                        depth={0}
-                        isActive={activeTab ? activeTab.id === p.id : false}
-                        isSelected={selectedId === p.id}
-                        onSelect={() => setSelectedId(p.id)}
-                        onOpenTab={onOpenTab}
-                      />
-                    ))}
+            {activeView === "prompt" && !collectionsTree && (
+              <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
+                Loading...
+              </span>
+            )}
 
-                    {/* Inline input at root */}
-                    {pendingCreate && pendingCreate.parentCollectionId === null && (
-                      <InlineInput
-                        depth={0}
-                        onConfirm={confirmCreate}
-                        onCancel={cancelCreate}
-                      />
-                    )}
+            {/* Templates + Library — wire up when ready */}
+            {activeView === "template" && (
+              <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
+                Templates coming soon
+              </span>
+            )}
+            {activeView === "library" && <LibrarySidebarPanel />}
 
-                    {/* Collection tree */}
-                    {collectionsTree.tree.map((node) => (
-                      <CollectionItem
-                        key={node.id}
-                        node={node}
-                        depth={0}
-                        activeTabId={activeTab ? activeTab.id : null}
-                        selectedId={selectedId}
-                        expandedCollections={expandedCollections}
-                        onToggleExpand={toggleExpand}
-                        onSelect={setSelectedId}
-                        onOpenTab={onOpenTab}
-                        pendingCreate={pendingCreate}
-                        onInlineConfirm={confirmCreate}
-                        onInlineCancel={cancelCreate}
-                      />
-                    ))}
-                  </>
-                )}
-
-                {activeView === "prompt" && !collectionsTree && (
-                  <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
-                    Loading...
-                  </span>
-                )}
-
-                {/* Templates + Library — wire up when ready */}
-                {activeView === "template" && (
-                  <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
-                    Templates coming soon
-                  </span>
-                )}
-                {activeView === "library" && (
-                  <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
-                    Library coming soon
-                  </span>
-                )}
-
-              </div>
-            </div>
           </div>
-        )}
+        </div>
+
+  )
+}
  
-    </div>
+    </div >
   )
 }

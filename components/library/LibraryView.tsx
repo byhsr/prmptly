@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { TabButton } from "../ui/TabButton"
 import ContextSetupGate from "./EnableContext"
 import { readConfig } from "@/lib/fs/fs"
+import {motion} from "motion/react"
 
 type LibraryTab = "snippets" | "context"
 
@@ -31,7 +32,7 @@ export const LibraryView = () => {
 
       {createAsset === "snippets" ? <SnippetModal onClose={() => { setCreateAsset(null) }} onSave={() => { setCreateAsset(null) }} /> : ""}
       {/* Folder tab nav */}
-      <div className="flex bg-surface pt-2 px-4 items-end justify-between">
+      <div className="flex bg-surface px-4 items-end justify-between">
 
         <div className="flex  gap-0">
           {(["snippets", "context"] as LibraryTab[]).map((tab) => {
@@ -113,12 +114,14 @@ export const LibraryView = () => {
 //           })}
 
 //         </div>
-const SnippetsPanel = () => (
-  <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>
+const SnippetsPanel = ({activeAsset, creatingNew} : {activeAsset?: any, creatingNew?: boolean}) => {
+
+
+  return <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>
     <SquareAsterisk style={{ width: 24, height: 24 }} strokeWidth={1} />
     <span style={{ fontSize: 12 }}>No snippets yet</span>
   </div>
-)
+}
 const LocalRagPanel = () => {
   const [hasModel, setHasModel] = useState<boolean | null>(null)
 
@@ -127,7 +130,7 @@ const LocalRagPanel = () => {
   }, [])
 
   if (hasModel === null) return null // or a spinner
-  if (!hasModel) return <ContextSetupGate />
+  if (!hasModel) return <div className="w-full h-full flex justify-center "><ContextSetupGate /></div> 
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>

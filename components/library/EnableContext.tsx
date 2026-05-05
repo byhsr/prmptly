@@ -1,3 +1,4 @@
+import { Sparkle } from "lucide-react";
 import { useState } from "react";
 
 type Stage = "idle" | "downloading" | "ready";
@@ -41,13 +42,12 @@ export default function ContextSetupGate({ onReady }: { onReady?: () => void }) 
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", minHeight: 400, padding: "3rem 2rem",
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
     }}>
       {/* Icon */}
       <div style={{
         width: 56, height: 56, borderRadius: 14,
         border: stage === "ready" ? "1.5px solid rgba(200,255,0,0.3)" : "1.5px solid #2a2a2a",
-        background: "#1e1e1e", display: "flex", alignItems: "center",
+        display: "flex", alignItems: "center",
         justifyContent: "center", marginBottom: 24, position: "relative",
       }}>
         {stage !== "ready" && (
@@ -57,18 +57,12 @@ export default function ContextSetupGate({ onReady }: { onReady?: () => void }) 
             animation: "pulse 2.4s ease-out infinite",
           }} />
         )}
-        <svg width={26} height={26} viewBox="0 0 24 24" fill="none"
-          stroke="#c8ff00" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          {stage === "ready"
-            ? <path d="M20 6L9 17l-5-5" />
-            : <><path d="M12 2a7 7 0 0 1 7 7c0 4-3.5 7-7 9-3.5-2-7-5-7-9a7 7 0 0 1 7-7z" /><circle cx="12" cy="9" r="2.5" /></>
-          }
-        </svg>
+        <Sparkle className="text-accent" />
       </div>
 
       {/* Title */}
       <p style={{ fontSize: 15, fontWeight: 500, color: "#f0f0f0", marginBottom: 8, textAlign: "center" }}>
-        {stage === "idle" && "context needs a brain"}
+        {stage === "idle" && "Context needs a Brain"}
         {stage === "downloading" && "initializing model..."}
         {stage === "ready" && "model ready"}
       </p>
@@ -77,7 +71,7 @@ export default function ContextSetupGate({ onReady }: { onReady?: () => void }) 
       <p style={{ fontSize: 12, color: "#666", textAlign: "center", lineHeight: 1.7, maxWidth: 340, marginBottom: 28 }}>
         {stage === "idle" && <>
           The <code style={{ color: "#c8ff00", background: "rgba(200,255,0,0.07)", padding: "1px 5px", borderRadius: 4 }}>Context</code> tab
-          uses a local embedding model to search your documents — no API keys, runs entirely on your machine.
+uses a local model to organize your data, so you can build better context for your prompts, everything stays on your device.
         </>}
         {stage === "downloading" && <>
           Fetching <code style={{ color: "#c8ff00", background: "rgba(200,255,0,0.07)", padding: "1px 5px", borderRadius: 4 }}>NomicEmbedTextV1.5</code> — this only happens once. Future launches are instant.

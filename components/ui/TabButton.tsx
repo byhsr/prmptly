@@ -18,7 +18,6 @@ export const TabButton = ({
 
     isActive,
     onClick,
-    icon,
     width = 120,
     collapsedWidth = 36,
     height = 32,
