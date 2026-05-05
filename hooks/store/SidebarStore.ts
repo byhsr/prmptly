@@ -1,6 +1,7 @@
 // store/libraryStore.ts
 import { create } from "zustand"
 import {Snippet} from "@/lib/types/library"
+import { LibraryTab } from "@/components/library/LibraryView"
 
 type LibraryStore = {
   // selection
@@ -9,8 +10,8 @@ type LibraryStore = {
   clearSelection: () => void
 
   // creation mode
-  isCreating: boolean
-  setCreating: (val: boolean) => void
+  isCreating: LibraryTab | null
+setCreating: (type: LibraryTab | null) => void
 
   // local cache of snippets (fetched from DB)
   snippets: Snippet[]
@@ -24,11 +25,11 @@ type LibraryStore = {
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   selectedSnippetId: null,
-  selectSnippet: (id) => set({ selectedSnippetId: id, isCreating: false }),
+  selectSnippet: (id) => set({ selectedSnippetId: id, isCreating: null }),
   clearSelection: () => set({ selectedSnippetId: null }),
 
-  isCreating: false,
-  setCreating: (val) => set({ isCreating: val, selectedSnippetId: val ? null : get().selectedSnippetId }),
+  isCreating: null,
+  setCreating: (type) => set({ isCreating: type, selectedSnippetId: type ? null : get().selectedSnippetId }),
 
   snippets: [],
   setSnippets: (snippets) => set({ snippets }),

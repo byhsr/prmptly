@@ -8,36 +8,37 @@ import { TabButton } from "../ui/TabButton"
 import ContextSetupGate from "./EnableContext"
 import { readConfig } from "@/lib/fs/fs"
 import {motion} from "motion/react"
+import { useLibraryStore } from "@/hooks/store/SidebarStore"
 
-type LibraryTab = "snippets" | "context"
+export type LibraryTab = "snippet" | "context"
 
 export const LibraryView = () => {
-  const [activeTab, setActiveTab] = useState<LibraryTab>("snippets")
-  const [createAsset, setCreateAsset] = useState<LibraryTab | null>(null)
+  const [activeTab, setActiveTab] = useState<LibraryTab>("snippet")
+
+  const {setCreating} = useLibraryStore()
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "n") {
         e.preventDefault()
-        activeTab === "snippets" ? setCreateAsset("snippets") : setCreateAsset("context")
+        activeTab === "snippet" ? setCreating("snippet") : setCreating("context")
       }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [activeTab])
 
-  const buttonLabel = activeTab === "snippets" ? "new snippet" : "add context"
+  const buttonLabel = activeTab === "snippet" ? "new snippet" : "add context"
   return (
     <div className="w-full h-full flex flex-col text-sm">
 
-      {createAsset === "snippets" ? <SnippetModal onClose={() => { setCreateAsset(null) }} onSave={() => { setCreateAsset(null) }} /> : ""}
       {/* Folder tab nav */}
       <div className="flex bg-surface px-4 items-end justify-between">
 
         <div className="flex  gap-0">
-          {(["snippets", "context"] as LibraryTab[]).map((tab) => {
+          {(["snippet", "context"] as LibraryTab[]).map((tab) => {
             const isActive = activeTab === tab
-            const Icon = tab === "snippets" ? SquareAsterisk : Sparkle
+            const Icon = tab === "snippet" ? SquareAsterisk : Sparkle
             return (
               <TabButton
                 key={tab}
@@ -53,7 +54,7 @@ export const LibraryView = () => {
                   marginLeft: isActive ? 4 : 0,
                   transition: "max-width 0.15s ease, opacity 0.15s ease",
                 }}>
-                  {tab === "snippets" ? "Snippets" : "Context"}
+                  {tab === "snippet" ? "Snippet" : "Context"}
                 </span>
               </TabButton>
             )
@@ -62,7 +63,7 @@ export const LibraryView = () => {
 
 
         <div className="flex  gap-4  text-[12px] p-2 px-6" >
-          <Button variant="ghost" onClick={() => setCreateAsset(activeTab)}>
+          <Button variant="ghost" onClick={() => setCreating(activeTab)}>
             {buttonLabel}
           </Button>
         </div>
@@ -71,7 +72,7 @@ export const LibraryView = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === "snippets" && <SnippetsPanel />}
+        {activeTab === "snippet" && <SnippetsPanel />}
         {activeTab === "context" && <LocalRagPanel />}
       </div>
 
@@ -79,49 +80,28 @@ export const LibraryView = () => {
   )
 }
 
-//  <div className="flex gap-0 ">
-//           {(["snippets", "context"] as LibraryTab[]).map((tab) => {
-//             const isActive = activeTab === tab
-//             const Icon = tab === "snippets" ? SquareAsterisk : Sparkle
-//             return (
-//               <TabButton label="Snippets"
-//                 isActive={activeTab === "snippets"}
-//                 onClick={() => setActiveTab("snippets")}>
-//                 {/* <button
-//                 key={tab}
-//                 onClick={() => setActiveTab(tab)}
-//                 className={cn(
-//                   "relative top-px flex items-center overflow-hidden whitespace-nowrap cursor-pointer rounded-t-3xl  transition-all duration-150",
-//                   " border-secondary",
-//                   "font-sans text-[11px]",
-//                   isActive
-//                     ? "gap-1.5 w-auto px-6 py-1.5 bg-background text-primary border-b-primary"
-//                     : "gap-0 w-8 px-2 py-1.5 bg-secondary text-secondary border-b-secondary"
-//                 )}
-//               > */}
-//                 <Icon style={{ width: 13, height: 13, flexShrink: 0 }} />
-//                 <span style={{
-//                   maxWidth: isActive ? 80 : 0,
-//                   opacity: isActive ? 1 : 0,
-//                   overflow: "hidden",
-//                   transition: "max-width 0.15s ease, opacity 0.15s ease",
-//                 }}>
-//                   {tab === "snippets" ? "Snippets" : "Context"}
-//                 </span>
-//                 {/* </button> */}
-//               </TabButton>
-//             )
-//           })}
+const SnippetsPanel = () => {
+  const { isCreating, setCreating, selectedSnippet } = useLibraryStore()
+  const snippet = selectedSnippet()
 
-//         </div>
-const SnippetsPanel = ({activeAsset, creatingNew} : {activeAsset?: any, creatingNew?: boolean}) => {
+  if (isCreating === "snippet" || snippet) {
+    return (
+      <SnippetModal
+        snippet={snippet ?? undefined}
+        onClose={() => { setCreating(null); useLibraryStore.getState().clearSelection() }}
+        onSave={() => { setCreating(null) }}
+      />
+    )
+  }
 
-
-  return <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>
-    <SquareAsterisk style={{ width: 24, height: 24 }} strokeWidth={1} />
-    <span style={{ fontSize: 12 }}>No snippets yet</span>
-  </div>
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>
+      <SquareAsterisk style={{ width: 24, height: 24 }} strokeWidth={1} />
+      <span style={{ fontSize: 12 }}>No snippets yet</span>
+    </div>
+  )
 }
+
 const LocalRagPanel = () => {
   const [hasModel, setHasModel] = useState<boolean | null>(null)
 
@@ -139,5 +119,4 @@ const LocalRagPanel = () => {
     </div>
   )
 }
-{/*  */ }
-{/* <ContextSetupGate /> */ }
+
