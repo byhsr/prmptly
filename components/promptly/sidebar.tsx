@@ -51,13 +51,13 @@ function RailButton({ icon: Icon, label, isActive, onClick }: RailButtonProps) {
     <button
       onClick={onClick}
       title={label}
-      className={"flex items-center justify-center rounded-lg rounded-b-none transition-colors"}
+      className={"flex items-center justify-center rounded-lg  transition-colors"}
       style={{
         width: 32,
         height: 32,
         // border : isActive ? "1px solid var(--color-accent, #444)" : "1px solid transparent",
-        color: isActive ? "var(--color-text, #eee)" : "var(--color-muted, #555)",
-        background: isActive ? "var(--color-active, #1a1a1a)" : "transparent",
+        color: isActive ? "var(--color-muted)" : "var(--color-muted, #555)",
+        background: isActive ? "var(--color-surface)" : "transparent",
       }}
     >
       <Icon size={15} />
@@ -175,7 +175,6 @@ export function Sidebar({
     setPendingCreate(null)
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -197,7 +196,7 @@ export function Sidebar({
             }}
           >
             {/* panel view bar */}
-            <motion.div className="flex gap-2 rounded-lg px-4 items-center pt-2 bg-background w-full">
+            <motion.div className="flex gap-2 rounded-lg px-4 items-center p-2 bg-background w-full">
               <RailButton
                 icon={Home}
                 label="Home"

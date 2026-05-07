@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils"
 import { TabButton } from "../ui/TabButton"
 import ContextSetupGate from "./EnableContext"
 import { readConfig } from "@/lib/fs/fs"
-import {motion} from "motion/react"
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
 
 export type LibraryTab = "snippet" | "context"

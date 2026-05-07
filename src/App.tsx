@@ -2,14 +2,39 @@ import { useEffect, useState } from "react";
 import Dash from "../components/Dash"
 import "./App.css";
 import {  initDB } from "@/lib/db";
-import { readConfig, setupWorkspace } from "@/lib/fs/fs";
+import { readConfig, setupWorkspace, writeConfig } from "@/lib/fs/fs";
 import { initBasePath } from "@/lib/fs/fsHelpers";
 import Onboarding from "@/components/Onboard";
 import { TabBar } from "@/components/promptly/Tabbar";
 
 function App() {
-
+ const [darkMode, setDarkMode] = useState(true)
   console.log("saved layout on load:", localStorage.getItem("panel-layout"))
+   useEffect(() => {
+    async function loadTheme() {
+      const config = await readConfig()
+
+      const isDark = config?.theme !== "light"
+
+      setDarkMode(isDark)
+
+      document.documentElement.classList.toggle("dark", isDark)
+    }
+
+    loadTheme()
+  }, [])
+
+   async function toggleTheme() {
+    const next = !darkMode
+
+    setDarkMode(next)
+
+    document.documentElement.classList.toggle("dark", next)
+
+    await writeConfig({
+      theme: next ? "dark" : "light",
+    })
+  }
   return (
     <main className="w-full ">
       <nav className="overflow-clip">
