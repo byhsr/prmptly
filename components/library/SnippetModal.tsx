@@ -1,8 +1,10 @@
 import { SquareAsterisk, X } from "lucide-react"
 import { useState } from "react"
-import {Button} from "../ui/button"
+import { Button } from "../ui/button"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
+import { useNotifications } from "@/hooks/store/SidebarStore"
+import {upsertSnippet} from "@/lib/db/library"
 
 // type SnippetModalProps = {
 //   onClose: () => void
@@ -146,15 +148,19 @@ type SnippetModalProps = {
 
 export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: SnippetModalProps) => {
   const isEditing = !!snippet
-
+  const {notify }= useNotifications()
   const [scope, setScope] = useState(snippet?.scope ?? "")
   const [key, setKey] = useState(snippet?.key ?? "")
   const [value, setValue] = useState(snippet?.value ?? "")
+  const [title, setTitle] = useState(snippet ? `${snippet.title}` : "New Snippet") 
 
-  const handleSave = () => {
-    if (!key.trim() || !value.trim()) return
-    onSave({ scope: scope.trim().toLowerCase() || undefined, key: key.trim().toLowerCase(), value: value.trim() })
-    onClose()
+  const handleSave = async () => {
+    if (!key.trim() || !value.trim()) {
+      notify("Snippet must have key and value", true)
+      return }
+    await upsertSnippet( scope.trim() || undefined, key.trim(), value.trim())
+    notify("Snippet Saved")
+    // onClose()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -165,7 +171,7 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
   const callsign = scope.trim()
     ? `@${scope.trim().toLowerCase()}:${key.trim().toLowerCase()}`
     : `@${key.trim().toLowerCase()}`
-.toLowerCase()
+      .toLowerCase()
   return (
     <div
       className="w-full h-full flex items-center justify-center backdrop-blur-2xl bg-background"
@@ -178,9 +184,20 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
         <div className="flex items-center border-b p-4 justify-between">
           <div className="flex items-center gap-2">
             <SquareAsterisk style={{ width: 13, height: 13, color: "var(--color-accent)" }} />
-            <span style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}>
-              {isEditing ? `Edit — ${snippet.key}` : "New Snippet"}
-            </span>
+            <input
+              value={isEditing ? key : title}
+              onChange={(e) => isEditing ? setKey(e.target.value) : setTitle(e.target.value)}
+              placeholder="New Snippet"
+              style={{
+                fontSize: 12,
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-text-primary)",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                width: "auto"
+              }}
+            />
           </div>
           <div>
             <div className="flex gap-4">
@@ -189,12 +206,12 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
                   {callsign}
                 </span>
               </div>
-              
+
               <Button onClick={handleSave} variant="ghost">
                 {isEditing ? "Update Snippet" : "Save Snippet"}
               </Button>
               <Button onClick={onClose} variant="danger">
-                 <X className="w-3 h-3" />
+                <X className="w-3 h-3" />
               </Button>
               {/* <button onClick={onClose} className="bg-accent p-1 text-black rounded-sm">
                 
@@ -207,7 +224,7 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
         </div>
 
         {/* Body */}
-        <div className="flex bg-surface flex-col flex-1 gap-4 ">
+        <div className="flex bg-background flex-col flex-1 gap-4 ">
           <div className="flex gap-2 border-b p-6 ">
             <Field label="Scope" optional className="text-muted text-sm">
               <input
@@ -235,19 +252,19 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
               />
             </Field>
           </div >
-          
+
           <div className="flex flex-col flex-1 gap-4 p-6 ">
-           <Field label="Value" className="text-muted text-sm ">
-            <textarea
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder="Snippet content…"
-              rows={6}
-              className="resize-none overflow-y-auto text-foreground outline-0"
-            />
-          </Field>
+            <Field label="Value" className="text-muted text-sm ">
+              <textarea
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="Snippet content…"
+                rows={6}
+                className="resize-none overflow-y-auto text-foreground outline-0"
+              />
+            </Field>
           </div>
-          
+
         </div>
 
         {/* Footer */}

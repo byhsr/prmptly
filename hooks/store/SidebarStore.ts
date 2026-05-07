@@ -51,3 +51,38 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     return snippets.find(x => x.id === selectedSnippetId) ?? null
   }
 }))
+
+
+
+type Notification = {
+  id: string
+  message: string
+  error?: boolean
+}
+
+type NotificationStore = {
+  notifications: Notification[]
+  notify: (message: string, error?: boolean) => void
+  dismiss: (id: string) => void
+}
+
+export const useNotifications = create<NotificationStore>((set) => ({
+  notifications: [],
+
+  notify: (message, error = false) => {
+    const id = crypto.randomUUID()
+    set((s) => ({
+      notifications: [...s.notifications, { id, message, error }]
+    }))
+    setTimeout(() => {
+      set((s) => ({
+        notifications: s.notifications.filter((n) => n.id !== id)
+      }))
+    }, 4000)
+  },
+
+  dismiss: (id) =>
+    set((s) => ({
+      notifications: s.notifications.filter((n) => n.id !== id)
+    })),
+}))

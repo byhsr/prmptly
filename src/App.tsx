@@ -6,6 +6,7 @@ import { readConfig, setupWorkspace, writeConfig } from "@/lib/fs/fs";
 import { initBasePath } from "@/lib/fs/fsHelpers";
 import Onboarding from "@/components/Onboard";
 import { TabBar } from "@/components/promptly/Tabbar";
+import { SidebarNotifications } from "@/components/ui/Notifier";
 
 function App() {
  const [darkMode, setDarkMode] = useState(true)
@@ -89,7 +90,10 @@ export const AppFlow = () => {
   if (!dbReady) return "wait"
   if (!basePath) return <Onboarding onDone={() => setBasePath("ok")} />
 
-  return (<Dash dbReady={dbReady} />)
+  return ( <div>
+    <SidebarNotifications />
+    <Dash dbReady={dbReady} />
+  </div> )
 
 }
 
