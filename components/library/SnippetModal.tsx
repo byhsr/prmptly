@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Button } from "../ui/button"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
-import { useNotifications } from "@/hooks/store/SidebarStore"
+import { useLibraryStore, useNotifications } from "@/hooks/store/SidebarStore"
 import { createSnippet, updateSnippet, upsertSnippet } from "@/lib/db/library"
 
 // type SnippetModalProps = {
@@ -153,49 +153,71 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
   const [key, setKey] = useState(snippet?.key ?? "")
   const [value, setValue] = useState(snippet?.value ?? "")
 
+  const { setSnippets, snippets } = useLibraryStore()
 
-const handleSave = async () => {
-  if (!key.trim() || !value.trim()) {
-    notify("Snippet must have key and value", true)
-    return
-  }
+  const normalizedKey = key
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
 
-  try {
-    if (isEditing) {
-      await updateSnippet(
-        scope.trim() || undefined,
-        key.trim(),
-        value.trim()
-      )
-    } else {
-      await createSnippet(
-        scope.trim() || undefined,
-        key.trim(),
-        value.trim()
-      )
+  const normalizedScope = scope
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+
+  const callsign = normalizedScope
+    ? `@${normalizedScope}:${normalizedKey}`
+    : `@${normalizedKey}`
+
+  const handleSave = async () => {
+    if (!key.trim() || !value.trim()) {
+      notify("Snippet must have key and value", true)
+      return
     }
 
-    notify("snippet saved")
+    const newSnippet = {
+      scope: scope.trim() || undefined,
+      key: key.trim(),
+      value: value.trim(),
+    }
 
-  } catch (e) {
-    if (e instanceof Error) {
-      if (e.message === "Snippet key already exists") {
-        notify("Snippet key already exists", true)
+    try {
+      if (isEditing) {
+        await updateSnippet(
+          newSnippet.scope,
+          newSnippet.key,
+          newSnippet.value
+        )
       } else {
-        notify("failed to create snippet", true)
+        await createSnippet(
+          newSnippet.scope,
+          newSnippet.key,
+          newSnippet.value
+        )
+      }
+
+      setSnippets([...snippets, newSnippet])
+
+      notify("snippet saved")
+
+    } catch (e) {
+      if (e instanceof Error) {
+        if (e.message === "Snippet key already exists") {
+          notify("Snippet key already exists", true)
+        } else {
+          notify("failed to create snippet", true)
+        }
       }
     }
   }
-}
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose()
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave()
   }
 
-  const callsign = scope.trim()
-    ? `@${scope.trim().toLowerCase()}:${key.trim().toLowerCase()}`
-    : `@${key.trim().toLowerCase()}`
-      .toLowerCase()
+
+
   return (
     <div
       className="w-full h-full flex items-center justify-center backdrop-blur-2xl bg-background"
