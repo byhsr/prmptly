@@ -4,7 +4,7 @@ import { Button } from "../ui/button"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
 import { useNotifications } from "@/hooks/store/SidebarStore"
-import {upsertSnippet} from "@/lib/db/library"
+import { createSnippet, updateSnippet, upsertSnippet } from "@/lib/db/library"
 
 // type SnippetModalProps = {
 //   onClose: () => void
@@ -148,21 +148,45 @@ type SnippetModalProps = {
 
 export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: SnippetModalProps) => {
   const isEditing = !!snippet
-  const {notify }= useNotifications()
+  const { notify } = useNotifications()
   const [scope, setScope] = useState(snippet?.scope ?? "")
   const [key, setKey] = useState(snippet?.key ?? "")
   const [value, setValue] = useState(snippet?.value ?? "")
-  const [title, setTitle] = useState(snippet ? `${snippet.title}` : "New Snippet") 
 
-  const handleSave = async () => {
-    if (!key.trim() || !value.trim()) {
-      notify("Snippet must have key and value", true)
-      return }
-    await upsertSnippet( scope.trim() || undefined, key.trim(), value.trim())
-    notify("Snippet Saved")
-    // onClose()
+
+const handleSave = async () => {
+  if (!key.trim() || !value.trim()) {
+    notify("Snippet must have key and value", true)
+    return
   }
 
+  try {
+    if (isEditing) {
+      await updateSnippet(
+        scope.trim() || undefined,
+        key.trim(),
+        value.trim()
+      )
+    } else {
+      await createSnippet(
+        scope.trim() || undefined,
+        key.trim(),
+        value.trim()
+      )
+    }
+
+    notify("snippet saved")
+
+  } catch (e) {
+    if (e instanceof Error) {
+      if (e.message === "Snippet key already exists") {
+        notify("Snippet key already exists", true)
+      } else {
+        notify("failed to create snippet", true)
+      }
+    }
+  }
+}
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose()
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave()
@@ -181,47 +205,7 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
       <div className="flex flex-col  rounded-2xl w-full h-full">
 
         {/* Header */}
-        <div className="flex items-center border-b p-4 justify-between">
-          <div className="flex items-center gap-2">
-            <SquareAsterisk style={{ width: 13, height: 13, color: "var(--color-accent)" }} />
-            <input
-              value={isEditing ? key : title}
-              onChange={(e) => isEditing ? setKey(e.target.value) : setTitle(e.target.value)}
-              placeholder="New Snippet"
-              style={{
-                fontSize: 12,
-                fontFamily: "var(--font-mono)",
-                color: "var(--color-text-primary)",
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                width: "auto"
-              }}
-            />
-          </div>
-          <div>
-            <div className="flex gap-4">
-              <div className=" px-2 py-1 rounded">
-                <span style={{ color: "var(--color-accent)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
-                  {callsign}
-                </span>
-              </div>
 
-              <Button onClick={handleSave} variant="ghost">
-                {isEditing ? "Update Snippet" : "Save Snippet"}
-              </Button>
-              <Button onClick={onClose} variant="danger">
-                <X className="w-3 h-3" />
-              </Button>
-              {/* <button onClick={onClose} className="bg-accent p-1 text-black rounded-sm">
-                
-              </button> */}
-            </div>
-
-          </div>
-
-
-        </div>
 
         {/* Body */}
         <div className="flex bg-background flex-col flex-1 gap-4 ">
@@ -253,14 +237,14 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
             </Field>
           </div >
 
-          <div className="flex flex-col flex-1 gap-4 p-6 ">
-            <Field label="Value" className="text-muted text-sm ">
+          <div className="flex flex-col  flex-1 gap-4 px-6 ">
+            <Field label="Value" className="text-muted gap-4 text-sm ">
               <textarea
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="Snippet content…"
                 rows={6}
-                className="resize-none overflow-y-auto text-foreground outline-0"
+                className="resize-none  min-h-full overflow-y-auto text-foreground outline-0"
               />
             </Field>
           </div>
@@ -268,6 +252,48 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
         </div>
 
         {/* Footer */}
+        <div className="bg-background backdrop-blur-2xl h-40 w-full flex items-center border-b p-4 justify-between">
+          <div className="flex items-center gap-2">
+            {/* <SquareAsterisk style={{ width: 13, height: 13, color: "var(--color-accent)" }} /> */}
+            <div className=" px-2 py-1 rounded">
+              <span style={{ color: "var(--color-accent)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+                {callsign}
+              </span>
+            </div>
+            {/* <input
+              value={isEditing ? key : title}
+              onChange={(e) => isEditing ? setKey(e.target.value) : setTitle(e.target.value)}
+              placeholder="New Snippet"
+              style={{
+                fontSize: 12,
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-text-primary)",
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                width: "auto"
+              }}
+            /> */}
+          </div>
+          <div>
+            <div className="flex gap-4">
+
+
+              <Button onClick={handleSave} variant="ghost">
+                {isEditing ? "Update Snippet" : "Save Snippet"}
+              </Button>
+              <Button onClick={onClose} variant="danger">
+                <X className="w-3 h-3" />
+              </Button>
+              {/* <button onClick={onClose} className="bg-accent p-1 text-black rounded-sm">
+                
+              </button> */}
+            </div>
+
+          </div>
+
+
+        </div>
       </div>
     </div>
   )
@@ -278,7 +304,7 @@ const Field = ({ label, optional, children, className }: {
   children: React.ReactNode
   className?: string
 }) => (
-  <div className={cn("flex flex-col gap-1", className)}>
+  <div className={cn("flex flex-col gap-1 w-full h-full", className)}>
     <label style={{ textTransform: "uppercase", fontWeight: "300", letterSpacing: "0.06em", display: "flex", alignItems: "center", }}>
       {label}
       {optional && <span style={{ fontSize: 9, textTransform: "none", letterSpacing: 0, color: "var(--color-text-secondary)", background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: 3, padding: "0 4px" }}>optional</span>}

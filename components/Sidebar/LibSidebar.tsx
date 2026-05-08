@@ -4,13 +4,13 @@ import { SquareAsterisk, Plus } from "lucide-react"
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
+import { getSnippets } from "@/lib/db/library"
 
 export const LibrarySidebarPanel = () => {
   const { snippets, setSnippets, selectedSnippetId, selectSnippet, isCreating, setCreating } = useLibraryStore()
 
   useEffect(() => {
-    // TODO: fetch from DB via tauri invoke
-    // invoke("get_snippets").then(setSnippets)
+      getSnippets().then(setSnippets)
   }, [])
 
   return (
@@ -53,7 +53,7 @@ export const LibrarySidebarPanel = () => {
 
         {snippets.map((snippet) => (
           <SnippetRow
-            key={snippet.id}
+            key={snippet.key}
             snippet={snippet}
             isSelected={selectedSnippetId === snippet.id}
             onSelect={() => selectSnippet(snippet.id)}
@@ -76,7 +76,7 @@ const SnippetRow = ({
   <button
     onClick={onSelect}
     className={cn(
-      "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors duration-100 cursor-pointer",
+      "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors duration-100 cursor-pointer",
       isSelected
         ? "bg-background text-primary"
         : "text-secondary hover:bg-background/60"
@@ -98,9 +98,9 @@ const SnippetRow = ({
           snippet.key
         )}
       </span>
-      <span className="text-[10px] truncate" style={{ color: "var(--color-muted)" }}>
+      {/* <span className="text-[10px] truncate" style={{ color: "var(--color-muted)" }}>
         {snippet.value.slice(0, 40)}{snippet.value.length > 40 ? "…" : ""}
-      </span>
+      </span> */}
     </div>
   </button>
 )
