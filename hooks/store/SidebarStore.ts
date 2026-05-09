@@ -11,18 +11,17 @@ type LibraryStore = {
 
   // creation mode
   isCreating: LibraryTab | null
-setCreating: (type: LibraryTab | null) => void
+  setCreating: (type: LibraryTab | null) => void
 
   // local cache of snippets (fetched from DB)
   snippets: Snippet[]
   setSnippets: (snippets: Snippet[]) => void
-  upsertSnippet: (snippet: Snippet) => void
   removeSnippet: (id: string) => void
-
+  updateSnippet: (id: string, updated: Partial<Snippet>) => void
   // derived
   selectedSnippet: () => Snippet | null
 }
-
+export const snippetId = (s: Snippet) => s.scope ? `${s.scope}:${s.key}` : s.key
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   selectedSnippetId: null,
   selectSnippet: (id) => set({ selectedSnippetId: id, isCreating: null }),
@@ -33,23 +32,22 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   snippets: [],
   setSnippets: (snippets) => set({ snippets }),
-  upsertSnippet: (snippet) => set((s) => {
-    const exists = s.snippets.find(x => x.id === snippet.id)
-    return {
-      snippets: exists
-        ? s.snippets.map(x => x.id === snippet.id ? snippet : x)
-        : [...s.snippets, snippet]
-    }
-  }),
   removeSnippet: (id) => set((s) => ({
-    snippets: s.snippets.filter(x => x.id !== id),
-    selectedSnippetId: s.selectedSnippetId === id ? null : s.selectedSnippetId,
-  })),
-
-  selectedSnippet: () => {
-    const { snippets, selectedSnippetId } = get()
-    return snippets.find(x => x.id === selectedSnippetId) ?? null
+  snippets: s.snippets.filter(x => snippetId(x) !== id),
+  selectedSnippetId: s.selectedSnippetId === id ? null : s.selectedSnippetId,
+})),
+updateSnippet: (id, updated) => set((s) => {
+  const newId = updated.scope ? `${updated.scope}:${updated.key}` : updated.key
+  return {
+    snippets: s.snippets.map(x => snippetId(x) === id ? { ...x, ...updated } : x),
+    selectedSnippetId: s.selectedSnippetId === id ? newId : s.selectedSnippetId,
   }
+}),
+
+ selectedSnippet: () => {
+  const { snippets, selectedSnippetId } = get()
+  return snippets.find(x => snippetId(x) === selectedSnippetId) ?? null
+}
 }))
 
 

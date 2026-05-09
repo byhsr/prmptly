@@ -3,9 +3,10 @@ import { useState } from "react"
 import { Button } from "../ui/button"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
-import { useLibraryStore, useNotifications } from "@/hooks/store/SidebarStore"
+import { snippetId, useLibraryStore, useNotifications } from "@/hooks/store/SidebarStore"
 import { createSnippet, updateSnippet, upsertSnippet } from "@/lib/db/library"
-
+import { useEffect } from "react"
+import { LibraryTab } from "./LibraryView"
 // type SnippetModalProps = {
 //   onClose: () => void
 //   onSave: (data: { scope?: string; key: string; value: string }) => void
@@ -144,16 +145,23 @@ type SnippetModalProps = {
   onSave: (data: { scope?: string; key: string; value: string }) => void
   existingScopes?: string[]
   snippet?: Snippet
+  isCreating: LibraryTab | null
 }
 
-export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: SnippetModalProps) => {
-  const isEditing = !!snippet
+export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet, isCreating }: SnippetModalProps) => {
+  const isEditing = !!snippet && !isCreating
   const { notify } = useNotifications()
   const [scope, setScope] = useState(snippet?.scope ?? "")
   const [key, setKey] = useState(snippet?.key ?? "")
   const [value, setValue] = useState(snippet?.value ?? "")
 
   const { setSnippets, snippets } = useLibraryStore()
+
+  useEffect(() => {
+    setScope(snippet?.scope ?? "")
+    setKey(snippet?.key ?? "")
+    setValue(snippet?.value ?? "")
+  }, [snippet])
 
   const normalizedKey = key
     .trim()
@@ -170,6 +178,10 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
     : `@${normalizedKey}`
 
   const handleSave = async () => {
+    if (isEditing && snippet!.scope === scope.trim() && snippet!.key === key.trim() && snippet!.value === value.trim()) {
+      notify("No changes made")
+      return
+    }
     if (!key.trim() || !value.trim()) {
       notify("Snippet must have key and value", true)
       return
@@ -184,21 +196,22 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet }: 
     try {
       if (isEditing) {
         await updateSnippet(
+          snippetId(snippet),
           newSnippet.scope,
           newSnippet.key,
           newSnippet.value
         )
+        useLibraryStore.getState().updateSnippet(snippetId(snippet), newSnippet)
+        notify("snippet updated")
       } else {
         await createSnippet(
           newSnippet.scope,
           newSnippet.key,
           newSnippet.value
         )
+        setSnippets([...snippets, newSnippet])
+        notify("snippet saved")
       }
-
-      setSnippets([...snippets, newSnippet])
-
-      notify("snippet saved")
 
     } catch (e) {
       if (e instanceof Error) {

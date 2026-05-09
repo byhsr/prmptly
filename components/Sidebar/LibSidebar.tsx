@@ -1,16 +1,17 @@
 // components/sidebar/LibrarySidebarPanel.tsx
 import { useEffect } from "react"
 import { SquareAsterisk, Plus } from "lucide-react"
-import { useLibraryStore } from "@/hooks/store/SidebarStore"
+import { snippetId, useLibraryStore } from "@/hooks/store/SidebarStore"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
 import { getSnippets } from "@/lib/db/library"
 
+
 export const LibrarySidebarPanel = () => {
-  const { snippets, setSnippets, selectedSnippetId, selectSnippet, isCreating, setCreating } = useLibraryStore()
+  const { snippets, setSnippets, selectedSnippetId, selectSnippet, setCreating } = useLibraryStore()
 
   useEffect(() => {
-      getSnippets().then(setSnippets)
+    getSnippets().then(setSnippets)
   }, [])
 
   return (
@@ -51,14 +52,19 @@ export const LibrarySidebarPanel = () => {
           </span>
         )}
 
-        {snippets.map((snippet) => (
-          <SnippetRow
-            key={snippet.key}
+        {snippets.map((snippet, index) => {
+          const id = snippetId(snippet)      
+          return <SnippetRow
+            key={id}
             snippet={snippet}
-            isSelected={selectedSnippetId === snippet.id}
-            onSelect={() => selectSnippet(snippet.id)}
+            isSelected={selectedSnippetId === id}
+            onSelect={() => selectSnippet(id)}
           />
-        ))}
+
+        }
+        )
+
+        }
       </div>
     </div>
   )

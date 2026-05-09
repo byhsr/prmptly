@@ -14,7 +14,7 @@ export type LibraryTab = "snippet" | "context"
 export const LibraryView = () => {
   const [activeTab, setActiveTab] = useState<LibraryTab>("snippet")
 
-  const {setCreating} = useLibraryStore()
+  const {setCreating } = useLibraryStore()
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -86,6 +86,7 @@ const SnippetsPanel = () => {
   if (isCreating === "snippet" || snippet) {
     return (
       <SnippetModal
+      isCreating={isCreating}
         snippet={snippet ?? undefined}
         onClose={() => { setCreating(null); useLibraryStore.getState().clearSelection() }}
         onSave={() => { setCreating(null) }}

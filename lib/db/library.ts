@@ -27,16 +27,27 @@ export const createSnippet = async (
 }
 
 export const updateSnippet = async (
+  prevKey: string,
   scope: string | undefined,
   key: string,
   value: string
 ) => {
   const db = await getDB()
-  const fullKey = scope ? `${scope}:${key}` : key
+  const newFullKey = scope ? `${scope}:${key}` : key
+
+  if (prevKey !== newFullKey) {
+    const existing = await db.select<{ key: string }[]>(
+      "SELECT key FROM deterministic_assets WHERE key = $1",
+      [newFullKey]
+    )
+    if (existing.length > 0) {
+      throw new Error("Snippet key already exists")
+    }
+  }
 
   await db.execute(
-    "UPDATE deterministic_assets SET value = $1 WHERE key = $2",
-    [value, fullKey]
+    "UPDATE deterministic_assets SET key = $1, value = $2 WHERE key = $3",
+    [newFullKey, value, prevKey]
   )
 }
 export const upsertSnippet = async (scope: string | undefined, key: string, value: string) => {
