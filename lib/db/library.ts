@@ -50,6 +50,7 @@ export const updateSnippet = async (
     [newFullKey, value, prevKey]
   )
 }
+
 export const upsertSnippet = async (scope: string | undefined, key: string, value: string) => {
   const db = await getDB()
   const fullKey = scope ? `${scope}:${key}` : key
@@ -67,10 +68,9 @@ const normalize = (row: RawSnippet): Snippet => {
     key: rest.length ? rest.join(":") : scope!,
     scope: rest.length ? scope : undefined,
     value: row.value,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
   }
 }
+
 export const getSnippets = async (): Promise<Snippet[]> => {
   const db = getDB()
   const rows = await db.select<RawSnippet[]>(

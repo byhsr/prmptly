@@ -201,15 +201,14 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet, is
           newSnippet.key,
           newSnippet.value
         )
-        useLibraryStore.getState().updateSnippet(snippetId(snippet), newSnippet)
+        useLibraryStore.getState().updateSnippet(snippetId(snippet!), newSnippet)
         notify("snippet updated")
       } else {
-        await createSnippet(
-          newSnippet.scope,
-          newSnippet.key,
-          newSnippet.value
-        )
+        await createSnippet(newSnippet.scope, newSnippet.key, newSnippet.value)
+        const newId = snippetId(newSnippet)
         setSnippets([...snippets, newSnippet])
+        useLibraryStore.getState().selectSnippet(newId)
+        useLibraryStore.getState().setCreating(null)
         notify("snippet saved")
       }
 
