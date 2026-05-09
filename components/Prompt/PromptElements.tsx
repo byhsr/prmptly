@@ -2,6 +2,7 @@ import { useState } from "react"
 import { File } from "lucide-react"
 import { Tab } from "../promptly/Tabbar"
 import { PromptRow } from "@/services/service.collections"
+import { ContextMenu } from "../ui/ContextMenu"
 
 interface PromptItemProps {
   prompt: PromptRow
@@ -55,35 +56,17 @@ export function PromptFile({ prompt, depth = 0, isActive, isSelected, onSelect, 
       }}
     >
       {contextMenu && (
-        <div
-          style={{
-            position: "fixed",
-            top: contextMenu.y,
-            left: contextMenu.x
-          }}
-          className="bg-zinc-900 border rounded p-1"
-          onMouseLeave={() => setContextMenu(null)}
-        >
-          <div
-            className="px-2 py-1 hover:bg-zinc-800 cursor-pointer"
-            onClick={() => {
-              // handleRename(contextMenu.prompt)
-              setContextMenu(null)
-            }}
-          >
-            Rename
-          </div>
-
-          <div
-            className="px-2 py-1 hover:bg-red-800 cursor-pointer text-red-400"
-            onClick={() => {
-              // handleDelete(contextMenu.prompt.id)
-              setContextMenu(null)
-            }}
-          >
-            Delete
-          </div>
-        </div>
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          // handleRename(contextMenu.prompt)
+          // handleDelete(contextMenu.prompt.id)
+          items={[
+            { label: "Rename", onClick: () => {} },
+            { label: "Delete", onClick: () => {}, danger: true },
+          ]}
+        />
       )}
       <File size={11} style={{ flexShrink: 0, opacity: 0.6 }} />
       <span

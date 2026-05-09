@@ -5,7 +5,8 @@ import { snippetId, useLibraryStore } from "@/hooks/store/SidebarStore"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
 import { getSnippets } from "@/lib/db/library"
-
+import { useState } from "react"
+import { ContextMenu } from "../ui/ContextMenu"
 
 export const LibrarySidebarPanel = () => {
   const { snippets, setSnippets, selectedSnippetId, selectSnippet, setCreating } = useLibraryStore()
@@ -78,9 +79,17 @@ const SnippetRow = ({
   snippet: Snippet
   isSelected: boolean
   onSelect: () => void
-}) => (
-  <button
+}) => {
+
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+
+ return  <button
     onClick={onSelect}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onSelect()
+        setContextMenu({ x: e.clientX, y: e.clientY })
+      }}
     className={cn(
       "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors duration-100 cursor-pointer",
       isSelected
@@ -88,6 +97,14 @@ const SnippetRow = ({
         : "text-secondary hover:bg-background/60"
     )}
   >
+    {contextMenu && <ContextMenu    
+    x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            { label: "Rename", onClick: () => {} },
+            { label: "Delete", onClick: () => {}, danger: true },
+          ]} />}
     <SquareAsterisk
       size={11}
       className="shrink-0"
@@ -109,4 +126,4 @@ const SnippetRow = ({
       </span> */}
     </div>
   </button>
-)
+}

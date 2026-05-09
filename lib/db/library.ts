@@ -34,7 +34,7 @@ export const updateSnippet = async (
 ) => {
   const db = await getDB()
   const newFullKey = scope ? `${scope}:${key}` : key
-
+  
   if (prevKey !== newFullKey) {
     const existing = await db.select<{ key: string }[]>(
       "SELECT key FROM deterministic_assets WHERE key = $1",
