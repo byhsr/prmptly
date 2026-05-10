@@ -8,6 +8,7 @@ import { TabButton } from "../ui/TabButton"
 import ContextSetupGate from "./EnableContext"
 import { readConfig } from "@/lib/fs/fs"
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
+import { AddContextPanel } from "./AddContextPanel"
 
 export type LibraryTab = "snippet" | "context"
 
@@ -61,7 +62,7 @@ export const LibraryView = () => {
         </div>
 
 
-        <div className="flex  gap-4  text-[12px] p-2 px-6" >
+        <div className="flex  gap-4 text-[12px] p-2 px-6" >
           <Button variant="ghost" onClick={() => setCreating(activeTab)}>
             {buttonLabel}
           </Button>
@@ -97,25 +98,42 @@ const SnippetsPanel = () => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>
       <SquareAsterisk style={{ width: 24, height: 24 }} strokeWidth={1} />
-      <span style={{ fontSize: 12 }}>No snippets yet</span>
+      <span style={{ fontSize: 12 }}>no snippets yet</span>
     </div>
   )
 }
 
+const DUMMY_SCOPES = [
+  { id: "1", name: "Backend", count: 4 },
+  { id: "2", name: "Frontend", count: 2 },
+  { id: "3", name: "Auth", count: 1 },
+  { id: "4", name: "Global", count: 7 },
+]
+
 const LocalRagPanel = () => {
   const [hasModel, setHasModel] = useState<boolean | null>(null)
+  const { isCreating, setCreating, selectedSnippet } = useLibraryStore()
 
   useEffect(() => {
-    readConfig().then(config => setHasModel(!!config.model))
+    readConfig().then(config => setHasModel(!!config?.has_model))
   }, [])
-
-  if (hasModel === null) return null // or a spinner
+  
+  if(isCreating === "context") return <AddContextPanel 
+      scopes={DUMMY_SCOPES}         // fetch from DB via plugin-sql
+    onBack={() => setCreating(null)}
+    onSave={async (scopeName, isNew, content) => {
+      // 1. if isNew → insert scope row, get id
+      // 2. invoke generate_embeddings([content])
+      // 3. invoke insert_node_version_with_embedding(...)
+      setCreating(null)
+    }}/>
+  if (hasModel === null) return null 
   if (!hasModel) return <div className="w-full h-full flex justify-center "><ContextSetupGate /></div> 
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style={{ color: "var(--color-text-secondary)" }}>
-      <Sparkle style={{ width: 24, height: 24 }} strokeWidth={1} />
-      <span style={{ fontSize: 12 }}>No context files yet</span>
+    <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4" style={{ color: "var(--color-text-secondary)" }}>
+      <div><Sparkle className="w-5 h-5 " /></div>
+      <span style={{ fontSize: 12 }}>no context files yet</span>
     </div>
   )
 }

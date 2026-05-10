@@ -83,6 +83,18 @@ pub struct SearchResult {
 }
 
 #[tauri::command]
+pub async fn check_model_exists(model_path: String) -> bool {
+    let cache = std::path::PathBuf::from(&model_path)
+        .join("models")
+        .join("fastembed");
+
+    cache.read_dir()
+        .map(|mut d| d.next().is_some())
+        .unwrap_or(false)
+
+}
+
+#[tauri::command]
 pub async fn search_similar(
     db_path: String,
     query_embedding: Vec<f32>,

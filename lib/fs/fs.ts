@@ -10,6 +10,7 @@ import {
 import { appDataDir, join } from "@tauri-apps/api/path" 
 
 import { buildFilePath } from "./fsHelpers"
+import { AppConfig } from "../types/AppTypes"
 
 // Create folder
 export async function createBaseFolder(fullPath: string) {
@@ -69,7 +70,7 @@ export async function listAll(folder: string) {
 }
 
 
-export async function readConfig() {
+export async function readConfig() :Promise<AppConfig | null> {
   try {
     const dir = await appDataDir()
     const configPath = await join(dir, "config.json")

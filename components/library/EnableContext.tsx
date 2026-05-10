@@ -1,7 +1,11 @@
 import { Sparkle } from "lucide-react";
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { readConfig, writeConfig } from "@/lib/fs/fs";
+import { appDataDir } from "@tauri-apps/api/path";
 
-type Stage = "idle" | "downloading" | "ready";
+type Stage = "idle" | "downloading" | "ready" | "error";
 
 export default function ContextSetupGate({ onReady }: { onReady?: () => void }) {
   const [stage, setStage] = useState<Stage>("idle");
@@ -10,32 +14,39 @@ export default function ContextSetupGate({ onReady }: { onReady?: () => void }) 
 
   const startSetup = async () => {
     setStage("downloading");
+    let unlisten: (() => void) | null = null;
 
-    const stages = [
-      { target: 30, label: "downloading NomicEmbedTextV1.5" },
-      { target: 65, label: "loading model into memory" },
-      { target: 90, label: "warming up embeddings" },
-      { target: 100, label: "ready" },
-    ];
+    unlisten = await listen("model-progress", (event) => {
+      const payload = event.payload as string;
 
-    let current = 0;
-    let stageIdx = 0;
-
-    // In real app: invoke("setup_embeddings", { modelPath }) and listen to model-progress event
-    const tick = setInterval(() => {
-      if (stageIdx >= stages.length) return clearInterval(tick);
-      const { target, label } = stages[stageIdx];
-      setStatusLabel(label);
-      current = Math.min(current + Math.random() * 4 + 1, target);
-      setProgress(current);
-      if (current >= target) {
-        stageIdx++;
-        if (stageIdx >= stages.length) {
-          clearInterval(tick);
-          setTimeout(() => { setStage("ready"); onReady?.(); }, 400);
-        }
+      if (payload === "downloading") {
+        setStatusLabel("downloading NomicEmbedTextV1.5");
+        setProgress(10);
+      } else if (payload === "loading") {
+        setStatusLabel("loading model into memory");
+        setProgress(60);
+      } else if (payload === "ready") {
+        setStatusLabel("ready");
+        setProgress(100);
+        unlisten?.();
+        setTimeout(async () => {
+          // mark model as downloaded in config
+          const config = await readConfig();
+          if (config) await writeConfig({ ...config, has_model: true });
+          setStage("ready");
+          onReady?.();
+        }, 400);
       }
-    }, 120);
+    });
+
+    try {
+      const modelPath = await appDataDir();
+      await invoke("setup_embeddings", { modelPath });
+    } catch (e) {
+      console.error("Model setup failed:", e);
+      unlisten?.();
+      setStage("error");
+    }
   };
 
   return (
@@ -71,7 +82,7 @@ export default function ContextSetupGate({ onReady }: { onReady?: () => void }) 
       <p style={{ fontSize: 12, color: "#666", textAlign: "center", lineHeight: 1.7, maxWidth: 340, marginBottom: 28 }}>
         {stage === "idle" && <>
           The <code style={{ color: "#c8ff00", background: "rgba(200,255,0,0.07)", padding: "1px 5px", borderRadius: 4 }}>Context</code> tab
-uses a local model to organize your data, so you can build better context for your prompts, everything stays on your device.
+          uses a local model to organize your data, so you can build better context for your prompts, everything stays on your device.
         </>}
         {stage === "downloading" && <>
           Fetching <code style={{ color: "#c8ff00", background: "rgba(200,255,0,0.07)", padding: "1px 5px", borderRadius: 4 }}>NomicEmbedTextV1.5</code> — this only happens once. Future launches are instant.

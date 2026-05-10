@@ -133,8 +133,6 @@ CREATE VIRTUAL TABLE fts_index USING fts5(
   node_version_id UNINDEXED,
   scope_id UNINDEXED
 );
-
-
 `
 
   },

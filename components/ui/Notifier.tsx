@@ -10,7 +10,7 @@ export const SidebarNotifications = () => {
     if (!notifications.length) return null
 
     return createPortal(
-        <div className="fixed bottom-14 right-4 z-[9999] flex flex-col gap-2"
+        <div className="fixed top-14 right-4 z-[9999] flex flex-col gap-2"
             style={{ width: "clamp(240px, 20vw, 320px)" }}
         >
             <AnimatePresence>
@@ -19,9 +19,9 @@ export const SidebarNotifications = () => {
                         key={n.id}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 12 }}
+                        exit={{ opacity: 0, y: -12 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
-                        className={cn('flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-border', n.error ? "bg-red-500" : "bg-background-secondary")}
+                        className={cn('flex items-center justify-between gap-2 p-4 rounded-lg border border-border', n.error ? "bg-red-500" : "bg-background")}
                     >
                         <span className={`text-xs font-mono ${n.error ? "text-danger" : "text-muted-foreground"}`}>
                             {n.message}
