@@ -4116,6 +4116,7 @@ dependencies = [
  "tauri-plugin-log",
  "tauri-plugin-opener",
  "tauri-plugin-sql",
+ "tokio",
  "zerocopy 0.7.35",
 ]
 
