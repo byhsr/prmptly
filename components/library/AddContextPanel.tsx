@@ -126,12 +126,12 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
 
   return (
     <motion.div
-      className="w-full h-full flex flex-col p-8"
+      className="w-full h-full flex flex-col gap-4 p-12"
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
-      <div className="flex flex-col h-[90%] gap-4">
+      <div className="flex flex-col h-[90%] gap-6">
 
         {/* Scope selector */}
         <div className="flex flex-col min-w-[180px] gap-2" ref={wrapperRef}>
@@ -148,7 +148,7 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
               }}
               onFocus={() => setDropdownOpen(true)}
               placeholder="new scope or pick existing..."
-              className="w-full px-3 p-3 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted/40 outline-none transition-colors font-sans"
+              className="w-full  focus:bg-surface rounded-lg text-sm text-foreground placeholder:text-muted/40 outline-none transition-colors font-sans"
             />
             <AnimatePresence>
               {dropdownOpen && (filtered.length > 0 || showCreate) && (
@@ -188,13 +188,22 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
         <div className="flex flex-col gap-2 flex-1 min-h-0">
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-medium uppercase tracking-widest text-muted">content</label>
-            <button
-              onClick={handleCopyPrompt}
-              className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-accent hover:text-accent transition-all"
-            >
-              {promptCopied ? <Check size={11} /> : <Sparkles size={11} />}
-              {promptCopied ? "copied!" : "prep prompt"}
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={handleCopyPrompt}
+                className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-accent hover:text-accent transition-all"
+              >
+                {promptCopied ? <Check size={11} /> : <Sparkles size={11} />}
+                {promptCopied ? "copied!" : "prep prompt"}
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-muted/40 hover:text-foreground transition-all"
+              >
+                <FileText size={11} />
+                attach file
+              </button>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -244,69 +253,71 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
                 transition={{ duration: 0.15 }}
-                className="flex flex-col gap-2 flex-1 min-h-0"
+                className="flex flex-col flex-1 min-h-0"
               >
-                <button
-                  onClick={() => setPreviewOpen(p => !p)}
-                  className="flex items-center gap-2.5 px-3 py-6 rounded-xl bg-surface border border-border hover:border-muted/40 transition-all text-left group w-[30%]"
+                <motion.div
+                  layout
+                  onClick={() => !previewOpen && setPreviewOpen(true)}
+                  animate={previewOpen
+                    ? { height: "100%", width: "100%" }
+                    : { height: "90px", width: "30%" }
+                  }
+                  transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.9 }}
+                  className="relative  flex flex-col items-center p-4 gap-4 justify-center w-full h-full rounded-xl bg-surface border border-border overflow-hidden cursor-pointer"
+                  style={{ cursor: previewOpen ? "default" : "pointer" }}
                 >
-                  <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                    <FileText size={13} className="text-accent" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-foreground truncate">
-                      {addContextFileName ?? "pasted text"}
+                  {/* Header — always visible */}
+                  <div className="flex items-center w-full gap-2.5 px-3  shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                      <FileText size={13} className="text-accent" />
                     </div>
-                    <div className="text-[10px] text-muted">
-                      {addContextContent.length.toLocaleString()} chars
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-foreground truncate">
+                        {addContextFileName ?? "pasted text"}
+                      </div>
+                      <div className="text-[10px] text-muted">
+                        {addContextContent.length.toLocaleString()} chars
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={e => { e.stopPropagation(); setPreviewOpen(p => !p) }}
+                        className="text-[10px] text-muted hover:text-foreground transition-colors px-1"
+                      >
+                        {previewOpen ? "collapse" : "expand"}
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); resetAddContext(); setPreviewOpen(false) }}
+                        className="w-5 h-5 rounded-md flex items-center justify-center text-muted hover:text-foreground hover:bg-border/40 transition-all"
+                      >
+                        <X size={11} />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted group-hover:text-foreground transition-colors">
-                      {previewOpen ? "hide" : "preview"}
-                    </span>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation()
-                        resetAddContext()
-                        setPreviewOpen(false)
-                      }}
-                      className="w-5 h-5 rounded-md flex items-center justify-center text-muted hover:text-foreground hover:bg-border/40 transition-all"
-                    >
-                      <X size={11} />
-                    </button>
-                  </div>
-                </button>
 
-                <AnimatePresence>
-                  {previewOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
-                      className="overflow-hidden flex-1"
-                    >
-                      <textarea
+                  {/* Textarea — shown when expanded */}
+                  <AnimatePresence>
+                    {previewOpen && (
+                      <motion.textarea
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
                         value={addContextContent}
                         onChange={e => setAddContextContent(e.target.value, addContextFileName)}
-                        className="w-full h-full px-3 py-2.5 rounded-xl bg-surface border border-border text-xs text-foreground outline-none focus:border-accent transition-colors resize-none font-mono leading-relaxed"
+                        onClick={e => e.stopPropagation()}
+                        className="w-full flex-1 px-3 pb-3 bg-transparent text-xs text-foreground outline-none resize-none font-mono leading-relaxed"
+                        style={{ height: "calc(100% - 52px)" }}
                       />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
 
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-muted/40 hover:text-foreground transition-all"
-            >
-              <FileText size={11} />
-              attach file
-            </button>
+
           </div>
 
           <input
