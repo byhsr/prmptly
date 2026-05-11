@@ -15,7 +15,7 @@ export type LibraryTab = "snippet" | "context"
 export const LibraryView = () => {
   const [activeTab, setActiveTab] = useState<LibraryTab>("snippet")
 
-  const {setCreating } = useLibraryStore()
+  const { setCreating, resetAddContext, } = useLibraryStore()
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -28,7 +28,7 @@ export const LibraryView = () => {
     return () => window.removeEventListener("keydown", handler)
   }, [activeTab])
 
-  const buttonLabel = activeTab === "snippet" ? "new snippet" : "add context"
+  const buttonLabel = activeTab === "snippet" ? "new snippet" : "new context"
   return (
     <div className="w-full h-full flex flex-col text-sm">
 
@@ -63,7 +63,15 @@ export const LibraryView = () => {
 
 
         <div className="flex  gap-4 text-[12px] p-2 px-6" >
-          <Button variant="ghost" onClick={() => setCreating(activeTab)}>
+          <Button variant="ghost" onClick={() => {
+            if (activeTab === "context") {
+              setCreating("context")
+              resetAddContext()
+              // any context-specific setup if needed
+            } else {
+              setCreating(activeTab)
+            }
+          }}>
             {buttonLabel}
           </Button>
         </div>
@@ -87,7 +95,7 @@ const SnippetsPanel = () => {
   if (isCreating === "snippet" || snippet) {
     return (
       <SnippetModal
-      isCreating={isCreating}
+        isCreating={isCreating}
         snippet={snippet ?? undefined}
         onClose={() => { setCreating(null); useLibraryStore.getState().clearSelection() }}
         onSave={() => { setCreating(null) }}
@@ -117,18 +125,13 @@ const LocalRagPanel = () => {
   useEffect(() => {
     readConfig().then(config => setHasModel(!!config?.has_model))
   }, [])
-  
-  if(isCreating === "context") return <AddContextPanel 
-      scopes={DUMMY_SCOPES}         // fetch from DB via plugin-sql
+
+  if (isCreating === "context") return <AddContextPanel
+    scopes={DUMMY_SCOPES}         // fetch from DB via plugin-sql
     onBack={() => setCreating(null)}
-    onSave={async (scopeName, isNew, content) => {
-      // 1. if isNew → insert scope row, get id
-      // 2. invoke generate_embeddings([content])
-      // 3. invoke insert_node_version_with_embedding(...)
-      setCreating(null)
-    }}/>
-  if (hasModel === null) return null 
-  if (!hasModel) return <div className="w-full h-full flex justify-center "><ContextSetupGate /></div> 
+    />
+  if (hasModel === null) return null
+  if (!hasModel) return <div className="w-full h-full flex justify-center "><ContextSetupGate /></div>
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4" style={{ color: "var(--color-text-secondary)" }}>

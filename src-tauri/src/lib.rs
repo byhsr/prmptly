@@ -59,10 +59,12 @@ pub fn run() {
             commands::embeddings::setup_embeddings,
             commands::embeddings::generate_embeddings,
             commands::embeddings::search_similar,
+            commands::embeddings::chunk_text,
             commands::db::setup_vec_table,
             commands::db::insert_node_version_with_embedding,
             commands::db::delete_node_version_embedding,
             commands::db::search_fts,
+            
         ])
         .run(tauri::generate_context!())
         .expect("error while running pr0mptly");

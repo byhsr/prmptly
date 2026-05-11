@@ -32,4 +32,5 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 sqlite-vec = "0.1.9"
 zerocopy = { version = "0.7", features = ["derive"] }
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+text-splitter = { version = "0.26", features = ["markdown"] }
 

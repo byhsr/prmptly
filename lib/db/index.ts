@@ -100,31 +100,33 @@ CREATE TABLE namespaces (
 
 -- ── Rag sources will go here when needed
 CREATE TABLE scopes (
-  id TEXT PRIMARY KEY,   -- "project1"
-  name TEXT,
+  name TEXT PRIMARY KEY,
   status TEXT CHECK(status IN ('active','archived')) DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE nodes (
+CREATE TABLE documents (
   id TEXT PRIMARY KEY,
   scope_id TEXT NOT NULL,
-  parent_id TEXT,              -- NULL = root node
   name TEXT NOT NULL,
-
-  FOREIGN KEY (scope_id) REFERENCES scopes(id),
-  FOREIGN KEY (parent_id) REFERENCES nodes(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (scope_id) REFERENCES scopes(id)
 );
 
+CREATE TABLE nodes (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  position INTEGER NOT NULL,  -- chunk order
+  FOREIGN KEY (document_id) REFERENCES documents(id)
+);
 
 CREATE TABLE node_versions (
   id TEXT PRIMARY KEY,
   node_id TEXT NOT NULL,
   content TEXT NOT NULL,
-  embedding BLOB,              -- vector
+  embedding BLOB,
   is_latest BOOLEAN DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
   FOREIGN KEY (node_id) REFERENCES nodes(id)
 );
 

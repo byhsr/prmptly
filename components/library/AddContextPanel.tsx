@@ -2,6 +2,11 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { Sparkles, FileText, Check, X } from "lucide-react"
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
+import { readConfig } from "@/lib/fs/fs"
+import { invoke } from "@tauri-apps/api/core"
+import { v4 as uuidv4} from "uuid"
+import { join } from "@tauri-apps/api/path"
+import { getDB } from "@/lib/db"
 
 const PREP_PROMPT = `Please clean and structure the following content for use as AI context. 
 - Remove redundant or duplicate information
@@ -21,11 +26,11 @@ interface Scope {
 
 interface AddContextPanelProps {
   scopes: Scope[]
-  onSave: (scopeName: string, isNew: boolean, content: string) => Promise<void>
+  // onSave: (scopeName: string, isNew: boolean, content: string) => Promise<void>
   onBack: () => void
 }
 
-export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps) => {
+export const AddContextPanel = ({ scopes,  onBack }: AddContextPanelProps) => {
   const {
     addContextScope,
     addContextContent,
@@ -107,29 +112,82 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
     setTimeout(() => setPromptCopied(false), 2000)
   }
 
-  const handleSave = async () => {
-    if (!addContextContent.trim() || !addContextScope.trim()) return
-    setIsSaving(true)
-    try {
-      await onSave(
-        addContextScope.trim(),
-        selectedScope?.id === "new" || !selectedScope,
-        addContextContent.trim()
-      )
-      resetAddContext()
-    } finally {
-      setIsSaving(false)
-    }
-  }
+const handleSave = async () => {
+    if (!selectedScope || !addContextContent) return;
+    setIsSaving(true);
 
+    try {
+      const db = getDB();
+      const config = await readConfig();
+      const basePath = config?.base_path;
+      if(!basePath) return {
+        
+      }
+      const dbPath = await join(basePath, "app.db");
+
+      let scopeName = selectedScope.name;
+
+      // 1. If new scope, insert it
+      if (selectedScope.id === "__new__") {
+        await db.execute(
+          "INSERT INTO scopes (name) VALUES (?)",
+          [scopeName]
+        );
+      }
+
+      // 2. Insert document
+      const documentId = uuidv4();
+      await db.execute(
+        "INSERT INTO documents (id, scope_name, name) VALUES (?, ?, ?)",
+        [documentId, scopeName, addContextFileName || "Untitled"]
+      );
+
+      // 3. Chunk the content
+      const isMarkdown = addContextFileName?.endsWith(".md") ?? false;
+      const chunks: string[] = await invoke("chunk_text", {
+        text: addContextContent,
+        isMarkdown,
+      });
+
+      // 4. Generate embeddings for all chunks at once
+      const embeddings: number[][] = await invoke("generate_embeddings", {
+        texts: chunks,
+      });
+
+      // 5. Insert each chunk as node + node_version
+      for (let i = 0; i < chunks.length; i++) {
+        const nodeId = uuidv4();
+        const nodeVersionId = uuidv4();
+
+        await db.execute(
+          "INSERT INTO nodes (id, document_id, position) VALUES (?, ?, ?)",
+          [nodeId, documentId, i]
+        );
+
+        await invoke("insert_node_version_with_embedding", {
+          dbPath,
+          nodeVersionId,
+          nodeId,
+          scopeName,
+          content: chunks[i],
+          embedding: embeddings[i],
+        });
+      }
+
+      resetAddContext();
+      onBack();
+    } catch (err) {
+      console.error("Save failed:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
   const canSave = addContextContent.trim().length > 0 && addContextScope.trim().length > 0 && !isSaving
 
   return (
     <motion.div
       className="w-full h-full flex flex-col gap-4 p-12"
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
+
     >
       <div className="flex flex-col h-[90%] gap-6">
 
@@ -146,9 +204,13 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
                 setSelectedScope(null)
                 setDropdownOpen(true)
               }}
+              onKeyDown={e => {
+                if (e.key === "Enter" && showCreate) handleCreate()
+                if (e.key === "Enter" && filtered.length === 1) handleScopeSelect(filtered[0])
+              }}
               onFocus={() => setDropdownOpen(true)}
               placeholder="new scope or pick existing..."
-              className="w-full  focus:bg-surface rounded-lg text-sm text-foreground placeholder:text-muted/40 outline-none transition-colors font-sans"
+              className="w-full py-2 focus:p-2 focus:bg-surface rounded-lg text-sm text-foreground placeholder:text-muted/40 outline-none transition-colors font-sans"
             />
             <AnimatePresence>
               {dropdownOpen && (filtered.length > 0 || showCreate) && (
@@ -185,7 +247,8 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
         </div>
 
         {/* Content area */}
-        <div className="flex flex-col gap-2 flex-1 min-h-0">
+        <div className="flex flex-col gap-4 flex-1 min-h-0">
+          {/* content header */}
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-medium uppercase tracking-widest text-muted">content</label>
             <div className="flex gap-4">

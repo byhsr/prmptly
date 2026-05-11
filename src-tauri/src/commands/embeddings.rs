@@ -5,6 +5,7 @@ use tauri::Emitter;
 use zerocopy::AsBytes;
 use crate::EmbeddingState;
 use std::sync::{Arc, Mutex};
+use text_splitter::{TextSplitter, MarkdownSplitter};
 
 // Call this ONCE at app startup in main.rs, not per query
 pub fn register_sqlite_vec() {
@@ -62,6 +63,22 @@ pub async fn setup_embeddings(
     setup_embeddings_inner(model_path, window, state.0.clone()).await
 }
 
+
+
+#[tauri::command]
+pub fn chunk_text(text: String, is_markdown: bool) -> Vec<String> {
+    if is_markdown {
+        MarkdownSplitter::new(500)
+            .chunks(&text)
+            .map(|c| c.to_string())
+            .collect()
+    } else {
+        TextSplitter::new(500)
+            .chunks(&text)
+            .map(|c| c.to_string())
+            .collect()
+    }
+}
 
 #[tauri::command]
 pub async fn generate_embeddings(
