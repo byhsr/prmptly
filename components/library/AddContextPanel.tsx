@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { ArrowLeft, Sparkles, FileText, Copy, Check } from "lucide-react"
+import { ArrowLeft, Sparkles, FileText, Copy, Check, X } from "lucide-react"
 
 const PREP_PROMPT = `Please clean and structure the following content for use as AI context. 
 - Remove redundant or duplicate information
@@ -32,6 +32,8 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
   const [isDragging, setIsDragging] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+const [fileName, setFileName] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scopeInputRef = useRef<HTMLInputElement>(null)
@@ -69,11 +71,14 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
   }
 
   const handleFileRead = useCallback((file: File) => {
-    if (!file.name.endsWith(".txt") && !file.name.endsWith(".md")) return
-    const reader = new FileReader()
-    reader.onload = e => setContent(prev => prev + (prev ? "\n\n" : "") + (e.target?.result as string))
-    reader.readAsText(file)
-  }, [])
+  if (!file.name.endsWith(".txt") && !file.name.endsWith(".md")) return
+  const reader = new FileReader()
+  reader.onload = e => {
+    setContent(prev => prev + (prev ? "\n\n" : "") + (e.target?.result as string))
+    setFileName(file.name)
+  }
+  reader.readAsText(file)
+}, [])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -110,9 +115,9 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
 
     >
         {/* main */}
-    <div className="w-full flex flex-col h-[90%] gap-4  ">
+    <div className="flex flex-col h-[90%] gap-4  ">
         {/* scope selector */}
-        <div className="flex flex-col w-full gap-2" ref={wrapperRef}>
+        <div className="flex flex-col  min-w-[180px] gap-2" ref={wrapperRef}>
         <label className="text-[10px] font-medium uppercase tracking-widest text-muted">scope</label>
         <div className="relative">
           <input
@@ -165,71 +170,145 @@ export const AddContextPanel = ({ scopes, onSave, onBack }: AddContextPanelProps
       </div>
 
       {/* Content area */}
-      <div className="flex flex-col gap-2 flex-1  min-h-0">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-medium uppercase tracking-widest text-muted">content</label>
-          <button
-            onClick={handleCopyPrompt}
-            className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-accent hover:text-accent transition-all"
-          >
-            {promptCopied ? <Check size={11} /> : <Sparkles size={11} />}
-            {promptCopied ? "copied!" : "prep prompt"}
-          </button>
-        </div>
+      <div className="flex flex-col  gap-2 flex-1 min-h-0">
+  <div className="flex items-center justify-between">
+    <label className="text-[10px] font-medium uppercase tracking-widest text-muted">content</label>
+    <button
+      onClick={handleCopyPrompt}
+      className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-accent hover:text-accent transition-all"
+    >
+      {promptCopied ? <Check size={11} /> : <Sparkles size={11} />}
+      {promptCopied ? "copied!" : "prep prompt"}
+    </button>
+  </div>
 
-        <div
-          className="relative flex-1 min-h-0"
-          onDragEnter={() => setIsDragging(true)}
-          onDragLeave={() => setIsDragging(false)}
-          onDragOver={e => e.preventDefault()}
-          onDrop={handleDrop}
-        >
-          <textarea
-            ref={dropZoneRef}
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            placeholder="paste your text here, or drop a .txt / .md file..."
-            className="w-full h-full min-h-[180px] px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted/40 outline-none  transition-colors resize-none font-mono leading-relaxed"
-            style={{ borderColor: isDragging ? "var(--accent)" : undefined }}
-          />
-          <AnimatePresence>
-            {isDragging && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 rounded-xl bg-accent/5 border-2 border-dashed border-accent flex items-center justify-content pointer-events-none"
-              >
-                <div className="w-full text-center text-sm text-accent flex items-center justify-center gap-2">
-                  <FileText size={15} />
-                  drop to add
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 text-[11px] text-muted  border-border rounded-md px-2 py-1 hover:border-border/80 hover:text-foreground transition-all"
-          >
-            <FileText size={11} />
-            attach file
-          </button>
-          <span className="text-[11px] text-muted/50">
-            {content.length > 0 ? `${content.length.toLocaleString()} chars` : ""}
-          </span>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".txt,.md"
-          multiple
-          className="hidden"
-          onChange={handleFileInput}
+  <AnimatePresence mode="wait">
+    {!content ? (
+      /* ── Empty: textarea + drop zone ── */
+      <motion.div
+        key="empty"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="relative flex-1 min-h-0"
+        onDragEnter={() => setIsDragging(true)}
+        onDragLeave={() => setIsDragging(false)}
+        onDragOver={e => e.preventDefault()}
+        onDrop={handleDrop}
+      >
+        <textarea
+          ref={dropZoneRef}
+          value={content}
+          onChange={e => {
+            setContent(e.target.value)
+            setFileName(null)
+          }}
+          placeholder="paste your text here, or drop a .txt / .md file..."
+          className="w-full  h-45 px-3 py-2.5 rounded-xl bg-surface border border-border text-sm text-foreground placeholder:text-muted/40 outline-none transition-colors resize-none font-mono leading-relaxed"
+          style={{ borderColor: isDragging ? "var(--accent)" : undefined }}
         />
-      </div>
+        <AnimatePresence>
+          {isDragging && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 rounded-xl bg-accent/5 border-2 border-dashed border-accent flex items-center justify-center pointer-events-none"
+            >
+              <div className="text-sm text-accent flex items-center gap-2">
+                <FileText size={15} />
+                drop to add
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    ) : (
+      /* ── Filled: doc chip + optional preview ── */
+      <motion.div
+        key="filled"
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 4 }}
+        transition={{ duration: 0.15 }}
+        className="flex flex-col gap-2 flex-1 min-h-0"
+      >
+        {/* Chip */}
+        <button
+          onClick={() => setPreviewOpen(p => !p)}
+          className="flex items-center gap-2.5 px-3 py-6 rounded-xl bg-surface border border-border hover:border-muted/40 transition-all text-left group w-[30%]"
+        >
+          <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+            <FileText size={13} className="text-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-foreground truncate">
+              {fileName ?? "pasted text"}
+            </div>
+            <div className="text-[10px] text-muted">
+              {content.length.toLocaleString()} chars
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted group-hover:text-foreground transition-colors">
+              {previewOpen ? "hide" : "preview"}
+            </span>
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setContent("")
+                setFileName(null)
+                setPreviewOpen(false)
+              }}
+              className="w-5 h-5 rounded-md flex items-center justify-center text-muted hover:text-foreground hover:bg-border/40 transition-all"
+            >
+              <X size={11} />
+            </button>
+          </div>
+        </button>
+
+        {/* Preview */}
+        <AnimatePresence>
+          {previewOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="overflow-hidden flex-1 "
+            >
+              <textarea
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                className="w-full h-full px-3 py-2.5 rounded-xl bg-surface border-border text-xs text-foreground outline-none focus:border-accent transition-colors resize-none font-mono leading-relaxed"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    )}
+  </AnimatePresence>
+
+  <div className="flex items-center justify-between">
+    <button
+      onClick={() => fileInputRef.current?.click()}
+      className="flex items-center gap-1.5 text-[11px] text-muted border border-border rounded-md px-2 py-1 hover:border-muted/40 hover:text-foreground transition-all"
+    >
+      <FileText size={11} />
+      attach file
+    </button>
+  </div>
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept=".txt,.md"
+    multiple
+    className="hidden"
+    onChange={handleFileInput}
+  />
+</div>
 
     </div>
 

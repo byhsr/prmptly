@@ -1,6 +1,6 @@
 // store/libraryStore.ts
 import { create } from "zustand"
-import {Snippet} from "@/lib/types/library"
+import { Snippet } from "@/lib/types/library"
 import { LibraryTab } from "@/components/library/LibraryView"
 
 type LibraryStore = {
@@ -20,8 +20,17 @@ type LibraryStore = {
   updateSnippet: (id: string, updated: Partial<Snippet>) => void
   // derived
   selectedSnippet: () => Snippet | null
+
+  // context form
+  addContextScope: string
+  addContextContent: string
+  addContextFileName: string | null
+  setAddContextScope: (s: string) => void
+  setAddContextContent: (content: string, fileName?: string | null) => void
+  resetAddContext: () => void
 }
 export const snippetId = (s: Snippet) => s.scope ? `${s.scope}:${s.key}` : s.key
+
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   selectedSnippetId: null,
   selectSnippet: (id) => set({ selectedSnippetId: id, isCreating: null }),
@@ -33,21 +42,27 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   snippets: [],
   setSnippets: (snippets) => set({ snippets }),
   removeSnippet: (id) => set((s) => ({
-  snippets: s.snippets.filter(x => snippetId(x) !== id),
-  selectedSnippetId: s.selectedSnippetId === id ? null : s.selectedSnippetId,
-})),
-updateSnippet: (id, updated) => set((s) => {
-  const newId = updated.scope ? `${updated.scope}:${updated.key}` : updated.key
-  return {
-    snippets: s.snippets.map(x => snippetId(x) === id ? { ...x, ...updated } : x),
-    selectedSnippetId: s.selectedSnippetId === id ? newId : s.selectedSnippetId,
-  }
-}),
+    snippets: s.snippets.filter(x => snippetId(x) !== id),
+    selectedSnippetId: s.selectedSnippetId === id ? null : s.selectedSnippetId,
+  })),
+  updateSnippet: (id, updated) => set((s) => {
+    const newId = updated.scope ? `${updated.scope}:${updated.key}` : updated.key
+    return {
+      snippets: s.snippets.map(x => snippetId(x) === id ? { ...x, ...updated } : x),
+      selectedSnippetId: s.selectedSnippetId === id ? newId : s.selectedSnippetId,
+    }
+  }),
 
- selectedSnippet: () => {
-  const { snippets, selectedSnippetId } = get()
-  return snippets.find(x => snippetId(x) === selectedSnippetId) ?? null
-}
+  selectedSnippet: () => {
+    const { snippets, selectedSnippetId } = get()
+    return snippets.find(x => snippetId(x) === selectedSnippetId) ?? null
+  },
+  addContextScope: "",
+  addContextContent: "",
+  addContextFileName: null,
+  setAddContextScope: (s) => set({ addContextScope: s }),
+  setAddContextContent: (content, fileName = null) => set({ addContextContent: content, addContextFileName: fileName }),
+  resetAddContext: () => set({ addContextScope: "", addContextContent: "", addContextFileName: null }),
 }))
 
 
