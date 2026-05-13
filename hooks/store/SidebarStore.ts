@@ -2,70 +2,169 @@
 import { create } from "zustand"
 import { Snippet } from "@/lib/types/library"
 import { LibraryTab } from "@/components/library/LibraryView"
+import { Scope } from "@/components/library/AddContextPanel"
 
 type LibraryStore = {
-  // selection
+  // snippet selection
   selectedSnippetId: string | null
   selectSnippet: (id: string) => void
   clearSelection: () => void
+  selectedSnippet: () => Snippet | null
 
   // creation mode
   isCreating: LibraryTab | null
   setCreating: (type: LibraryTab | null) => void
 
-  // local cache of snippets (fetched from DB)
+  // snippet cache
   snippets: Snippet[]
   setSnippets: (snippets: Snippet[]) => void
   removeSnippet: (id: string) => void
   updateSnippet: (id: string, updated: Partial<Snippet>) => void
-  // derived
-  selectedSnippet: () => Snippet | null
 
-  // context form
+  // scope state
+  selectedScopeId: string | null
+  selectScope: (id: string | null) => void
+
+  scopes: Scope[]
+  setScopes: (scopes: Scope[]) => void
+
+  // add-context form
   addContextScope: string
   addContextContent: string
   addContextFileName: string | null
-  setAddContextScope: (s: string) => void
-  setAddContextContent: (content: string, fileName?: string | null) => void
+
+  setAddContextScope: (scope: string) => void
+  setAddContextContent: (
+    content: string,
+    fileName?: string | null
+  ) => void
+
   resetAddContext: () => void
 }
-export const snippetId = (s: Snippet) => s.scope ? `${s.scope}:${s.key}` : s.key
+
+export const snippetId = (snippet: Snippet) =>
+  snippet.scope
+    ? `${snippet.scope}:${snippet.key}`
+    : snippet.key
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
+  // selection
   selectedSnippetId: null,
-  selectSnippet: (id) => set({ selectedSnippetId: id, isCreating: null }),
-  clearSelection: () => set({ selectedSnippetId: null }),
 
-  isCreating: null,
-  setCreating: (type) => set({ isCreating: type, selectedSnippetId: type ? null : get().selectedSnippetId }),
+  selectSnippet: (id) =>
+    set({
+      selectedSnippetId: id,
+      isCreating: null,
+    }),
 
-  snippets: [],
-  setSnippets: (snippets) => set({ snippets }),
-  removeSnippet: (id) => set((s) => ({
-    snippets: s.snippets.filter(x => snippetId(x) !== id),
-    selectedSnippetId: s.selectedSnippetId === id ? null : s.selectedSnippetId,
-  })),
-  updateSnippet: (id, updated) => set((s) => {
-    const newId = updated.scope ? `${updated.scope}:${updated.key}` : updated.key
-    return {
-      snippets: s.snippets.map(x => snippetId(x) === id ? { ...x, ...updated } : x),
-      selectedSnippetId: s.selectedSnippetId === id ? newId : s.selectedSnippetId,
-    }
-  }),
+  clearSelection: () =>
+    set({
+      selectedSnippetId: null,
+    }),
 
   selectedSnippet: () => {
     const { snippets, selectedSnippetId } = get()
-    return snippets.find(x => snippetId(x) === selectedSnippetId) ?? null
+
+    return (
+      snippets.find(
+        (snippet) => snippetId(snippet) === selectedSnippetId
+      ) ?? null
+    )
   },
+
+  // creation mode
+  isCreating: null,
+
+  setCreating: (type) =>
+    set({
+      isCreating: type,
+      selectedSnippetId: type
+        ? null
+        : get().selectedSnippetId,
+    }),
+
+  // snippets
+  snippets: [],
+
+  setSnippets: (snippets) =>
+    set({
+      snippets,
+    }),
+
+  removeSnippet: (id) =>
+    set((state) => ({
+      snippets: state.snippets.filter(
+        (snippet) => snippetId(snippet) !== id
+      ),
+
+      selectedSnippetId:
+        state.selectedSnippetId === id
+          ? null
+          : state.selectedSnippetId,
+    })),
+
+  updateSnippet: (id, updated) =>
+    set((state) => {
+      const nextId =
+        updated.scope && updated.key
+          ? `${updated.scope}:${updated.key}`
+          : updated.key ?? id
+
+      return {
+        snippets: state.snippets.map((snippet) =>
+          snippetId(snippet) === id
+            ? { ...snippet, ...updated }
+            : snippet
+        ),
+
+        selectedSnippetId:
+          state.selectedSnippetId === id
+            ? nextId
+            : state.selectedSnippetId,
+      }
+    }),
+
+  // scopes
+  selectedScopeId: null,
+
+  selectScope: (id) =>
+    set({
+      selectedScopeId: id,
+    }),
+
+  scopes: [],
+
+  setScopes: (scopes) =>
+    set({
+      scopes,
+    }),
+
+  // add-context form
   addContextScope: "",
   addContextContent: "",
   addContextFileName: null,
-  setAddContextScope: (s) => set({ addContextScope: s }),
-  setAddContextContent: (content, fileName = null) => set({ addContextContent: content, addContextFileName: fileName }),
-  resetAddContext: () => set({ addContextScope: "", addContextContent: "", addContextFileName: null }),
+
+  setAddContextScope: (scope) =>
+    set({
+      addContextScope: scope,
+    }),
+
+  setAddContextContent: (
+    content,
+    fileName = null
+  ) =>
+    set({
+      addContextContent: content,
+      addContextFileName: fileName,
+    }),
+
+  resetAddContext: () =>
+    set({
+      addContextScope: "",
+      addContextContent: "",
+      addContextFileName: null,
+    }),
 }))
-
-
 
 type Notification = {
   id: string
