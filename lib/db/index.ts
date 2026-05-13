@@ -1,5 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import { join } from "@tauri-apps/api/path"
+import { invoke } from "@tauri-apps/api/core";
 
 let db: Database;
 export type DB = typeof db
@@ -107,10 +108,10 @@ CREATE TABLE scopes (
 
 CREATE TABLE documents (
   id TEXT PRIMARY KEY,
-  scope_id TEXT NOT NULL,
+  scope_name TEXT NOT NULL,
   name TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (scope_id) REFERENCES scopes(id)
+  FOREIGN KEY (scope_name) REFERENCES scopes(name)
 );
 
 CREATE TABLE nodes (
@@ -180,9 +181,11 @@ export async function initDB(basePath: string) {
   const dbPath = await join(basePath, "app.db")
 
   db = await Database.load(`sqlite:${dbPath}?mode=rwc`)
+  await db.execute("PRAGMA journal_mode=WAL")
+  await db.execute("PRAGMA busy_timeout=5000")
 
   await runMigrations(db)
-
+  await invoke("setup_vec_table", { dbPath })
   return db
 }
 

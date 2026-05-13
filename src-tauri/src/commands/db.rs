@@ -2,9 +2,16 @@ use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use zerocopy::AsBytes;
 
+fn open_conn(db_path: &str) -> Result<Connection, String> {
+    let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+    conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;")
+        .map_err(|e| e.to_string())?;
+    Ok(conn)
+}
+
 #[tauri::command]
 pub async fn setup_vec_table(db_path: String) -> Result<(), String> {
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let conn = open_conn(&db_path)?;
     conn.execute_batch("
         CREATE VIRTUAL TABLE IF NOT EXISTS vec_index USING vec0(
             node_version_id TEXT PRIMARY KEY,
@@ -22,30 +29,26 @@ pub async fn insert_node_version_with_embedding(
     content: String,
     embedding: Vec<f32>,
 ) -> Result<(), String> {
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let conn = open_conn(&db_path)?;
     let embedding_bytes = embedding.as_bytes().to_vec();
 
-    // Mark previous versions as not latest
     conn.execute(
         "UPDATE node_versions SET is_latest = 0 WHERE node_id = ?1",
         params![node_id],
     ).map_err(|e| e.to_string())?;
 
-    // Insert new node version
     conn.execute(
         "INSERT INTO node_versions (id, node_id, content, embedding, is_latest, created_at)
          VALUES (?1, ?2, ?3, ?4, 1, CURRENT_TIMESTAMP)",
         params![node_version_id, node_id, content, embedding_bytes],
     ).map_err(|e| e.to_string())?;
 
-    // Insert into vec_index for similarity search
     conn.execute(
         "INSERT OR REPLACE INTO vec_index (node_version_id, embedding)
          VALUES (?1, ?2)",
         params![node_version_id, embedding_bytes],
     ).map_err(|e| e.to_string())?;
 
-    // Insert into fts_index for full text search
     conn.execute(
         "INSERT INTO fts_index (content, node_version_id, scope_id)
          VALUES (?1, ?2, ?3)",
@@ -60,7 +63,7 @@ pub async fn delete_node_version_embedding(
     db_path: String,
     node_version_id: String,
 ) -> Result<(), String> {
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let conn = open_conn(&db_path)?;
 
     conn.execute(
         "DELETE FROM vec_index WHERE node_version_id = ?1",
@@ -83,6 +86,7 @@ pub struct FtsResult {
     pub scope_id: String,
 }
 
+
 #[tauri::command]
 pub async fn search_fts(
     db_path: String,
@@ -90,7 +94,7 @@ pub async fn search_fts(
     scope_id: Option<String>,
     limit: Option<usize>,
 ) -> Result<Vec<FtsResult>, String> {
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let conn = open_conn(&db_path)?;
     let limit = limit.unwrap_or(5);
     let mut results = vec![];
 

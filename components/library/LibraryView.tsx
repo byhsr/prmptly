@@ -1,4 +1,3 @@
-
 import { SquareAsterisk, Sparkle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { SnippetModal } from "./SnippetModal"
@@ -9,7 +8,7 @@ import ContextSetupGate from "./EnableContext"
 import { readConfig } from "@/lib/fs/fs"
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
 import { AddContextPanel } from "./AddContextPanel"
-
+import { Scope } from "./AddContextPanel"
 export type LibraryTab = "snippet" | "context"
 
 export const LibraryView = () => {
@@ -111,12 +110,7 @@ const SnippetsPanel = () => {
   )
 }
 
-const DUMMY_SCOPES = [
-  { id: "1", name: "Backend", count: 4 },
-  { id: "2", name: "Frontend", count: 2 },
-  { id: "3", name: "Auth", count: 1 },
-  { id: "4", name: "Global", count: 7 },
-]
+const DUMMY_SCOPES:Scope[] = []
 
 const LocalRagPanel = () => {
   const [hasModel, setHasModel] = useState<boolean | null>(null)

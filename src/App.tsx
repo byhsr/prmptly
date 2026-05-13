@@ -52,28 +52,25 @@ export default App;
 
 
 export const AppFlow = () => {
-
   const [dbReady, setDbReady] = useState(false)
   const [basePath, setBasePath] = useState("")
-
 
   useEffect(() => {
     (async () => {
       try {
         const config = await readConfig()
-        console.log(" config:", config)
+        console.log("config:", config)
         if (!config?.base_path) {
-          setDbReady(true) // allow onboarding
+          setDbReady(true)
           return
         }
 
-        const basePath = config.base_path
-        console.log(" basePath:", basePath)
+        const basePath = config.base_path  // fixed: was basPath (typo) + shadowed state var
+        console.log("basePath:", basePath)
 
         initBasePath(basePath)
         await initDB(basePath)
         await setupWorkspace(basePath)
-
 
         console.log("APP initialized with basePath:", basePath)
 
@@ -84,12 +81,19 @@ export const AppFlow = () => {
         console.error("APP init failed", e)
       }
     })()
-  }, [basePath])
+  }, [])
 
+  const onDone = async (newPath : string) => {
+           initBasePath(newPath)
+      await initDB(newPath)
+      await setupWorkspace(newPath)
+      setBasePath(newPath)
+  }
 
-  if (!dbReady) return "wait"
-  if (!basePath) return <Onboarding onDone={() => setBasePath("ok")} />
-
+  if (!dbReady) return <div>wait</div>
+  if (!basePath) return (
+    <Onboarding onDone={() => onDone} />
+  )
   return ( <div>
     <SidebarNotifications />
     <Dash dbReady={dbReady} />
