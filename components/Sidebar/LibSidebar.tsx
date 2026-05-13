@@ -1,71 +1,93 @@
 // components/sidebar/LibrarySidebarPanel.tsx
 import { useEffect } from "react"
-import { SquareAsterisk, Plus } from "lucide-react"
+import { SquareAsterisk, Plus, Sparkle } from "lucide-react"
 import { snippetId, useLibraryStore } from "@/hooks/store/SidebarStore"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
 import { getSnippets } from "@/lib/db/library"
 import { useState } from "react"
 import { ContextMenu } from "../ui/ContextMenu"
+import { LibraryTab } from "../library/LibraryView"
+
+const TabIcon: Record<LibraryTab, React.ReactNode> = {
+  snippet: <div className="flex gap-2 text-muted items-center p-1 justify-center h-full"><SquareAsterisk size={12} />Snippet</div>,
+  context: <div className="flex gap-2 text-muted items-center p-1 justify-center h-full"><Sparkle size={12} className="text-muted"/> Context</div>,
+}
 
 export const LibrarySidebarPanel = () => {
   const { snippets, setSnippets, selectedSnippetId, selectSnippet, setCreating } = useLibraryStore()
+  const [activeTab, setActiveTab] = useState<"snippet" | "context">("snippet")
 
   useEffect(() => {
     getSnippets().then(setSnippets)
   }, [])
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col h-full w-full ">
       {/* Header */}
-      <div
+      {/* <div
         className="flex items-center justify-between px-3 py-2 shrink-0"
-        style={{ borderBottom: "0.5px solid var(--color-border)" }}
       >
-        <span
-          style={{
-            fontSize: 10,
-            fontFamily: "'Syne', sans-serif",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "var(--color-muted)",
-          }}
-        >
-          Library
-        </span>
+        {activeTab === "snippet" && (
+          <button
+            onClick={() => setCreating(activeTab)}
+            className="rounded p-0.5 transition-colors hover:bg-background"
+            style={{ color: "var(--color-muted)" }}
+            title="New Snippet"
+          >
+            <Plus size={12} />
+          </button>
+        )}
+      </div> */}
 
-        <button
-          onClick={() => setCreating(true)}
-          className="rounded p-0.5 transition-colors hover:bg-background"
-          style={{ color: "var(--color-muted)" }}
-          title="New Snippet"
-        >
-          <Plus size={12} />
-        </button>
+      {/* Tabs */}
+      <div
+        className="flex shrink-0 p-2 px-4 gap-2 justify-end"
+      >
+        {(["snippet", "context"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn("flex-1 rounded-lg", activeTab === tab ? "border border-border " : "" )}
+            style={{
+              fontSize: 10,
+              color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted)",
+              transition: "color 0.15s, border-color 0.15s",
+            }}
+          >
+            {TabIcon[tab]}
+          </button>
+        ))}
       </div>
 
-      {/* List */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
-        {snippets.length === 0 && (
-          <span style={{ fontSize: 11, color: "var(--color-muted)", padding: "4px 8px" }}>
-            No snippets yet
-          </span>
+        {activeTab === "snippet" && (
+          <>
+            {snippets.length === 0 && (
+              <span style={{ fontSize: 11, color: "var(--color-muted)", padding: "4px 8px" }}>
+                No snippets yet
+              </span>
+            )}
+            {snippets.map((snippet) => {
+              const id = snippetId(snippet)
+              return (
+                <SnippetRow
+                  key={id}
+                  snippet={snippet}
+                  isSelected={selectedSnippetId === id}
+                  onSelect={() => selectSnippet(id)}
+                />
+              )
+            })}
+          </>
         )}
 
-        {snippets.map((snippet, index) => {
-          const id = snippetId(snippet)      
-          return <SnippetRow
-            key={id}
-            snippet={snippet}
-            isSelected={selectedSnippetId === id}
-            onSelect={() => selectSnippet(id)}
-          />
-
-        }
-        )
-
-        }
+        {activeTab === "context" && (
+          <span style={{ fontSize: 11, color: "var(--color-muted)", padding: "4px 8px" }}>
+            No context yet
+          </span>
+        )}
       </div>
     </div>
   )
