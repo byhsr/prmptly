@@ -3,7 +3,7 @@ import { Sparkle, Folder, ChevronRight } from "lucide-react"
 import { Scope } from "./AddContextPanel"
 
 export const ScopeListPanel = () => {
-  const { scopes, selectScope, setCreating, resetAddContext } = useLibraryStore()
+  const { scopes, selectScope, setCreating, resetAddContext, selectedScopeId} = useLibraryStore()
 
   if (scopes.length === 0) return (
     <div
@@ -21,6 +21,7 @@ export const ScopeListPanel = () => {
         <ScopeCard
           key={scope.name}
           scope={scope}
+          isActive={selectedScopeId === scope.name}
           onClick={() => selectScope(scope.name)}
         />
       ))}
@@ -28,26 +29,25 @@ export const ScopeListPanel = () => {
   )
 }
 
-const ScopeCard = ({ scope, onClick }: { scope: Scope; onClick: () => void }) => {
+const ScopeCard = ({ scope, onClick, isActive }: { scope: Scope; onClick: () => void; isActive: boolean }) => {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors text-left"
-      style={{
-        border: "0.5px solid var(--color-border)",
-        background: "var(--color-surface)",
-        fontFamily: "'Syne', sans-serif",
-      }}
-      onMouseEnter={e => (e.currentTarget.style.background = "var(--color-background)")}
-      onMouseLeave={e => (e.currentTarget.style.background = "var(--color-surface)")}
+      className="w-full flex items-center gap-2 px-2 py-1 rounded-md transition-colors text-left"
+      style={{ background: isActive ? "var(--color-surface)" : "transparent" }}
     >
-      <div className="flex items-center gap-2.5">
-        <Folder size={13} style={{ color: "#c8f135", flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text)" }}>
-          {scope.name}
-        </span>
-      </div>
-      <ChevronRight size={12} style={{ color: "var(--color-text-secondary)" }} />
+      <Folder
+        size={11}
+        style={{ color: isActive ? "#c8f135" : "var(--color-muted)", flexShrink: 0 }}
+      />
+      <span style={{
+        fontSize: 11,
+        fontFamily: "'Syne', sans-serif",
+        fontWeight: isActive ? 700 : 400,
+        color: isActive ? "var(--color-foreground)" : "var(--color-muted)",
+      }}>
+        {scope.name}
+      </span>
     </button>
   )
 }
