@@ -150,3 +150,49 @@ pub async fn search_fts(
 
     Ok(results)
 }
+
+#[tauri::command]
+pub async fn delete_document_data(db_path: String, document_id: String) -> Result<(), String> {
+    let conn = open_conn(&db_path)?;
+
+    let node_ids: Vec<String> = {
+        let mut stmt = conn
+            .prepare("SELECT id FROM nodes WHERE document_id = ?1")
+            .map_err(|e| e.to_string())?;
+        let result: Vec<String> = stmt
+            .query_map([&document_id], |row| row.get(0))
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect();
+        result
+    };
+
+    for node_id in &node_ids {
+        let version_ids: Vec<String> = {
+            let mut stmt = conn
+                .prepare("SELECT id FROM node_versions WHERE node_id = ?1")
+                .map_err(|e| e.to_string())?;
+            let result: Vec<String> = stmt
+                .query_map([node_id], |row| row.get(0))
+                .map_err(|e| e.to_string())?
+                .filter_map(|r| r.ok())
+                .collect();
+            result
+        };
+
+        for vid in &version_ids {
+            conn.execute("DELETE FROM vec_index WHERE node_version_id = ?1", [vid])
+                .map_err(|e| e.to_string())?;
+            conn.execute("DELETE FROM fts_index WHERE node_version_id = ?1", [vid])
+                .map_err(|e| e.to_string())?;
+        }
+
+        conn.execute("DELETE FROM node_versions WHERE node_id = ?1", [node_id])
+            .map_err(|e| e.to_string())?;
+    }
+
+    conn.execute("DELETE FROM nodes WHERE document_id = ?1", [&document_id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+} // conn drops here

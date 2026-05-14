@@ -1,6 +1,7 @@
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
 import { useState, useEffect } from "react"
 import { ChevronLeft, FileText, RefreshCw, Trash2 } from "lucide-react"
+import { getDocumentsByScope, deleteDocument } from "@/lib/db/library"
 
 export type Document = {
   id: string
@@ -9,7 +10,7 @@ export type Document = {
   created_at: string
 }
 
-export const ScopeDocumentsPanel = () => {
+export const ScopeDocumentsPanel = ({ refreshScopes }: { refreshScopes: () => void }) => {
   const { selectedScopeId, selectScope, setCreating, resetAddContext } = useLibraryStore()
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,13 +18,13 @@ export const ScopeDocumentsPanel = () => {
   useEffect(() => {
     if (!selectedScopeId) return
     setLoading(true)
-    // getDocumentsByScope(selectedScopeId).then(setDocuments).finally(() => setLoading(false))
-    setLoading(false) // remove when DB fn is ready
+    getDocumentsByScope(selectedScopeId)
+      .then(setDocuments)
+      .finally(() => setLoading(false))
   }, [selectedScopeId])
 
   return (
     <div className="w-full h-full flex flex-col">
-      {/* Scope header / breadcrumb */}
       <div
         className="flex items-center gap-2 px-4 py-2.5 shrink-0"
         style={{ borderBottom: "0.5px solid var(--color-border)" }}
@@ -37,29 +38,18 @@ export const ScopeDocumentsPanel = () => {
           <span>scopes</span>
         </button>
         <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>/</span>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            fontFamily: "'Syne', sans-serif",
-            color: "var(--color-text)",
-          }}
-        >
+        <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Syne', sans-serif", color: "var(--color-text)" }}>
           {selectedScopeId}
         </span>
       </div>
 
-      {/* Documents list */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
         {loading && (
           <span style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>loading...</span>
         )}
 
         {!loading && documents.length === 0 && (
-          <div
-            className="w-full h-full flex flex-col items-center justify-center gap-2"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ color: "var(--color-text-secondary)" }}>
             <FileText size={20} strokeWidth={1} />
             <span style={{ fontSize: 12 }}>no documents in this scope</span>
           </div>
@@ -69,13 +59,13 @@ export const ScopeDocumentsPanel = () => {
           <DocumentRow
             key={doc.id}
             doc={doc}
-            onDelete={() => {
-              // deleteDocument(doc.id).then(() => setDocuments(d => d.filter(x => x.id !== doc.id)))
+            onDelete={async () => {
+              await deleteDocument(doc.id)
+              setDocuments(d => d.filter(x => x.id !== doc.id))
             }}
             onReupload={() => {
               resetAddContext()
               setCreating("context")
-              // pre-fill scope — AddContextPanel will need a selectedScope prop
             }}
           />
         ))}

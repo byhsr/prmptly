@@ -8,16 +8,17 @@ import { getSnippets } from "@/lib/db/library"
 import { useState } from "react"
 import { ContextMenu } from "../ui/ContextMenu"
 import { LibraryTab } from "../library/LibraryView"
+import { ScopeListPanel } from "../library/ScopeListPanel"
 
 const TabIcon: Record<LibraryTab, React.ReactNode> = {
   snippet: <div className="flex gap-2 text-muted items-center p-1 justify-center h-full"><SquareAsterisk size={12} />Snippet</div>,
-  context: <div className="flex gap-2 text-muted items-center p-1 justify-center h-full"><Sparkle size={12} className="text-muted"/> Context</div>,
+  context: <div className="flex gap-2 text-muted items-center p-1 justify-center h-full"><Sparkle size={12} className="text-muted" /> Context</div>,
 }
 
 export const LibrarySidebarPanel = () => {
   const { snippets, setSnippets, selectedSnippetId, selectSnippet, setCreating } = useLibraryStore()
   const [activeTab, setActiveTab] = useState<"snippet" | "context">("snippet")
-
+  const {scopes} = useLibraryStore()
   useEffect(() => {
     getSnippets().then(setSnippets)
   }, [])
@@ -48,7 +49,7 @@ export const LibrarySidebarPanel = () => {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={cn("flex-1 rounded-lg", activeTab === tab ? "border border-border " : "" )}
+            className={cn("flex-1 rounded-lg", activeTab === tab ? "border border-border " : "")}
             style={{
               fontSize: 10,
               color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted)",
@@ -84,9 +85,14 @@ export const LibrarySidebarPanel = () => {
         )}
 
         {activeTab === "context" && (
-          <span style={{ fontSize: 11, color: "var(--color-muted)", padding: "4px 8px" }}>
-            No context yet
-          </span>
+          <>
+            {scopes.length === 0 && (
+              <span style={{ fontSize: 11, color: "var(--color-muted)", padding: "4px 8px" }}>
+                No context yet
+              </span>
+            )}
+            <ScopeListPanel />
+          </>
         )}
       </div>
     </div>
@@ -103,15 +109,15 @@ const SnippetRow = ({
   onSelect: () => void
 }) => {
 
-    const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
- return  <button
+  return <button
     onClick={onSelect}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        onSelect()
-        setContextMenu({ x: e.clientX, y: e.clientY })
-      }}
+    onContextMenu={(e) => {
+      e.preventDefault()
+      onSelect()
+      setContextMenu({ x: e.clientX, y: e.clientY })
+    }}
     className={cn(
       "w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors duration-100 cursor-pointer",
       isSelected
@@ -119,14 +125,14 @@ const SnippetRow = ({
         : "text-secondary hover:bg-background/60"
     )}
   >
-    {contextMenu && <ContextMenu    
-    x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          items={[
-            { label: "Rename", onClick: () => {} },
-            { label: "Delete", onClick: () => {}, danger: true },
-          ]} />}
+    {contextMenu && <ContextMenu
+      x={contextMenu.x}
+      y={contextMenu.y}
+      onClose={() => setContextMenu(null)}
+      items={[
+        { label: "Rename", onClick: () => { } },
+        { label: "Delete", onClick: () => { }, danger: true },
+      ]} />}
     <SquareAsterisk
       size={11}
       className="shrink-0"

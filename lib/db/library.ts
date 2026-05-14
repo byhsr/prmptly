@@ -1,5 +1,8 @@
 import {getDB}  from "./index.ts"
 import { Snippet } from "../types/library.ts"
+import { Document } from "@/components/library/ScopeDocumentsPanel.tsx"
+import { Scope } from "@/components/library/AddContextPanel.tsx"
+import { invoke } from "@tauri-apps/api/core"
 
 type RawSnippet = { key: string; value: string; created_at: string; updated_at: string }
 
@@ -60,8 +63,6 @@ export const upsertSnippet = async (scope: string | undefined, key: string, valu
   )
 }
 
-
-
 const normalize = (row: RawSnippet): Snippet => {
   const [scope, ...rest] = row.key.includes(":") ? row.key.split(":") : [undefined, row.key]
   return {
@@ -77,4 +78,27 @@ export const getSnippets = async (): Promise<Snippet[]> => {
     "SELECT key, value, created_at, updated_at FROM deterministic_assets ORDER BY created_at DESC"
   )
   return rows.map(normalize)
+}
+
+// context.ts
+
+export async function getScopes(): Promise<Scope[]> {
+  const db = await getDB()
+  return db.select<Scope[]>(
+    `SELECT name, status, created_at FROM scopes WHERE status = 'active' ORDER BY created_at DESC`
+  )
+}
+
+export async function getDocumentsByScope(scopeName: string): Promise<Document[]> {
+  const db = await getDB()
+  return db.select<Document[]>(
+    `SELECT id, scope_name, name, created_at FROM documents WHERE scope_name = ? ORDER BY created_at DESC`,
+    [scopeName]
+  )
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  const db = await getDB()
+  await invoke("delete_document_data", { documentId: id }) // cleans vec, fts, node_versions, nodes
+  await db.execute(`DELETE FROM documents WHERE id = ?`, [id])
 }

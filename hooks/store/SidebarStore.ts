@@ -126,7 +126,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
 
   // scopes
   selectedScopeId: null,
-
+  
   selectScope: (id) =>
     set({
       selectedScopeId: id,
@@ -138,7 +138,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     set({
       scopes,
     }),
-
+ 
   // add-context form
   addContextScope: "",
   addContextContent: "",

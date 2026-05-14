@@ -11,6 +11,7 @@ import { AddContextPanel } from "./AddContextPanel"
 import { Scope } from "./AddContextPanel"
 import { ScopeDocumentsPanel } from "./ScopeDocumentsPanel"
 import { ScopeListPanel } from "./ScopeListPanel"
+import { getScopes } from "@/lib/db/library"
 
 
 export type LibraryTab = "snippet" | "context"
@@ -142,30 +143,31 @@ const DUMMY_SCOPES:Scope[] = []
 const LocalRagPanel = () => {
   const [hasModel, setHasModel] = useState<boolean | null>(null)
   const { isCreating, setCreating, selectedScopeId, scopes, setScopes } = useLibraryStore()
+  const refreshScopes = () => getScopes().then(setScopes)
 
   useEffect(() => {
     readConfig().then(config => setHasModel(!!config?.has_model))
   }, [])
 
   useEffect(() => {
-    // getScopes().then(setScopes) — wire up when DB fn is ready
+    refreshScopes()
   }, [])
 
   if (isCreating === "context") return (
-    <AddContextPanel
-      scopes={scopes}
-      onBack={() => setCreating(null)}
-    />
+    <AddContextPanel scopes={scopes} onBack={() => { setCreating(null); refreshScopes() }} />
   )
-
   if (hasModel === null) return null
   if (!hasModel) return (
     <div className="w-full h-full flex justify-center">
       <ContextSetupGate />
     </div>
   )
+  if (selectedScopeId !== null) return <ScopeDocumentsPanel refreshScopes={refreshScopes} />
 
-  if (selectedScopeId !== null) return <ScopeDocumentsPanel />
-
-  return <ScopeListPanel />
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ color: "var(--color-text-secondary)" }}>
+      <Sparkle style={{ width: 24, height: 24 }} strokeWidth={1} />
+      <span style={{ fontSize: 12 }}>no context files yet</span>
+    </div>
+  )
 }
