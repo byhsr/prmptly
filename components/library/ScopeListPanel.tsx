@@ -1,6 +1,7 @@
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
 import { Sparkle, Folder, ChevronRight } from "lucide-react"
 import { Scope } from "./AddContextPanel"
+import { cn } from "@/lib/utils"
 
 export const ScopeListPanel = () => {
   const { scopes, selectScope, setCreating, resetAddContext, selectedScopeId} = useLibraryStore()
@@ -33,19 +34,27 @@ const ScopeCard = ({ scope, onClick, isActive }: { scope: Scope; onClick: () => 
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-2 px-2 py-1 rounded-md transition-colors text-left"
-      style={{ background: isActive ? "var(--color-surface)" : "transparent" }}
+      className={cn(
+        "w-full flex items-center gap-2 px-2 py-1 rounded-md text-left transition-all duration-150",
+        isActive
+          ? "bg-surface border border-border"
+          : "bg-transparent border border-transparent hover:bg-surface/50"
+      )}
     >
       <Folder
         size={11}
-        style={{ color: isActive ? "#c8f135" : "var(--color-muted)", flexShrink: 0 }}
+        className="shrink-0 transition-colors duration-150"
+        style={{ color: isActive ? "#c8f135" : "var(--color-muted)" }}
       />
-      <span style={{
-        fontSize: 11,
-        fontFamily: "'Syne', sans-serif",
-        fontWeight: isActive ? 700 : 400,
-        color: isActive ? "var(--color-foreground)" : "var(--color-muted)",
-      }}>
+      <span
+        className="transition-all duration-150"
+        style={{
+          fontSize: 11,
+          fontFamily: "'Syne', sans-serif",
+          fontWeight: isActive ? 700 : 400,
+          color: isActive ? "var(--color-foreground)" : "var(--color-muted)",
+        }}
+      >
         {scope.name}
       </span>
     </button>
