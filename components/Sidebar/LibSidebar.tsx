@@ -16,40 +16,23 @@ const TabIcon: Record<LibraryTab, React.ReactNode> = {
 }
 
 export const LibrarySidebarPanel = () => {
-  const { snippets, setSnippets, selectedSnippetId, selectSnippet, setCreating } = useLibraryStore()
-  const [activeTab, setActiveTab] = useState<"snippet" | "context">("snippet")
-  const {scopes} = useLibraryStore()
+  const { snippets, setSnippets, selectedSnippetId, selectSnippet, activeMode, setActiveMode,  scopes } = useLibraryStore()
+
+  const activeTab: LibraryTab = activeMode ?? "snippet"
+
   useEffect(() => {
     getSnippets().then(setSnippets)
   }, [])
 
   return (
-    <div className="flex flex-col h-full w-full ">
-      {/* Header */}
-      {/* <div
-        className="flex items-center justify-between px-3 py-2 shrink-0"
-      >
-        {activeTab === "snippet" && (
-          <button
-            onClick={() => setCreating(activeTab)}
-            className="rounded p-0.5 transition-colors hover:bg-background"
-            style={{ color: "var(--color-muted)" }}
-            title="New Snippet"
-          >
-            <Plus size={12} />
-          </button>
-        )}
-      </div> */}
-
+    <div className="flex flex-col h-full w-full">
       {/* Tabs */}
-      <div
-        className="flex shrink-0 p-2 px-4 gap-2 justify-end"
-      >
+      <div className="flex shrink-0 p-2 px-4 gap-2 justify-end">
         {(["snippet", "context"] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn("flex-1 rounded-lg", activeTab === tab ? "border border-border " : "")}
+            onClick={() => setActiveMode(tab)}
+            className={cn("flex-1 rounded-lg", activeTab === tab ? "border border-border" : "")}
             style={{
               fontSize: 10,
               color: activeTab === tab ? "var(--color-foreground)" : "var(--color-muted)",

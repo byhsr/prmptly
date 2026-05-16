@@ -17,15 +17,15 @@ import { getScopes } from "@/lib/db/library"
 export type LibraryTab = "snippet" | "context"
 
 export const LibraryView = () => {
-  const [activeTab, setActiveTab] = useState<LibraryTab>("snippet")
+  const { setActiveMode, resetAddContext, activeMode } = useLibraryStore()
 
-  const { setCreating, resetAddContext, } = useLibraryStore()
+  const activeTab: LibraryTab = activeMode ?? "snippet"
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "n") {
         e.preventDefault()
-        activeTab === "snippet" ? setCreating("snippet") : setCreating("context")
+        activeTab === "snippet" ? setActiveMode("snippet") : setActiveMode("context")
       }
     }
     window.addEventListener("keydown", handler)
@@ -33,13 +33,13 @@ export const LibraryView = () => {
   }, [activeTab])
 
   const buttonLabel = activeTab === "snippet" ? "new snippet" : "new context"
+
   return (
     <div className="w-full h-full flex flex-col text-sm">
 
       {/* Folder tab nav */}
       <div className="flex bg-surface px-4 items-end justify-between">
-
-        <div className="flex  gap-0">
+        <div className="flex gap-0">
           {(["snippet", "context"] as LibraryTab[]).map((tab) => {
             const isActive = activeTab === tab
             const Icon = tab === "snippet" ? SquareAsterisk : Sparkle
@@ -47,7 +47,7 @@ export const LibraryView = () => {
               <TabButton
                 key={tab}
                 isActive={isActive}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => setActiveMode(tab)}
                 className={cn("flex items-center justify-center", isActive ? "gap-2 px-4" : "gap-0 px-2")}
               >
                 <Icon style={{ width: 13, height: 13, flexShrink: 0 }} />
@@ -65,22 +65,15 @@ export const LibraryView = () => {
           })}
         </div>
 
-
-        <div className="flex  gap-4 text-[12px] p-2 px-6" >
+        <div className="flex gap-4 text-[12px] p-2 px-6">
           <Button variant="ghost" onClick={() => {
-            if (activeTab === "context") {
-              setCreating("context")
-              resetAddContext()
-              // any context-specific setup if needed
-            } else {
-              setCreating(activeTab)
-            }
+            if (activeTab === "context") resetAddContext()
+            setActiveMode(activeTab)
           }}>
             {buttonLabel}
           </Button>
         </div>
       </div>
-
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -93,16 +86,16 @@ export const LibraryView = () => {
 }
 
 const SnippetsPanel = () => {
-  const { isCreating, setCreating, selectedSnippet } = useLibraryStore()
+  const { activeMode, setActiveMode, selectedSnippet } = useLibraryStore()
   const snippet = selectedSnippet()
-
-  if (isCreating === "snippet" || snippet) {
+  
+  if (activeMode=== "snippet" || snippet) {
     return (
       <SnippetModal
-        isCreating={isCreating}
+        isCreating={activeMode}
         snippet={snippet ?? undefined}
-        onClose={() => { setCreating(null); useLibraryStore.getState().clearSelection() }}
-        onSave={() => { setCreating(null) }}
+        onClose={() => { setActiveMode(null); useLibraryStore.getState().clearSelection() }}
+        onSave={() => { setActiveMode(null) }}
       />
     )
   }
@@ -117,52 +110,30 @@ const SnippetsPanel = () => {
 
 const DUMMY_SCOPES:Scope[] = []
 
-// const LocalRagPanel = () => {
-//   const [hasModel, setHasModel] = useState<boolean | null>(null)
-//   const { isCreating, setCreating, selectedSnippet } = useLibraryStore()
-
-//   useEffect(() => {
-//     readConfig().then(config => setHasModel(!!config?.has_model))
-//   }, [])
-
-//   if (isCreating === "context") return <AddContextPanel
-//     scopes={DUMMY_SCOPES}         // fetch from DB via plugin-sql
-//     onBack={() => setCreating(null)}
-//     />
-//   if (hasModel === null) return null
-//   if (!hasModel) return <div className="w-full h-full flex justify-center "><ContextSetupGate /></div>
-
-//   return (
-//     <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4" style={{ color: "var(--color-text-secondary)" }}>
-//       <div><Sparkle className="w-5 h-5 " /></div>
-//       <span style={{ fontSize: 12 }}>no context files yet</span>
-//     </div>
-//   )
-// }
-
 const LocalRagPanel = () => {
   const [hasModel, setHasModel] = useState<boolean | null>(null)
-  const { isCreating, setCreating, selectedScopeId, scopes, setScopes } = useLibraryStore()
+  const { activeMode, setActiveMode, selectedScopeId, scopes, setScopes } = useLibraryStore()
+  
   const refreshScopes = () => getScopes().then(setScopes)
 
   useEffect(() => {
     readConfig().then(config => setHasModel(!!config?.has_model))
-  }, [])
-
-  useEffect(() => {
     refreshScopes()
   }, [])
 
-  if (isCreating === "context") return (
-    <AddContextPanel scopes={scopes} onBack={() => { setCreating(null); refreshScopes() }} />
-  )
   if (hasModel === null) return null
+  if (selectedScopeId !== null) return <ScopeDocumentsPanel refreshScopes={refreshScopes} />
+  if (activeMode === "context" && hasModel) return (
+    <AddContextPanel 
+      scopes={scopes} 
+      onBack={() => { setActiveMode(null); refreshScopes() }} 
+    />
+  )
   if (!hasModel) return (
     <div className="w-full h-full flex justify-center">
       <ContextSetupGate />
     </div>
   )
-  if (selectedScopeId !== null) return <ScopeDocumentsPanel refreshScopes={refreshScopes} />
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ color: "var(--color-text-secondary)" }}>

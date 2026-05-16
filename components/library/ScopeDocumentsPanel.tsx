@@ -11,7 +11,7 @@ export type Document = {
 }
 
 export const ScopeDocumentsPanel = ({ refreshScopes }: { refreshScopes: () => void }) => {
-  const { selectedScopeId, selectScope, setCreating, resetAddContext } = useLibraryStore()
+  const { selectedScopeId, selectScope, activeMode, resetAddContext, setActiveMode } = useLibraryStore()
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -26,24 +26,25 @@ export const ScopeDocumentsPanel = ({ refreshScopes }: { refreshScopes: () => vo
   return (
     <div className="w-full h-full flex flex-col">
       <div
-        className="flex items-center gap-2 px-4 py-2.5 shrink-0"
-        style={{ borderBottom: "0.5px solid var(--color-border)" }}
+        className="flex items-center gap-2 p-6 shrink-0"
       >
+        <div className="flex text-[12px]">
         <button
           onClick={() => selectScope(null)}
-          className="flex items-center gap-1.5 transition-opacity hover:opacity-60"
-          style={{ color: "var(--color-text-secondary)", fontFamily: "'Syne', sans-serif", fontSize: 11 }}
+          className="flex items-center gap-1.5 transition-opacity hover:opacity-60"     
         >
           <ChevronLeft size={11} />
           <span>scopes</span>
         </button>
+
         <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>/</span>
-        <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'Syne', sans-serif", color: "var(--color-text)" }}>
+        <span >
           {selectedScopeId}
         </span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+      <div className="flex-1 overflow-y-auto px-8 flex flex-col gap-2">
         {loading && (
           <span style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>loading...</span>
         )}
@@ -65,7 +66,7 @@ export const ScopeDocumentsPanel = ({ refreshScopes }: { refreshScopes: () => vo
             }}
             onReupload={() => {
               resetAddContext()
-              setCreating("context")
+              setActiveMode("context")
             }}
           />
         ))}

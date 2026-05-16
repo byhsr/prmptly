@@ -4,6 +4,11 @@ import { Snippet } from "@/lib/types/library"
 import { LibraryTab } from "@/components/library/LibraryView"
 import { Scope } from "@/components/library/AddContextPanel"
 
+export const snippetId = (snippet: Snippet) =>
+  snippet.scope
+    ? `${snippet.scope}:${snippet.key}`
+    : snippet.key
+
 type LibraryStore = {
   // snippet selection
   selectedSnippetId: string | null
@@ -11,9 +16,9 @@ type LibraryStore = {
   clearSelection: () => void
   selectedSnippet: () => Snippet | null
 
-  // creation mode
-  isCreating: LibraryTab | null
-  setCreating: (type: LibraryTab | null) => void
+  // creation mode / active tab
+  activeMode: LibraryTab | null
+  setActiveMode: (type: LibraryTab | null) => void
 
   // snippet cache
   snippets: Snippet[]
@@ -32,75 +37,47 @@ type LibraryStore = {
   addContextScope: string
   addContextContent: string
   addContextFileName: string | null
-
   setAddContextScope: (scope: string) => void
-  setAddContextContent: (
-    content: string,
-    fileName?: string | null
-  ) => void
-
+  setAddContextContent: (content: string, fileName?: string | null) => void
   resetAddContext: () => void
 }
 
-export const snippetId = (snippet: Snippet) =>
-  snippet.scope
-    ? `${snippet.scope}:${snippet.key}`
-    : snippet.key
-
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
-  // selection
+  // snippet selection
   selectedSnippetId: null,
 
   selectSnippet: (id) =>
     set({
       selectedSnippetId: id,
-      isCreating: null,
+      activeMode: null,
     }),
 
   clearSelection: () =>
-    set({
-      selectedSnippetId: null,
-    }),
+    set({ selectedSnippetId: null }),
 
   selectedSnippet: () => {
     const { snippets, selectedSnippetId } = get()
-
-    return (
-      snippets.find(
-        (snippet) => snippetId(snippet) === selectedSnippetId
-      ) ?? null
-    )
+    return snippets.find((s) => snippetId(s) === selectedSnippetId) ?? null
   },
 
-  // creation mode
-  isCreating: null,
+  // creation mode / active tab
+  activeMode: null,
 
-  setCreating: (type) =>
-    set({
-      isCreating: type,
-      selectedSnippetId: type
-        ? null
-        : get().selectedSnippetId,
-    }),
+  setActiveMode: (type) =>
+  set({
+    activeMode: type,
+    selectedSnippetId: type ? null : get().selectedSnippetId,
+    selectedScopeId: type === "context" ? null : get().selectedScopeId,
+  }),
 
   // snippets
   snippets: [],
-
-  setSnippets: (snippets) =>
-    set({
-      snippets,
-    }),
+  setSnippets: (snippets) => set({ snippets }),
 
   removeSnippet: (id) =>
     set((state) => ({
-      snippets: state.snippets.filter(
-        (snippet) => snippetId(snippet) !== id
-      ),
-
-      selectedSnippetId:
-        state.selectedSnippetId === id
-          ? null
-          : state.selectedSnippetId,
+      snippets: state.snippets.filter((s) => snippetId(s) !== id),
+      selectedSnippetId: state.selectedSnippetId === id ? null : state.selectedSnippetId,
     })),
 
   updateSnippet: (id, updated) =>
@@ -111,60 +88,34 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
           : updated.key ?? id
 
       return {
-        snippets: state.snippets.map((snippet) =>
-          snippetId(snippet) === id
-            ? { ...snippet, ...updated }
-            : snippet
+        snippets: state.snippets.map((s) =>
+          snippetId(s) === id ? { ...s, ...updated } : s
         ),
-
-        selectedSnippetId:
-          state.selectedSnippetId === id
-            ? nextId
-            : state.selectedSnippetId,
+        selectedSnippetId: state.selectedSnippetId === id ? nextId : state.selectedSnippetId,
       }
     }),
 
   // scopes
   selectedScopeId: null,
-  
-  selectScope: (id) =>
-    set({
-      selectedScopeId: id,
-    }),
+  selectScope: (id) => set({ selectedScopeId: id }),
 
   scopes: [],
+  setScopes: (scopes) => set({ scopes }),
 
-  setScopes: (scopes) =>
-    set({
-      scopes,
-    }),
- 
   // add-context form
   addContextScope: "",
   addContextContent: "",
   addContextFileName: null,
 
-  setAddContextScope: (scope) =>
-    set({
-      addContextScope: scope,
-    }),
+  setAddContextScope: (scope) => set({ addContextScope: scope }),
 
-  setAddContextContent: (
-    content,
-    fileName = null
-  ) =>
-    set({
-      addContextContent: content,
-      addContextFileName: fileName,
-    }),
+  setAddContextContent: (content, fileName = null) =>
+    set({ addContextContent: content, addContextFileName: fileName }),
 
   resetAddContext: () =>
-    set({
-      addContextScope: "",
-      addContextContent: "",
-      addContextFileName: null,
-    }),
+    set({ addContextScope: "", addContextContent: "", addContextFileName: null }),
 }))
+
 
 type Notification = {
   id: string
