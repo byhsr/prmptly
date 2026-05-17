@@ -64,6 +64,10 @@ function compile(
   const ordered = [...sections].sort((a, b) => a.order_index - b.order_index)
   const pairs = ordered.map((s) => ({ title: s.title, value: filled[s.id] || "" }))
 
+    if (!sections.length) {
+    return filled["__freeform__"] || ""
+  }
+
   if (format === "plain") {
     return pairs
       .map((p) => `${p.title.toUpperCase()}:\n${p.value}`)
