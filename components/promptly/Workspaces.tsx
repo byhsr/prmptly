@@ -45,7 +45,6 @@ export function Workspace({ activeTab, activeView }: WorkspaceProps) {
           transition={{ duration: 0.12 }}
           className="h-full w-full"
         >
-          {/* activeTab ?? { id: "home", label: "Home", type: "home" },  */}
           {renderView(activeView)}
         </motion.div>
       </AnimatePresence>

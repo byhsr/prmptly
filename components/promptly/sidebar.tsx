@@ -19,6 +19,7 @@ import { PendingCreate } from "../Sidebar/PromptSidebar"
 import { ViewType } from "@/lib/types/DashTypes"
 import { LibrarySidebarPanel } from "../Sidebar/LibSidebar"
 import { PromptSidebarPanel } from "../Sidebar/PromptSidebar"
+import { TemplateSidebarPanel } from "../template/TemplateSidebar"
 
 interface SidebarProps {
   isOpen: boolean
@@ -261,11 +262,7 @@ export function Sidebar({
             )}
 
             {/* Templates + Library — wire up when ready */}
-            {activeView === "template" && (
-              <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
-                Templates coming soon
-              </span>
-            )}
+            {activeView === "template" && <TemplateSidebarPanel />}
             {activeView === "library" && <LibrarySidebarPanel />}
 
           </div>

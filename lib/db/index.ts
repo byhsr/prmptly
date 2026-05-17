@@ -18,19 +18,36 @@ CREATE TABLE IF NOT EXISTS app_settings (
 );
 
 
--- ── Templates ──────────────────────────────────────
 
+-- ── Templates ──────────────────────────────────────
 CREATE TABLE IF NOT EXISTS templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
-  schema TEXT NOT NULL,
   is_system INTEGER DEFAULT 0,
   created_at TEXT NOT NULL
 );
 
--- ── Prompts (container only) ───────────────────────
+-- ── Template Sections ──────────────────────────────
+CREATE TABLE IF NOT EXISTS template_sections (
+  id TEXT PRIMARY KEY,
+  template_id TEXT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  placeholder TEXT,
+  order_index INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
 
+-- ── Outputs ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS outputs (
+  id TEXT PRIMARY KEY,
+  text TEXT,
+  json TEXT,
+  xml TEXT,
+  created_at TEXT NOT NULL
+);
+
+-- ── Prompts (container) ────────────────────────────
 CREATE TABLE IF NOT EXISTS prompts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -41,21 +58,18 @@ CREATE TABLE IF NOT EXISTS prompts (
   updated_at TEXT NOT NULL
 );
 
--- ── Versions (THIS is the real data) ───────────────
-
+-- ── Prompt Versions ────────────────────────────────
 CREATE TABLE IF NOT EXISTS prompt_versions (
   id TEXT PRIMARY KEY,
   prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
   version_number INTEGER NOT NULL,
   label TEXT,
-
-  builder_content TEXT,   -- JSON { key: value }
-
-  scratchpad_path TEXT,
-  output_path TEXT, -- JSON {text : "", lets  json : "" ,  xml : ""}
+  builder_content TEXT, -- JSON [{ sectionId, order, value }]
+  scratchpad_text_path TEXT,
+  scratchpad_flow_path TEXT,
+  output_id TEXT REFERENCES outputs(id) ON DELETE SET NULL,
   created_at TEXT NOT NULL
 );
-
 -- ── Assets mapping ─────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS prompt_assets (
@@ -79,9 +93,11 @@ CREATE TABLE IF NOT EXISTS collections (
 CREATE TABLE IF NOT EXISTS quick_runs (
   id TEXT PRIMARY KEY,
   raw_input TEXT NOT NULL,
-  compiled_output TEXT NOT NULL,
+  output_id TEXT REFERENCES outputs(id) ON DELETE SET NULL,
   created_at TEXT NOT NULL
 );
+
+
 
 -- ── library ─────────────────────────────────────
 
