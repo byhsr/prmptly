@@ -1,5 +1,15 @@
 import { getDB } from "./index";
 
+export interface TemplateSection {
+  id: string
+  template_id: string
+  title: string
+  placeholder: string | null
+  order_index: number
+  created_at: string
+}
+
+
 export interface Prompt {
   id: string;
   name: string;
@@ -25,3 +35,44 @@ export interface PromptVersion {
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
 // export async function 
+
+
+
+
+export interface BuilderSectionContent {
+  sectionId: string
+  order: number
+  value: string
+}
+
+export async function saveBuilderContent(
+  versionId: string,
+  sections: BuilderSectionContent[]
+): Promise<void> {
+  const db = await getDB()
+  await db.execute(
+    `UPDATE prompt_versions SET builder_content = ? WHERE id = ?`,
+    [JSON.stringify(sections), versionId]
+  )
+}
+
+export async function saveOutput(
+  outputId: string,
+  text: string | null,
+  json: string | null,
+  xml: string | null
+): Promise<void> {
+  const db = await getDB()
+  await db.execute(
+    `UPDATE outputs SET text = ?, json = ?, xml = ? WHERE id = ?`,
+    [text, json, xml, outputId]
+  )
+}
+
+export async function updatePromptTemplate(promptId: string, templateId: string): Promise<void> {
+  const db = await getDB()
+  await db.execute(
+    `UPDATE prompts SET template_id = ?, updated_at = ? WHERE id = ?`,
+    [templateId, new Date().toISOString(), promptId]
+  )
+}

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState , useEffect} from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Columns2, Columns3 } from "lucide-react"
 import { BuilderPanel } from "./builder-panel"
 import { ScratchpadPanel } from "./scratchpad-panel"
 import { PromptPanel } from "./prompt-panel"
 import { Tab } from "./Tabbar"
+import { usePromptStore } from "@/hooks/store/PromptStore"
 
 type SubTab = "builder" | "scratchpad" | "prompt"
 type SplitMode = "none" | "two" | "two-prompt" | "three"
@@ -18,6 +19,13 @@ interface FileTabProps {
 export function FileTab({ tab }: { tab: Tab }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("builder")
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
+
+  const { loadPrompt, reset } = usePromptStore()
+
+  useEffect(() => {
+  loadPrompt(tab.id)
+  return () => reset()
+}, [tab.id])
 
   const cycleSplitMode = () => {
     const modes: SplitMode[] = ["none", "two", "two-prompt", "three"]

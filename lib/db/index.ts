@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS prompt_assets (
 CREATE TABLE IF NOT EXISTS collections (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  parent_id TEXT,
+  parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE,
   created_at TEXT NOT NULL
 );
 
