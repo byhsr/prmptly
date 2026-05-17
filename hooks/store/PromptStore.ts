@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { readPrompt } from "@/services/service.prompt"
 import { templateService } from "@/lib/db/template"
 import { saveBuilderContent, saveOutput, updatePromptTemplate  } from "@/lib/db/prompt"
+import { createFile } from "@/lib/fs/fs"
 import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/prompt"
 
 
@@ -14,6 +15,7 @@ interface PromptVersion {
   label: string | null
   builder_content: BuilderSectionContent[]
   scratchpad: string
+  scratchpad_text_path: string | null
   output: {
     id: string | null
     text: string | null
@@ -37,10 +39,13 @@ interface PromptStore {
   outputFormat: OutputFormat
   compiledOutput: string
   loading: boolean
+  scratchpadText: string
+
   
   // Actions
   
   loadPrompt: (promptId: string) => Promise<void>
+  updateScratchpad: (text: string) => void
   reorderSections: (sections: TemplateSection[]) => void
   updateTemplate: (templateId: string) => Promise<void>
   updateSection: (sectionId: string, value: string) => void
@@ -123,13 +128,14 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         outputFormat: "plain",
         compiledOutput,
         loading: false,
+        scratchpadText: result.version.scratchpad,
       })
     } catch (err) {
       console.error("loadPrompt failed:", err)
       set({ loading: false })
     }
   },
-
+  scratchpadText: "",
   updateSection: (sectionId: string, value: string) => {
     const { sections, filledSections, outputFormat } = get()
     const updated = { ...filledSections, [sectionId]: value }
@@ -190,7 +196,13 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     outputFormat: "plain",
     compiledOutput: "",
     loading: false,
+    scratchpadText: "",
   }),
+  
+  updateScratchpad: (text: string) => {
+  set({ scratchpadText: text })
+  debouncedScratchpadPersist()
+},
 
   reorderSections: (reordered: TemplateSection[]) => {
   const { filledSections, outputFormat } = get()
@@ -208,5 +220,16 @@ function debouncedPersist() {
   if (persistTimer) clearTimeout(persistTimer)
   persistTimer = setTimeout(() => {
     usePromptStore.getState().persist()
+  }, 800)
+}
+
+let scratchpadTimer: ReturnType<typeof setTimeout> | null = null
+
+function debouncedScratchpadPersist() {
+  if (scratchpadTimer) clearTimeout(scratchpadTimer)
+  scratchpadTimer = setTimeout(async () => {
+    const { activePrompt, scratchpadText } = usePromptStore.getState()
+    const path = activePrompt?.version.scratchpad_text_path
+    if (path) await createFile(path, scratchpadText)
   }, 800)
 }
