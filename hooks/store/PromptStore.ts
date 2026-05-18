@@ -5,7 +5,7 @@ import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/p
 import { createFile } from "@/lib/fs/fs"
 import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/prompt"
 import { JSONContent } from "@tiptap/react"
-import { serializeDoc } from "@/components/ui/SmartTextEditor"
+import { serializeDoc , nodeToXml} from "@/components/ui/SmartTextEditor"
 
 
 export type OutputFormat = "plain" | "json" | "xml"
@@ -105,7 +105,11 @@ function compile(
 ): string {
   if (!sections.length) {
     const freeDoc = filledDocs["__freeform__"]
-    return freeDoc ? serializeDoc(freeDoc, format) : filled["__freeform__"] || ""
+    if (freeDoc) {
+      if (format === "xml") return `<prompt>\n${nodeToXml(freeDoc, 1)}\n</prompt>`
+      return serializeDoc(freeDoc, format)
+    }
+    return filled["__freeform__"] || ""
   }
 
   const ordered = [...sections].sort((a, b) => a.order_index - b.order_index)
@@ -125,20 +129,24 @@ function compile(
   if (format === "json") {
   const obj: Record<string, unknown> = {}
   pairs.forEach((p) => {
-    try { obj[p.key] = JSON.parse(p.value) }
-    catch { obj[p.key] = p.value }
+    try {
+      const parsed = JSON.parse(p.value)
+      obj[p.key] = parsed?.prompt ?? parsed
+    } catch {
+      obj[p.key] = p.value
+    }
   })
   return JSON.stringify(obj, null, 2)
 }
 
   if (format === "xml") {
-  const inner = pairs.map((p) => {
-    const content = p.value.trim()
-    const indented = content.split("\n").map((l) => `    ${l}`).join("\n")
-    return `  <${p.key}>\n${indented}\n  </${p.key}>`
-  }).join("\n")
-  return `<prompt>\n${inner}\n</prompt>`
-}
+    const inner = pairs.map((p) => {
+      const content = p.value.trim()
+      const indented = content.split("\n").map((l) => `    ${l}`).join("\n")
+      return `  <${p.key}>\n${indented}\n  </${p.key}>`
+    }).join("\n")
+    return `<prompt>\n${inner}\n</prompt>`
+  }
 
   return ""
 }

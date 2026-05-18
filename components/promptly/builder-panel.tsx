@@ -36,7 +36,7 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   })
-
+  const {updateSection} = usePromptStore()
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -59,11 +59,11 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
         </label>
       </div>
       <SmartEditor
-  value={value}
-  onChange={(plain) => onChange(plain)}
-  placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
-  minHeight={96}
-/>
+        value={value}
+        onChange={(plain, doc) => updateSection(section.id, plain, doc)}
+        placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
+        minHeight={96}
+      />
     </div>
   )
 }
@@ -135,10 +135,10 @@ export function BuilderPanel() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {!sections.length ? (
           <SmartEditor
-  value={filledSections["__freeform__"] || ""}
-  onChange={(plain) => updateSection("__freeform__", plain)}
-  minHeight={300}
-/>
+            value={filledSections["__freeform__"] || ""}
+            onChange={(plain, doc) => updateSection("__freeform__", plain, doc)}
+            minHeight={300}
+          />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
