@@ -1,10 +1,11 @@
 import { create } from "zustand"
 import { readPrompt } from "@/services/service.prompt"
 import { templateService } from "@/lib/db/template"
-import { saveBuilderContent, saveOutput, updatePromptTemplate  } from "@/lib/db/prompt"
+import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/prompt"
 import { createFile } from "@/lib/fs/fs"
 import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/prompt"
-
+import { JSONContent } from "@tiptap/react"
+import { serializeDoc } from "@/components/ui/SmartTextEditor"
 
 
 export type OutputFormat = "plain" | "json" | "xml"
@@ -35,20 +36,19 @@ interface ActivePrompt {
 interface PromptStore {
   activePrompt: ActivePrompt | null
   sections: TemplateSection[]
-  filledSections: Record<string, string> // sectionId → value
+  filledSections: Record<string, string>
+  filledSectionDocs: Record<string, JSONContent>  // add
   outputFormat: OutputFormat
   compiledOutput: string
   loading: boolean
   scratchpadText: string
 
-  
   // Actions
-  
   loadPrompt: (promptId: string) => Promise<void>
   updateScratchpad: (text: string) => void
   reorderSections: (sections: TemplateSection[]) => void
   updateTemplate: (templateId: string) => Promise<void>
-  updateSection: (sectionId: string, value: string) => void
+  updateSection: (sectionId: string, value: string, doc?: JSONContent) => void  // doc optional, no breaking changes
   setOutputFormat: (format: OutputFormat) => void
   persist: () => Promise<void>
   reset: () => void
@@ -56,17 +56,65 @@ interface PromptStore {
 
 // ── Compile ────────────────────────────────────────────────────────────────────
 
+// function compile(
+//   sections: TemplateSection[],
+//   filled: Record<string, string>,
+//   format: OutputFormat
+// ): string {
+//   const ordered = [...sections].sort((a, b) => a.order_index - b.order_index)
+//   const pairs = ordered.map((s) => ({ title: s.title, value: filled[s.id] || "" }))
+
+//     if (!sections.length) {
+//     return filled["__freeform__"] || ""
+//   }
+
+//   if (format === "plain") {
+//     return pairs
+//       .map((p) => `${p.title.toUpperCase()}:\n${p.value}`)
+//       .join("\n\n")
+//   }
+
+//   if (format === "json") {
+//     const obj: Record<string, string> = {}
+//     pairs.forEach((p) => {
+//       const key = p.title.toLowerCase().replace(/\s+/g, "_")
+//       obj[key] = p.value
+//     })
+//     return JSON.stringify(obj, null, 2)
+//   }
+
+//   if (format === "xml") {
+//     const inner = pairs
+//       .map((p) => {
+//         const tag = p.title.toLowerCase().replace(/\s+/g, "_")
+//         return `  <${tag}>${p.value}</${tag}>`
+//       })
+//       .join("\n")
+//     return `<prompt>\n${inner}\n</prompt>`
+//   }
+
+//   return ""
+// }
+
+
 function compile(
   sections: TemplateSection[],
   filled: Record<string, string>,
+  filledDocs: Record<string, JSONContent>,  // add this
   format: OutputFormat
 ): string {
-  const ordered = [...sections].sort((a, b) => a.order_index - b.order_index)
-  const pairs = ordered.map((s) => ({ title: s.title, value: filled[s.id] || "" }))
-
-    if (!sections.length) {
-    return filled["__freeform__"] || ""
+  if (!sections.length) {
+    const freeDoc = filledDocs["__freeform__"]
+    return freeDoc ? serializeDoc(freeDoc, format) : filled["__freeform__"] || ""
   }
+
+  const ordered = [...sections].sort((a, b) => a.order_index - b.order_index)
+  const pairs = ordered.map((s) => ({
+    title: s.title,
+    key: s.title.toLowerCase().replace(/\s+/g, "_"),
+    // serialize each section's doc in the target format
+    value: filledDocs[s.id] ? serializeDoc(filledDocs[s.id], format) : filled[s.id] || "",
+  }))
 
   if (format === "plain") {
     return pairs
@@ -75,23 +123,22 @@ function compile(
   }
 
   if (format === "json") {
-    const obj: Record<string, string> = {}
-    pairs.forEach((p) => {
-      const key = p.title.toLowerCase().replace(/\s+/g, "_")
-      obj[key] = p.value
-    })
-    return JSON.stringify(obj, null, 2)
-  }
+  const obj: Record<string, unknown> = {}
+  pairs.forEach((p) => {
+    try { obj[p.key] = JSON.parse(p.value) }
+    catch { obj[p.key] = p.value }
+  })
+  return JSON.stringify(obj, null, 2)
+}
 
   if (format === "xml") {
-    const inner = pairs
-      .map((p) => {
-        const tag = p.title.toLowerCase().replace(/\s+/g, "_")
-        return `  <${tag}>${p.value}</${tag}>`
-      })
-      .join("\n")
-    return `<prompt>\n${inner}\n</prompt>`
-  }
+  const inner = pairs.map((p) => {
+    const content = p.value.trim()
+    const indented = content.split("\n").map((l) => `    ${l}`).join("\n")
+    return `  <${p.key}>\n${indented}\n  </${p.key}>`
+  }).join("\n")
+  return `<prompt>\n${inner}\n</prompt>`
+}
 
   return ""
 }
@@ -105,6 +152,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   outputFormat: "plain",
   compiledOutput: "",
   loading: false,
+  filledSectionDocs: {} as Record<string, JSONContent>,
 
   loadPrompt: async (promptId: string) => {
     set({ loading: true })
@@ -117,18 +165,20 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         sections = await templateService.getSections(result.template_id)
       }
 
-      // builder_content array → Record<sectionId, value>
       const filledSections: Record<string, string> = {}
       for (const entry of result.version.builder_content) {
         filledSections[entry.sectionId] = entry.value
       }
 
-      const compiledOutput = compile(sections, filledSections, "plain")
+      // no docs yet on load — they'll populate as user types
+      const filledSectionDocs: Record<string, JSONContent> = {}
+      const compiledOutput = compile(sections, filledSections, filledSectionDocs, "plain")
 
       set({
         activePrompt: result as ActivePrompt,
         sections,
         filledSections,
+        filledSectionDocs,
         outputFormat: "plain",
         compiledOutput,
         loading: false,
@@ -140,33 +190,36 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     }
   },
   scratchpadText: "",
-  updateSection: (sectionId: string, value: string) => {
-    const { sections, filledSections, outputFormat } = get()
-    const updated = { ...filledSections, [sectionId]: value }
-    const compiled = compile(sections, updated, outputFormat)
-    set({ filledSections: updated, compiledOutput: compiled })
+
+  updateSection: (sectionId: string, value: string, doc?: JSONContent) => {
+    const { sections, filledSections, filledSectionDocs, outputFormat } = get()
+    const updatedFilled = { ...filledSections, [sectionId]: value }
+    const updatedDocs = doc ? { ...filledSectionDocs, [sectionId]: doc } : filledSectionDocs
+    const compiled = compile(sections, updatedFilled, updatedDocs, outputFormat)
+    set({ filledSections: updatedFilled, filledSectionDocs: updatedDocs, compiledOutput: compiled })
     debouncedPersist()
   },
 
   setOutputFormat: (format: OutputFormat) => {
-    const { sections, filledSections } = get()
-    const compiled = compile(sections, filledSections, format)
+    const { sections, filledSections, filledSectionDocs } = get()
+    const compiled = compile(sections, filledSections, filledSectionDocs, format)
     set({ outputFormat: format, compiledOutput: compiled })
   },
+
   updateTemplate: async (templateId: string) => {
-  const { activePrompt, filledSections, outputFormat } = get()
-  if (!activePrompt) return
+    const { activePrompt, filledSections, outputFormat, filledSectionDocs } = get()
+    if (!activePrompt) return
 
-  await updatePromptTemplate(activePrompt.id, templateId)
-  const sections = await templateService.getSections(templateId)
-  const compiled = compile(sections, filledSections, outputFormat)
+    await updatePromptTemplate(activePrompt.id, templateId)
+    const sections = await templateService.getSections(templateId)
+    const compiled = compile(sections, filledSections, filledSectionDocs, outputFormat)
 
-  set({
-    sections,
-    compiledOutput: compiled,
-    activePrompt: { ...activePrompt, template_id: templateId },
-  })
-},
+    set({
+      sections,
+      compiledOutput: compiled,
+      activePrompt: { ...activePrompt, template_id: templateId },
+    })
+  },
 
   persist: async () => {
     const { activePrompt, filledSections, sections, compiledOutput, outputFormat } = get()
@@ -202,18 +255,18 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     loading: false,
     scratchpadText: "",
   }),
-  
+
   updateScratchpad: (text: string) => {
-  set({ scratchpadText: text })
-  debouncedScratchpadPersist()
-},
+    set({ scratchpadText: text })
+    debouncedScratchpadPersist()
+  },
 
   reorderSections: (reordered: TemplateSection[]) => {
-  const { filledSections, outputFormat } = get()
-  const compiled = compile(reordered, filledSections, outputFormat)
-  set({ sections: reordered, compiledOutput: compiled })
-  debouncedPersist()
-},
+    const { sections, filledSections, outputFormat, filledSectionDocs } = get()
+    const compiled = compile(sections, filledSections, filledSectionDocs, outputFormat)
+    set({ sections: reordered, compiledOutput: compiled })
+    debouncedPersist()
+  },
 }))
 
 // ── Debounce ───────────────────────────────────────────────────────────────────

@@ -8,7 +8,10 @@ type Format = "plain" | "json" | "xml"
 
 export function PromptPanel() {
   const [copied, setCopied] = useState(false)
-  const { compiledOutput, outputFormat, setOutputFormat } = usePromptStore()
+  const { compiledOutput, outputFormat, setOutputFormat, sections } = usePromptStore()
+
+  const formats = sections.length ? (["plain", "json", "xml"] as OutputFormat[]) : (["plain"] as OutputFormat[])
+
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(compiledOutput)

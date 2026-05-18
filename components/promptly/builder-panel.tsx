@@ -21,6 +21,7 @@ import { GripVertical } from "lucide-react"
 import { TemplateSelector } from "../Prompt/TemplateSelector"
 import { TemplateSection } from "@/lib/db/template"
 import { Template } from "@/lib/db/template"
+import { SmartEditor } from "../ui/SmartTextEditor"
 
 
 // ── SectionBlock ───────────────────────────────────────────────────────────────
@@ -57,13 +58,12 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
           {section.title}
         </label>
       </div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg outline-0 border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted/60 resize-none font-mono"
-        rows={4}
-        placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
-      />
+      <SmartEditor
+  value={value}
+  onChange={(plain) => onChange(plain)}
+  placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
+  minHeight={96}
+/>
     </div>
   )
 }
@@ -134,10 +134,11 @@ export function BuilderPanel() {
       {/* Sections or Freeform */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {!sections.length ? (
-          <FreeformBlock
-            value={filledSections["__freeform__"] || ""}
-            onChange={(val) => updateSection("__freeform__", val)}
-          />
+          <SmartEditor
+  value={filledSections["__freeform__"] || ""}
+  onChange={(plain) => updateSection("__freeform__", plain)}
+  minHeight={300}
+/>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
