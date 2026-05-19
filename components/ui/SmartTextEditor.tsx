@@ -26,6 +26,7 @@ import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
 import { useEffect, useRef, useState, useCallback } from "react"
 import type { JSONContent } from "@tiptap/react"
+import { cn } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -361,7 +362,8 @@ export function SmartEditor({
     return (
         <>
             <div
-                className={`smart-editor-wrapper relative w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`}
+                className={cn(`smart-editor-wrapper relative w-full rounded-lg 
+                     bg-background px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)}
             >
                 <EditorContent editor={editor} />
             </div>

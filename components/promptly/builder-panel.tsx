@@ -36,7 +36,7 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   })
-  const {updateSection} = usePromptStore()
+  const { updateSection } = usePromptStore()
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -62,7 +62,7 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
         value={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
         placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
-        minHeight={96}
+        className="h-fit border"
       />
     </div>
   )

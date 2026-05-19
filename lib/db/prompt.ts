@@ -1,4 +1,5 @@
 import { getDB } from "./index";
+import type { JSONContent } from "@tiptap/react"
 
 export interface TemplateSection {
   id: string
@@ -43,6 +44,7 @@ export interface BuilderSectionContent {
   sectionId: string
   order: number
   value: string
+  doc?: JSONContent
 }
 
 export async function saveBuilderContent(

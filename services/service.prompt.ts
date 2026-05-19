@@ -1,6 +1,7 @@
 import { createFile, readFile, createFolder, deleteFolder } from "../lib/fs/fs.ts"
 import { getDB } from "../lib/db/index.ts"
 import { getPromptTypeDir, getPrompt, buildFilePath } from "@/lib/fs/fsHelpers.ts"
+import { BuilderSectionContent } from "@/lib/db/prompt.ts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ type PromptResult = {
     id: string
     version_number: number
     label: string | null
-    builder_content: Array<{ sectionId: string; order: number; value: string }>
+    builder_content: BuilderSectionContent[]
     scratchpad: string
     output: { text: string | null; json: string | null; xml: string | null }
   }
@@ -135,7 +136,7 @@ export async function readPrompt(promptId: string): Promise<PromptResult | null>
   const version = versionRows[0]
 
   // builder_content
-  let builderContent = []
+  let builderContent : BuilderSectionContent[] = []
   try {
     builderContent = JSON.parse(version.builder_content || "[]")
   } catch {
@@ -175,7 +176,7 @@ export async function readPrompt(promptId: string): Promise<PromptResult | null>
       id: version.id,
       version_number: version.version_number,
       label: version.label,
-      builder_content: builderContent,
+      builder_content: builderContent ,
       scratchpad,
       output,
     },

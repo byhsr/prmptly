@@ -5,7 +5,7 @@ import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/p
 import { createFile } from "@/lib/fs/fs"
 import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/prompt"
 import { JSONContent } from "@tiptap/react"
-import { serializeDoc , nodeToXml} from "@/components/ui/SmartTextEditor"
+import { serializeDoc, nodeToXml } from "@/components/ui/SmartTextEditor"
 
 
 export type OutputFormat = "plain" | "json" | "xml"
@@ -56,46 +56,6 @@ interface PromptStore {
 
 // ── Compile ────────────────────────────────────────────────────────────────────
 
-// function compile(
-//   sections: TemplateSection[],
-//   filled: Record<string, string>,
-//   format: OutputFormat
-// ): string {
-//   const ordered = [...sections].sort((a, b) => a.order_index - b.order_index)
-//   const pairs = ordered.map((s) => ({ title: s.title, value: filled[s.id] || "" }))
-
-//     if (!sections.length) {
-//     return filled["__freeform__"] || ""
-//   }
-
-//   if (format === "plain") {
-//     return pairs
-//       .map((p) => `${p.title.toUpperCase()}:\n${p.value}`)
-//       .join("\n\n")
-//   }
-
-//   if (format === "json") {
-//     const obj: Record<string, string> = {}
-//     pairs.forEach((p) => {
-//       const key = p.title.toLowerCase().replace(/\s+/g, "_")
-//       obj[key] = p.value
-//     })
-//     return JSON.stringify(obj, null, 2)
-//   }
-
-//   if (format === "xml") {
-//     const inner = pairs
-//       .map((p) => {
-//         const tag = p.title.toLowerCase().replace(/\s+/g, "_")
-//         return `  <${tag}>${p.value}</${tag}>`
-//       })
-//       .join("\n")
-//     return `<prompt>\n${inner}\n</prompt>`
-//   }
-
-//   return ""
-// }
-
 
 function compile(
   sections: TemplateSection[],
@@ -127,17 +87,17 @@ function compile(
   }
 
   if (format === "json") {
-  const obj: Record<string, unknown> = {}
-  pairs.forEach((p) => {
-    try {
-      const parsed = JSON.parse(p.value)
-      obj[p.key] = parsed?.prompt ?? parsed
-    } catch {
-      obj[p.key] = p.value
-    }
-  })
-  return JSON.stringify(obj, null, 2)
-}
+    const obj: Record<string, unknown> = {}
+    pairs.forEach((p) => {
+      try {
+        const parsed = JSON.parse(p.value)
+        obj[p.key] = parsed?.prompt ?? parsed
+      } catch {
+        obj[p.key] = p.value
+      }
+    })
+    return JSON.stringify(obj, null, 2)
+  }
 
   if (format === "xml") {
     const inner = pairs.map((p) => {
@@ -174,12 +134,12 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       }
 
       const filledSections: Record<string, string> = {}
+      const filledSectionDocs: Record<string, JSONContent> = {}
+
       for (const entry of result.version.builder_content) {
         filledSections[entry.sectionId] = entry.value
+        if (entry.doc) filledSectionDocs[entry.sectionId] = entry.doc
       }
-
-      // no docs yet on load — they'll populate as user types
-      const filledSectionDocs: Record<string, JSONContent> = {}
       const compiledOutput = compile(sections, filledSections, filledSectionDocs, "plain")
 
       set({
@@ -230,7 +190,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
   },
 
   persist: async () => {
-    const { activePrompt, filledSections, sections, compiledOutput, outputFormat } = get()
+    const { activePrompt, filledSections, filledSectionDocs, sections, compiledOutput, outputFormat } = get()
     if (!activePrompt) return
 
     const builderContent: BuilderSectionContent[] = sections
@@ -239,6 +199,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         sectionId: s.id,
         order: i,
         value: filledSections[s.id] || "",
+        doc: filledSectionDocs[s.id],
       }))
 
     await saveBuilderContent(activePrompt.version.id, builderContent)
