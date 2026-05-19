@@ -6,33 +6,34 @@ import { Template } from "@/lib/db/template"
 
 interface TemplateSelectorProps {
   value: string | null
-  onChange: (template: Template) => void
+  onChange: (template: Template | null) => void
 }
-
 export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     templateService.getAll().then(setTemplates)
   }, [])
 
-  // Set input label to selected template name
   useEffect(() => {
     if (value) {
       const found = templates.find((t) => t.id === value)
       if (found) setQuery(found.name)
+    } else {
+      setQuery("")
     }
   }, [value, templates])
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOpen(false)
-        // Reset query to selected template name
+        setIsSearching(false)
         const found = templates.find((t) => t.id === value)
         setQuery(found?.name || "")
       }
@@ -41,42 +42,93 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
     return () => document.removeEventListener("mousedown", handler)
   }, [value, templates])
 
-  const filtered = templates.filter((t) =>
-    t.name.toLowerCase().includes(query.toLowerCase())
-  )
+  const filtered = isSearching
+    ? templates.filter((t) => t.name.toLowerCase().includes(query.toLowerCase()))
+    : templates
+
+  const selectedTemplate = templates.find((t) => t.id === value)
 
   return (
-    <div className="flex flex-col gap-2" ref={wrapperRef}>
-      <label className="text-[10px] font-medium uppercase tracking-widest text-muted">
-        Template
-      </label>
-      <div className="relative">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
+    <div className="relative w-fit self-end flex items-center gap-1.5" ref={wrapperRef}>
+      <AnimatePresence>
+        {value && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.1 }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onChange(null)
+              setQuery("")
+            }}
+            className="text-muted/50 hover:text-foreground transition-colors text-base leading-none"
+          >
+            ×
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <button
+        onClick={() => {
+          if (open) {
+            setOpen(false)
+            setIsSearching(false)
+            const found = templates.find((t) => t.id === value)
+            setQuery(found?.name || "")
+          } else {
             setOpen(true)
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="Pick a template..."
-          className="w-full py-2 focus:p-2 focus:bg-surface rounded-lg text-sm text-foreground placeholder:text-muted/40 outline-none transition-colors font-sans"
-        />
-        <AnimatePresence>
-          {open && filtered.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.12 }}
-              className="absolute top-[calc(100%+8px)] left-0 right-0 z-20 bg-surface border border-border shadow-lg p-2 rounded-xl overflow-hidden"
-            >
+            setIsSearching(false)
+            setQuery("")
+            setTimeout(() => inputRef.current?.focus(), 0)
+          }
+        }}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-surface text-sm text-foreground hover:bg-border/30 transition-colors"
+      >
+        <span className={selectedTemplate ? "text-foreground" : "text-muted/40"}>
+          {selectedTemplate?.name || "Pick a template..."}
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.15 }}
+          className="text-muted"
+        >
+          ▾
+        </motion.span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute top-[calc(100%+6px)] right-0 z-20 bg-surface border border-border shadow-lg rounded-xl overflow-hidden w-52"
+          >
+            <div className="p-2 border-b border-border">
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setIsSearching(true)
+                }}
+                placeholder="Search..."
+                className="w-full px-2 py-1 text-sm bg-transparent text-foreground placeholder:text-muted/40 outline-none"
+              />
+            </div>
+
+            <div className="p-1.5 max-h-56 overflow-y-auto">
               {filtered.map((t) => (
                 <button
                   key={t.id}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     onChange(t)
                     setQuery(t.name)
+                    setIsSearching(false)
                     setOpen(false)
                   }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left ${
@@ -85,18 +137,16 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
                       : "text-foreground hover:bg-border/30"
                   }`}
                 >
-                  <span className="">{t.name}</span>
-                  {/* {t.is_system && (
-                    <span className="text-[10px] text-muted uppercase tracking-widest">
-                      system
-                    </span>
-                  )} */}
+                  {t.name}
                 </button>
               ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              {filtered.length === 0 && (
+                <p className="text-xs text-muted/50 px-3 py-2">No templates found</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

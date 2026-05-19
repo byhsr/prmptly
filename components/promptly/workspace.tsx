@@ -15,7 +15,7 @@ export function Workspace({ openFiles, activeFile, onTabSelect, onTabClose }: Wo
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden">
 
-      <div className="flex-1 overflow-hidden bg-background">
+      <div className="flex-1 overflow-hidden border bg-background">
         <AnimatePresence mode="wait">
           {activeFile ? (
             <motion.div

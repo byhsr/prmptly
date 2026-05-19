@@ -120,7 +120,7 @@ export function FileTab({ tab }: { tab: Tab }) {
       {/* Panel Content */}
       <div className="flex-1 overflow-hidden">
         <motion.div
-          className="flex h-full"
+          className="flex h-full border"
           layout
         >
           <AnimatePresence mode="popLayout">

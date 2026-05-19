@@ -42,6 +42,7 @@ interface PromptStore {
   compiledOutput: string
   loading: boolean
   scratchpadText: string
+  clearTemplate: () => Promise<void>
 
   // Actions
   loadPrompt: (promptId: string) => Promise<void>
@@ -214,6 +215,20 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       )
     }
   },
+
+  clearTemplate: async () => {
+  if (persistTimer) clearTimeout(persistTimer)
+  
+  const { activePrompt, filledSections, filledSectionDocs, outputFormat } = get()
+  if (!activePrompt) return
+
+  await updatePromptTemplate(activePrompt.id, null)
+  set({
+    sections: [],
+    compiledOutput: "",
+    activePrompt: { ...activePrompt, template_id: null },
+  })
+},
 
   reset: () => set({
     activePrompt: null,

@@ -82,7 +82,7 @@ export function HomeView() {
 export function PromptView({ tab }: { tab: Tab }) {
 
   return (
-    <div className="flex h-full  flex-col">
+    <div className="flex h-full flex-col">
       <div className="flex-1 flex items-center justify-center">
         <FileTab tab={tab} />
       </div>
