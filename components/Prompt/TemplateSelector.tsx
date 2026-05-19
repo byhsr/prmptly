@@ -49,7 +49,7 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
   const selectedTemplate = templates.find((t) => t.id === value)
 
   return (
-    <div className="relative w-fit self-end flex items-center gap-1.5" ref={wrapperRef}>
+    <div className="relative z-50 w-fit self-end flex items-center gap-1.5" ref={wrapperRef}>
       <AnimatePresence>
         {value && (
           <motion.button
@@ -83,7 +83,7 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
             setTimeout(() => inputRef.current?.focus(), 0)
           }
         }}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-surface text-sm text-foreground hover:bg-border/30 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl  bg-surface text-sm text-foreground hover:bg-border/30 transition-colors"
       >
         <span className={selectedTemplate ? "text-foreground" : "text-muted/40"}>
           {selectedTemplate?.name || "Pick a template..."}
@@ -104,7 +104,7 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute top-[calc(100%+6px)] right-0 z-20 bg-surface border border-border shadow-lg rounded-xl overflow-hidden w-52"
+            className="absolute top-[calc(100%+6px)] right-0 z-9999 bg-surface border border-border shadow-lg rounded-xl overflow-hidden w-52"
           >
             <div className="p-2 border-b border-border">
               <input

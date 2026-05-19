@@ -71,30 +71,8 @@ export async function saveOutput(
   )
 }
 
-// export async function updatePromptTemplate(promptId: string, templateId: string | null): Promise<void> {
-//   const db = await getDB()
-//   await db.execute(
-//     `UPDATE prompts SET template_id = ?, updated_at = ? WHERE id = ?`,
-//     [templateId, new Date().toISOString(), promptId]
-//   )
-// }
-
-// export async function updatePromptTemplate(promptId: string, templateId: string | null): Promise<void> {
-//   const db = await getDB()
-//   await db.execute(`PRAGMA foreign_keys = OFF`)
-//   await db.execute(
-//     `UPDATE prompts SET template_id = ?, updated_at = ? WHERE id = ?`,
-//     [templateId, new Date().toISOString(), promptId]
-//   )
-//   await db.execute(`PRAGMA foreign_keys = ON`)
-// }
-
-
 export async function updatePromptTemplate(promptId: string, templateId: string | null): Promise<void> {
   const db = await getDB()
-  console.log("foreign key check", await db.execute(`PRAGMA foreign_key_check`))
-  console.log("all FK Relationships", await db.execute(`SELECT * FROM sqlite_master WHERE type='table' AND sql LIKE '%REFERENCES prompts%';`))
-  console.log(await db.select(`PRAGMA table_info(prompts)`))
   
   if (templateId === null) {
     await db.execute(

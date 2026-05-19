@@ -175,20 +175,34 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set({ outputFormat: format, compiledOutput: compiled })
   },
 
-  updateTemplate: async (templateId: string) => {
-    const { activePrompt, filledSections, outputFormat, filledSectionDocs } = get()
-    if (!activePrompt) return
+ updateTemplate: async (templateId: string) => {
+  const { activePrompt, filledSections, filledSectionDocs, outputFormat, sections } = get()
+  if (!activePrompt) return
 
-    await updatePromptTemplate(activePrompt.id, templateId)
-    const sections = await templateService.getSections(templateId)
-    const compiled = compile(sections, filledSections, filledSectionDocs, outputFormat)
+  // Dump current content to scratchpad before wiping
+  const dump = sections
+    .map((s) => `${s.title}:\n${filledSections[s.id] || ""}`)
+    .filter((s) => s.trim())
+    .join("\n\n")
 
-    set({
-      sections,
-      compiledOutput: compiled,
-      activePrompt: { ...activePrompt, template_id: templateId },
-    })
-  },
+  if (dump) {
+    const current = get().scratchpadText
+    const newScratchpad = current ? `${current}\n\n---\n\n${dump}` : dump
+    get().updateScratchpad(newScratchpad)
+  }
+
+  await updatePromptTemplate(activePrompt.id, templateId)
+  const newSections = await templateService.getSections(templateId)
+  const compiled = compile(newSections, {}, {}, outputFormat)
+
+  set({
+    sections: newSections,
+    filledSections: {},
+    filledSectionDocs: {},
+    compiledOutput: compiled,
+    activePrompt: { ...activePrompt, template_id: templateId },
+  })
+},
 
   persist: async () => {
     const { activePrompt, filledSections, filledSectionDocs, sections, compiledOutput, outputFormat } = get()
@@ -218,13 +232,27 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
 
   clearTemplate: async () => {
   if (persistTimer) clearTimeout(persistTimer)
-  
-  const { activePrompt, filledSections, filledSectionDocs, outputFormat } = get()
+
+  const { activePrompt, filledSections, filledSectionDocs, sections, outputFormat } = get()
   if (!activePrompt) return
+
+  // Dump to scratchpad
+  const dump = sections
+    .map((s) => `${s.title}:\n${filledSections[s.id] || ""}`)
+    .filter((s) => s.trim())
+    .join("\n\n")
+
+  if (dump) {
+    const current = get().scratchpadText
+    const newScratchpad = current ? `${current}\n\n---\n\n${dump}` : dump
+    get().updateScratchpad(newScratchpad)
+  }
 
   await updatePromptTemplate(activePrompt.id, null)
   set({
     sections: [],
+    filledSections: {},
+    filledSectionDocs: {},
     compiledOutput: "",
     activePrompt: { ...activePrompt, template_id: null },
   })

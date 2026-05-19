@@ -110,14 +110,7 @@ export function BuilderPanel() {
     reorderSections(arrayMove(sections, oldIndex, newIndex))
   }
 
-  const handleTemplateChange = (template: Template | null) => {
-  if (!template) {
-    console.log("clearing template")
-    clearTemplate()
-    return
-  }
-  updateTemplate(template.id)
-}
+  
 
   if (loading) {
     return (
@@ -130,11 +123,8 @@ export function BuilderPanel() {
   return (
     <div className="flex h-full flex-col">
       {/* Template Selector */}
-      <div className="shrink-0 border flex flex-col border-border px-4 py-3">
-        <TemplateSelector
-          value={activePrompt?.template_id ?? null}
-          onChange={handleTemplateChange}
-        />
+      <div className="shrink-0 flex flex-col border-border px-4 py-3">
+       
       </div>
 
       {/* Sections or Freeform */}

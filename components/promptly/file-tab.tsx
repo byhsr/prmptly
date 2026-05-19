@@ -1,6 +1,6 @@
 "use client"
 
-import { useState , useEffect} from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Columns2, Columns3 } from "lucide-react"
 import { BuilderPanel } from "./builder-panel"
@@ -8,6 +8,8 @@ import { ScratchpadPanel } from "./scratchpad-panel"
 import { PromptPanel } from "./prompt-panel"
 import { Tab } from "./Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
+import { Template } from "@/lib/db/template"
+import { TemplateSelector } from "../Prompt/TemplateSelector"
 
 type SubTab = "builder" | "scratchpad" | "prompt"
 type SplitMode = "none" | "two" | "two-prompt" | "three"
@@ -19,13 +21,13 @@ interface FileTabProps {
 export function FileTab({ tab }: { tab: Tab }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("builder")
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
+  const { loadPrompt, reset, activePrompt, updateTemplate, clearTemplate } = usePromptStore()
 
-  const { loadPrompt, reset } = usePromptStore()
 
   useEffect(() => {
-  loadPrompt(tab.id)
-  return () => reset()
-}, [tab.id])
+    loadPrompt(tab.id)
+    return () => reset()
+  }, [tab.id])
 
   const cycleSplitMode = () => {
     const modes: SplitMode[] = ["none", "two", "two-prompt", "three"]
@@ -47,6 +49,7 @@ export function FileTab({ tab }: { tab: Tab }) {
   }
 
   const renderPanel = (panel: SubTab) => {
+
     switch (panel) {
       case "builder":
         return <BuilderPanel />
@@ -71,56 +74,82 @@ export function FileTab({ tab }: { tab: Tab }) {
   }
 
   const panelsToShow = getPanelsToShow()
+  const showTemplate = panelsToShow.includes("builder")
+
+  const handleTemplateChange = (template: Template | null) => {
+    if (!template) {
+      console.log("clearing template")
+      clearTemplate()
+      return
+    }
+    updateTemplate(template.id)
+  }
 
   return (
     <div className="flex relative h-full w-full flex-col">
-      <div className="w-full  flex sticky top-0 justify-between w-f bg-surface">
+      <div className="w-full  flex justify-between w-f bg-surface">
         {/* tab Title */}
         <div
-        className="w-fit flex-1 flex items-center px-6 "
-     
+          className="w-fit flex-1 flex items-center px-6 "
+
         >
           <input
             defaultValue={tab.label}
-            onBlur={() =>{}}
+            onBlur={() => { }}
             className="bg-transparent  min-w-full outline-none text-sm font-medium tracking-wide"
           />
         </div>
 
-        <div className="flex flex-2 items-center justify-end gap-4   px-4 pt-2">
-          {/* Tab Switcher */}
-          <div className="flex items-center gap-1">
-            {(["builder", "scratchpad", "prompt"] as SubTab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveSubTab(tab)}
-                className={`rounded-lg rounded-b-none px-4 py-2 text-sm font-medium capitalize transition-colors ${activeSubTab === tab
-                  ? "bg-background border-background border-b-2 text-foreground"
-                  : "text-main hover:text-foreground hover:bg-background"
-                  }`}
-              >
-                {tab}
-              </button>
-            ))}
+
+
+        <div className="flex">
+          {/* template selector */}
+          <div className=" relative z-50 flex items-center justify-center">
+            {showTemplate && <TemplateSelector
+              value={activePrompt?.template_id ?? null}
+              onChange={handleTemplateChange}
+            />}
           </div>
 
-          {/* Split Button */}
-          <button
-            onClick={cycleSplitMode}
-            className={`rounded-lg p-2 transition-colors ${splitMode !== "none"
-              ? "bg-accent text-accent-foreground"
-              : "text-muted hover:text-foreground hover:bg-background"
-              }`}
-            title="Toggle split view"
-          >
-            {getSplitIcon()}
-          </button>
+
+          {/* panel selector */}
+          <div className="flex flex-2 items-center justify-end gap-4   px-4 pt-2">
+            {/* Tab Switcher */}
+            <div className="flex items-center gap-1">
+              {(["builder", "scratchpad", "prompt"] as SubTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveSubTab(tab)}
+                  className={`rounded-lg rounded-b-none px-4 py-2 text-sm font-medium capitalize transition-colors ${activeSubTab === tab
+                    ? "bg-background border-background border-b-2 text-foreground"
+                    : "text-main hover:text-foreground hover:bg-background"
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Split Button */}
+            <button
+              onClick={cycleSplitMode}
+              className={`rounded-lg p-2 transition-colors ${splitMode !== "none"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted hover:text-foreground hover:bg-background"
+                }`}
+              title="Toggle split view"
+            >
+              {getSplitIcon()}
+            </button>
+          </div>
         </div>
+
+
       </div>
       {/* Panel Content */}
       <div className="flex-1 overflow-hidden">
         <motion.div
-          className="flex h-full border"
+          className="flex h-full "
           layout
         >
           <AnimatePresence mode="popLayout">
