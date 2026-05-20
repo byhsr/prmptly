@@ -262,7 +262,7 @@ export function SmartEditor({
     outputFormat = "plain",
     onChange,
     className = "",
-    minHeight = 120,
+    minHeight = 20,
 }: SmartEditorProps) {
     const [mentionState, setMentionState] = useState<{
         show: boolean
@@ -362,7 +362,7 @@ export function SmartEditor({
     return (
         <>
             <div
-                className={cn(`smart-editor-wrapper relative w-full rounded-lg 
+                className={cn(`smart-editor-wrapper relative w-full rounded-lg
                      bg-background px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)}
             >
                 <EditorContent editor={editor} />

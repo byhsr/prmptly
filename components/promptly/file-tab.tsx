@@ -11,6 +11,7 @@ import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
 import { TemplateSelector } from "../Prompt/TemplateSelector"
 
+
 type SubTab = "builder" | "scratchpad" | "prompt"
 type SplitMode = "none" | "two" | "two-prompt" | "three"
 
@@ -22,7 +23,6 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("builder")
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
   const { loadPrompt, reset, activePrompt, updateTemplate, clearTemplate } = usePromptStore()
-
 
   useEffect(() => {
     loadPrompt(tab.id)
@@ -78,7 +78,6 @@ export function FileTab({ tab }: { tab: Tab }) {
 
   const handleTemplateChange = (template: Template | null) => {
     if (!template) {
-      console.log("clearing template")
       clearTemplate()
       return
     }
@@ -87,10 +86,10 @@ export function FileTab({ tab }: { tab: Tab }) {
 
   return (
     <div className="flex relative h-full w-full flex-col">
-      <div className="w-full  flex justify-between w-f bg-surface">
+      <div className="w-full sticky top-0 flex justify-between w-f bg-surface">
         {/* tab Title */}
         <div
-          className="w-fit flex-1 flex items-center px-6 "
+          className="w-fit flex-1 border flex items-center px-6 "
 
         >
           <input
@@ -104,7 +103,7 @@ export function FileTab({ tab }: { tab: Tab }) {
 
         <div className="flex">
           {/* template selector */}
-          <div className=" relative z-50 flex items-center justify-center">
+          <div className="z-50 flex items-center justify-center">
             {showTemplate && <TemplateSelector
               value={activePrompt?.template_id ?? null}
               onChange={handleTemplateChange}
@@ -147,7 +146,7 @@ export function FileTab({ tab }: { tab: Tab }) {
 
       </div>
       {/* Panel Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 border border-green-500 overflow-hidden">
         <motion.div
           className="flex h-full "
           layout

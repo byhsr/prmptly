@@ -62,8 +62,8 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
         value={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
         placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
-        className="h-fit border"
       />
+
     </div>
   )
 }
@@ -122,13 +122,10 @@ export function BuilderPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Template Selector */}
-      <div className="shrink-0 flex flex-col border-border px-4 py-3">
-       
-      </div>
+  
 
       {/* Sections or Freeform */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto border p-8 ">
         {!sections.length ? (
           <SmartEditor
             value={filledSections["__freeform__"] || ""}

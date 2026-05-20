@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { templateService } from "@/lib/db/template"
 import { Template } from "@/lib/db/template"
+import { createPortal } from "react-dom"
 
 
 interface TemplateSelectorProps {
@@ -13,8 +14,10 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
+  const [rect, setRect] = useState<DOMRect | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     templateService.getAll().then(setTemplates)
@@ -31,7 +34,10 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      if (
+        wrapperRef.current && !wrapperRef.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) {
         setOpen(false)
         setIsSearching(false)
         const found = templates.find((t) => t.id === value)
@@ -49,7 +55,7 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
   const selectedTemplate = templates.find((t) => t.id === value)
 
   return (
-    <div className="relative z-50 w-fit self-end flex items-center gap-1.5" ref={wrapperRef}>
+    <div className="relative w-fit self-end flex items-center gap-1.5" ref={wrapperRef}>
       <AnimatePresence>
         {value && (
           <motion.button
@@ -77,13 +83,14 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
             const found = templates.find((t) => t.id === value)
             setQuery(found?.name || "")
           } else {
+            setRect(wrapperRef.current?.getBoundingClientRect() ?? null)
             setOpen(true)
             setIsSearching(false)
             setQuery("")
             setTimeout(() => inputRef.current?.focus(), 0)
           }
         }}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-xl  bg-surface text-sm text-foreground hover:bg-border/30 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface text-sm text-foreground hover:bg-border/30 transition-colors"
       >
         <span className={selectedTemplate ? "text-foreground" : "text-muted/40"}>
           {selectedTemplate?.name || "Pick a template..."}
@@ -97,14 +104,22 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
         </motion.span>
       </button>
 
-      <AnimatePresence>
-        {open && (
+
+      {open && rect && createPortal(
+        <AnimatePresence>
           <motion.div
+            ref={dropdownRef}
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute top-[calc(100%+6px)] right-0 z-9999 bg-surface border border-border shadow-lg rounded-xl overflow-hidden w-52"
+            style={{
+              position: "fixed",
+              top: rect.bottom + 6,
+              right: window.innerWidth - rect.right,
+              zIndex: 9999,
+            }}
+            className="bg-surface border border-border shadow-lg rounded-xl overflow-hidden w-52"
           >
             <div className="p-2 border-b border-border">
               <input
@@ -131,11 +146,10 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
                     setIsSearching(false)
                     setOpen(false)
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left ${
-                    value === t.id
-                      ? "text-accent"
-                      : "text-foreground hover:bg-border/30"
-                  }`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors text-left ${value === t.id
+                    ? "text-accent"
+                    : "text-foreground hover:bg-border/30"
+                    }`}
                 >
                   {t.name}
                 </button>
@@ -144,9 +158,12 @@ export function TemplateSelector({ value, onChange }: TemplateSelectorProps) {
                 <p className="text-xs text-muted/50 px-3 py-2">No templates found</p>
               )}
             </div>
+
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
+
     </div>
   )
 }
