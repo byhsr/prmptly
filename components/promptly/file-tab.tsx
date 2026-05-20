@@ -85,11 +85,11 @@ export function FileTab({ tab }: { tab: Tab }) {
   }
 
   return (
-    <div className="flex relative h-full w-full flex-col">
+    <div className="flex relative h-full  w-full flex-col">
       <div className="w-full sticky top-0 flex justify-between w-f bg-surface">
         {/* tab Title */}
         <div
-          className="w-fit flex-1 border flex items-center px-6 "
+          className="w-fit flex-1 flex items-center px-6 "
 
         >
           <input
@@ -100,7 +100,7 @@ export function FileTab({ tab }: { tab: Tab }) {
         </div>
 
 
-
+ {/* controls */}
         <div className="flex">
           {/* template selector */}
           <div className="z-50 flex items-center justify-center">
@@ -112,15 +112,15 @@ export function FileTab({ tab }: { tab: Tab }) {
 
 
           {/* panel selector */}
-          <div className="flex flex-2 items-center justify-end gap-4   px-4 pt-2">
+          <div className="flex flex-2 items-center justify-end gap-4  px-4 pt-2">
             {/* Tab Switcher */}
             <div className="flex items-center gap-1">
               {(["builder", "scratchpad", "prompt"] as SubTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveSubTab(tab)}
-                  className={`rounded-lg rounded-b-none px-4 py-2 text-sm font-medium capitalize transition-colors ${activeSubTab === tab
-                    ? "bg-background border-background border-b-2 text-foreground"
+                  className={`rounded-lg border-background rounded-b-none px-4 py-2 text-sm font-medium capitalize transition-colors ${activeSubTab === tab
+                    ? "bg-background text-foreground"
                     : "text-main hover:text-foreground hover:bg-background"
                     }`}
                 >
@@ -146,24 +146,23 @@ export function FileTab({ tab }: { tab: Tab }) {
 
       </div>
       {/* Panel Content */}
-      <div className="flex-1 border border-green-500 overflow-hidden">
+      <div className="flex-1 w-full overflow-hidden">
         <motion.div
-          className="flex h-full "
+          className="flex h-full w-full"
           layout
         >
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait">
             {panelsToShow.map((panel, index) => (
               <motion.div
                 key={panel}
                 layout
-                initial={{ opacity: 0, width: 0 }}
+                initial={{ opacity: 0 }}
                 animate={{
                   opacity: 1,
-                  width: `${100 / panelsToShow.length}%`
                 }}
-                exit={{ opacity: 0, width: 0 }}
+                exit={{ opacity: 0,  }}
                 transition={{ duration: 0.2, ease: "easeInOut" }}
-                className={`h-full overflow-hidden ${index > 0 ? "border-l border-border" : ""
+                className={`h-full min-w-full  overflow-hidden ${index > 0 ? "border-l border-border" : ""
                   }`}
               >
                 <div className="h-full overflow-y-auto">

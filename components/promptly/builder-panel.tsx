@@ -125,7 +125,7 @@ export function BuilderPanel() {
   
 
       {/* Sections or Freeform */}
-      <div className="flex-1 overflow-y-auto border p-8 ">
+      <div className="flex-1 overflow-y-auto p-6 ">
         {!sections.length ? (
           <SmartEditor
             value={filledSections["__freeform__"] || ""}
