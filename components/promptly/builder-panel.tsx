@@ -44,7 +44,7 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="group space-y-2">
+    <div ref={setNodeRef} style={style} className="group border isolate space-y-2 ">
       <div className="flex items-center gap-2">
         <button
           {...attributes}
@@ -58,11 +58,14 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
           {section.title}
         </label>
       </div>
-      <SmartEditor
+      <div className="border relative z-0">
+           <SmartEditor
         value={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
         placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
       />
+      </div>
+     
 
     </div>
   )
@@ -93,11 +96,8 @@ export function BuilderPanel() {
     sections,
     filledSections,
     loading,
-    activePrompt,
     updateSection,
     reorderSections,
-    updateTemplate,
-    clearTemplate
   } = usePromptStore()
 
   const sensors = useSensors(useSensor(PointerSensor))

@@ -1,0 +1,42 @@
+
+        .smart-editor-content p {
+          margin: 0;
+          line-height: 1.6;
+        }
+        .smart-editor-content p + p {
+          margin-top: 0.25rem;
+        }
+        .smart-editor-content ul {
+          padding-left: 1.25rem;
+          list-style: none;
+          margin: 0.25rem 0;
+        }
+        .smart-editor-content ul li {
+          position: relative;
+          margin: 0.125rem 0;
+        }
+        .smart-editor-content ul li::before {
+          content: "–";
+          position: absolute;
+          left: -1.1rem;
+          color: var(--color-muted, #666);
+        }
+        .smart-editor-content ul ul {
+          margin-top: 0.125rem;
+        }
+        .is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: var(--color-muted, #888);
+          opacity: 0.5;
+          pointer-events: none;
+          height: 0;
+        }
+        .mention {
+          background: var(--color-border, #333);
+          border-radius: 4px;
+          padding: 0 4px;
+          font-family: monospace;
+          font-size: 0.8em;
+          cursor: default;
+        }

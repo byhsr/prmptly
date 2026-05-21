@@ -5,7 +5,7 @@ import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/p
 import { createFile } from "@/lib/fs/fs"
 import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/prompt"
 import { JSONContent } from "@tiptap/react"
-import { serializeDoc, nodeToXml } from "@/components/ui/SmartTextEditor"
+import { serializeDoc, nodeToXml } from "@/lib/client/textEditorFuncs"
 
 
 export type OutputFormat = "plain" | "json" | "xml"
