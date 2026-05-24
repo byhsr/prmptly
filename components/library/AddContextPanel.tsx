@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core"
 import { v4 as uuidv4 } from "uuid"
 import { join } from "@tauri-apps/api/path"
 import { getDB } from "@/lib/db"
+import { claimNamespace } from "@/services/namespaces"
 
 const PREP_PROMPT = `Please clean and structure the following content for use as AI context. 
 - Remove redundant or duplicate information
@@ -126,65 +127,53 @@ export const AddContextPanel = ({ scopes, onBack }: AddContextPanelProps) => {
       const db = getDB();
       const config = await readConfig();
       const basePath = config?.base_path;
-      console.log("[handleSave] Config loaded", { basePath });
-      const result = await db.select("PRAGMA foreign_key_list('documents')")
-      console.log("[FK check]", result)
 
       const result1 = await db.select("SELECT sql FROM sqlite_master WHERE name = 'documents'")
       console.log("[documents schema]", result1)
 
       if (!basePath) {
-        console.error("[handleSave] No basePath in config — aborting");
         return;
       }
 
       const dbPath = await join(basePath, "app.db");
-      console.log("[handleSave] dbPath resolved", { dbPath });
 
       let scopeName = selectedScope.name;
-      console.log("[handleSave] scope check", { id: selectedScope.id, name: selectedScope.name })
 
       // 1. If new scope, insert it
       if (selectedScope.id === "__new__") {
-        console.log("[handleSave] Inserting new scope", { scopeName });
+        await claimNamespace(scopeName, "rag")
         await db.execute("INSERT INTO scopes (name) VALUES (?)", [scopeName]);
-        console.log("[handleSave] New scope inserted");
       }
 
       // 2. Insert document
       const documentId = uuidv4();
-      console.log("[handleSave] Inserting document", { documentId, scopeName, name: addContextFileName });
       await db.execute(
         "INSERT INTO documents (id, scope_name, name) VALUES (?, ?, ?)",
         [documentId, scopeName, addContextFileName || "Untitled"]
       );
-      console.log("[handleSave] Document inserted");
 
       // 3. Chunk the content
       const isMarkdown = addContextFileName?.endsWith(".md") ?? false;
-      console.log("[handleSave] Chunking content", { isMarkdown, contentLength: addContextContent.length });
       const chunks: string[] = await invoke("chunk_text", {
         text: addContextContent,
         isMarkdown,
       });
-      console.log("[handleSave] Chunks generated", { chunkCount: chunks.length });
 
       // 4. Generate embeddings
-      console.log("[handleSave] Generating embeddings for", chunks.length, "chunks");
+
       const embeddings: number[][] = await invoke("generate_embeddings", {
         texts: chunks,
       });
-      console.log("[handleSave] Embeddings generated", { embeddingCount: embeddings.length });
+
 
       if (chunks.length !== embeddings.length) {
-        console.error("[handleSave] Mismatch: chunks vs embeddings", { chunks: chunks.length, embeddings: embeddings.length });
-      }
+  throw new Error(`Chunk/embedding mismatch: ${chunks.length} chunks vs ${embeddings.length} embeddings`)
+}
 
       // 5. Insert each chunk as node + node_version
       for (let i = 0; i < chunks.length; i++) {
         const nodeId = uuidv4();
         const nodeVersionId = uuidv4();
-        console.log(`[handleSave] Inserting node ${i + 1}/${chunks.length}`, { nodeId, nodeVersionId });
 
         await db.execute(
           "INSERT INTO nodes (id, document_id, position) VALUES (?, ?, ?)",
@@ -199,11 +188,8 @@ export const AddContextPanel = ({ scopes, onBack }: AddContextPanelProps) => {
           content: chunks[i],
           embedding: embeddings[i],
         });
-
-        console.log(`[handleSave] Node ${i + 1}/${chunks.length} done`);
       }
 
-      console.log("[handleSave] Save complete — resetting and going back");
       resetAddContext();
       onBack();
     } catch (err) {

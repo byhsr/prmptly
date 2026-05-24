@@ -1,7 +1,7 @@
 "use client"
 
 import { TabBar } from "./tab-bar"
-import { FileTab } from "./file-tab"
+import { FileTab } from "./fileTab"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface WorkspaceProps {

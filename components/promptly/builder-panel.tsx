@@ -71,23 +71,6 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
   )
 }
 
-// ── FreeformBlock ──────────────────────────────────────────────────────────────
-
-function FreeformBlock({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex h-full flex-col">
-      <label className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-        Prompt
-      </label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 w-full rounded-lg outline-0 border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted/60 resize-none font-mono"
-        placeholder="Write your prompt..."
-      />
-    </div>
-  )
-}
 
 // ── BuilderPanel ───────────────────────────────────────────────────────────────
 

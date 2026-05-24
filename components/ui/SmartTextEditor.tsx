@@ -8,6 +8,7 @@ import type { JSONContent } from "@tiptap/react"
 import { cn } from "@/lib/utils"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
 import "@/src/styles/TextEditor.css"
+import { createPortal } from "react-dom"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,13 +180,13 @@ export function SmartEditor({
         <>
             <div
                 className={cn(`smart-editor-wrapper relative w-full rounded-lg
-                     bg-background px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)}
+                      px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)}
             >
                 <EditorContent editor={editor} />
             </div>
 
             {/* @mention portal */}
-            {mentionState.show && (
+            {mentionState.show && createPortal(
                 <div
                     style={{
                         position: "fixed",
@@ -203,9 +204,8 @@ export function SmartEditor({
                             setMentionState({ show: false, query: "", pos: { top: 0, left: 0 }, command: null })
                         }
                     />
-                </div>
+                </div>, document.body 
             )}
-=
         </>
     )
 }

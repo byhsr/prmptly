@@ -68,7 +68,7 @@ export function PromptPanel() {
         <button
           onClick={handleCopy}
           disabled={!compiledOutput}
-          className="absolute bottom-8 right-8 flex items-center gap-2 rounded-lg bg-surface border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="absolute bottom-18 right-8 flex items-center gap-2 rounded-lg bg-surface border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {copied ? (
             <>

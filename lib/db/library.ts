@@ -3,6 +3,7 @@ import { Snippet } from "../types/library.ts"
 import { Document } from "@/components/library/ScopeDocumentsPanel.tsx"
 import { Scope } from "@/components/library/AddContextPanel.tsx"
 import { invoke } from "@tauri-apps/api/core"
+import { claimNamespace } from "@/services/namespaces.ts"
 
 type RawSnippet = { key: string; value: string; created_at: string; updated_at: string }
 
@@ -22,6 +23,8 @@ export const createSnippet = async (
   if (existing.length > 0) {
     throw new Error("Snippet key already exists")
   }
+
+  if (scope) await claimNamespace(scope, "deterministic")
 
   await db.execute(
     "INSERT INTO deterministic_assets (key, value) VALUES ($1, $2)",
