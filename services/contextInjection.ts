@@ -1,4 +1,5 @@
 import { getDB } from "../lib/db";
+import { MentionItem } from "@/components/ui/SmartTextEditor";
 
 export interface Namespace {
     prefix: string
@@ -36,4 +37,13 @@ export async function resolveMention(raw: string): Promise<{ type: "deterministi
 
     // rag — caller handles vector search with prefix as scope + rest as query
     return { type: "rag", prefix, query: rest }
+}
+
+
+export async function getDeterministicKeys(prefix: string): Promise<MentionItem[]> {
+    const db = await getDB()
+    const rows = await db.select<{ key: string }[]>(
+        `SELECT key FROM deterministic_assets WHERE key LIKE ?`, [`${prefix}:%`]
+    )
+    return rows.map((r) => ({ id: r.key, label: r.key, source: "deterministic" as const }))
 }
