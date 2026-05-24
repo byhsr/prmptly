@@ -1,14 +1,15 @@
-
+import { useRef } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
-import { useEffect,  useState, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
+import { createPortal } from "react-dom"
 import type { JSONContent } from "@tiptap/react"
 import { cn } from "@/lib/utils"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
+import { getNamespaces, resolveMention, type Namespace } from "@/services/contextInjection"
 import "@/src/styles/TextEditor.css"
-import { createPortal } from "react-dom"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,23 +20,20 @@ export interface SmartEditorProps {
     placeholder?: string
     outputFormat?: OutputFormat
     onChange?: (plain: string, structured: JSONContent) => void
+    onResolvedContext?: (key: string, value: string) => void
     className?: string
     minHeight?: number
 }
 
-// Replace with real DB query later — same shape { id, label }
-const DUMMY_MENTIONS = [
-    { id: "writer:tone", label: "@writer:tone" },
-    { id: "writer:style", label: "@writer:style" },
-    { id: "project:scope", label: "@project:scope" },
-    { id: "project:context", label: "@project:context" },
-    { id: "kb:persona", label: "@kb:persona" },
-    { id: "kb:rules", label: "@kb:rules" },
-]
+interface MentionItem {
+    id: string
+    label: string
+    source: "deterministic" | "rag"
+}
 
 interface MentionListProps {
-    items: typeof DUMMY_MENTIONS
-    command: (item: { id: string }) => void
+    items: MentionItem[]
+    command: (item: MentionItem) => void
     onClose: () => void
 }
 
@@ -53,7 +51,11 @@ function MentionList({ items, command, onClose }: MentionListProps) {
         return () => window.removeEventListener("keydown", handler)
     }, [items, selected, command, onClose])
 
-    if (!items.length) return null
+    if (!items.length) return (
+    <div className="min-w-[180px] rounded-lg border border-border bg-background shadow-lg px-3 py-2">
+        <p className="text-xs text-muted">No context yet add data to Snippet or Context to inject</p>
+    </div>
+)
 
     return (
         <div className="min-w-[180px] rounded-lg border border-border bg-background shadow-lg overflow-hidden">
@@ -61,10 +63,10 @@ function MentionList({ items, command, onClose }: MentionListProps) {
                 <button
                     key={item.id}
                     onMouseDown={(e) => { e.preventDefault(); command(item) }}
-                    className={`w-full px-3 py-1.5 text-left text-xs font-mono transition-colors ${i === selected ? "bg-foreground/10 text-foreground" : "text-muted hover:bg-foreground/5"
-                        }`}
+                    className={`w-full px-3 py-1.5 text-left text-xs font-mono transition-colors ${i === selected ? "bg-foreground/10 text-foreground" : "text-muted hover:bg-foreground/5"}`}
                 >
-                    {item.label}
+                    <span>{item.label}</span>
+                    <span className="ml-2 opacity-40 text-[10px]">{item.source}</span>
                 </button>
             ))}
         </div>
@@ -78,15 +80,32 @@ export function SmartEditor({
     placeholder = "Write here… use - for bullets, Tab to nest, @ to reference",
     outputFormat = "plain",
     onChange,
+    onResolvedContext,
     className = "",
     minHeight = 20,
 }: SmartEditorProps) {
+    const [namespaces, setNamespaces] = useState<Namespace[]>([])
+    const namespacesRef = useRef<Namespace[]>([])
+
     const [mentionState, setMentionState] = useState<{
         show: boolean
         query: string
         pos: { top: number; left: number }
         command: ((item: { id: string }) => void) | null
     }>({ show: false, query: "", pos: { top: 0, left: 0 }, command: null })
+
+    useEffect(() => {
+        getNamespaces().then((ns) => {
+            setNamespaces(ns)
+            namespacesRef.current = ns
+        })
+    }, [])
+
+    const getFilteredItems = useCallback((query: string): MentionItem[] => {
+        return namespacesRef.current
+            .filter((ns) => ns.prefix.toLowerCase().includes(query.toLowerCase()))
+            .map((ns) => ({ id: ns.prefix, label: `@${ns.prefix}`, source: ns.source }))
+    }, [])
 
     const editor = useEditor({
         extensions: [
@@ -99,37 +118,37 @@ export function SmartEditor({
             }),
             Mention.configure({
                 HTMLAttributes: { class: "mention" },
-                suggestion: {
-                    items: ({ query }) =>
-                        DUMMY_MENTIONS.filter((m) =>
-                            m.id.toLowerCase().includes(query.toLowerCase())
-                        ),
-                    render: () => ({
-                        onStart: (props) => {
-                            const rect = props.clientRect?.()
-                            if (!rect) return
-                            setMentionState({
-                                show: true,
-                                query: props.query,
-                                pos: { top: rect.bottom + 6, left: rect.left },
-                                command: props.command,
-                            })
-                        },
-                        onUpdate: (props) => {
-                            const rect = props.clientRect?.()
-                            if (!rect) return
-                            setMentionState((s) => ({
-                                ...s,
-                                query: props.query,
-                                pos: { top: rect.bottom + 6, left: rect.left },
-                                command: props.command,
-                            }))
-                        },
-                        onKeyDown: (props) => props.event.key === "Escape",
-                        onExit: () =>
-                            setMentionState({ show: false, query: "", pos: { top: 0, left: 0 }, command: null }),
-                    }),
-                },
+suggestion: {
+    items: ({ query }) =>
+        namespacesRef.current
+            .filter((ns) => ns.prefix.toLowerCase().includes(query.toLowerCase()))
+            .map((ns) => ({ id: ns.prefix, label: `@${ns.prefix}`, source: ns.source })),
+    render: () => ({
+        onStart: (props) => {
+            const rect = props.clientRect?.()
+            if (!rect) return
+            setMentionState({
+                show: true,
+                query: props.query,
+                pos: { top: rect.bottom + 6, left: rect.left },
+                command: props.command,
+            })
+        },
+        onUpdate: (props) => {
+            const rect = props.clientRect?.()
+            if (!rect) return
+            setMentionState((s) => ({
+                ...s,
+                query: props.query,
+                pos: { top: rect.bottom + 6, left: rect.left },
+                command: props.command,
+            }))
+        },
+        onKeyDown: (props) => props.event.key === "Escape",
+        onExit: () =>
+            setMentionState({ show: false, query: "", pos: { top: 0, left: 0 }, command: null }),
+    }),
+},
             }),
         ],
         content: value || "",
@@ -145,7 +164,6 @@ export function SmartEditor({
         },
     })
 
-    // Tab / Shift+Tab for list nesting
     useEffect(() => {
         if (!editor) return
         const handleTab = (e: KeyboardEvent) => {
@@ -161,7 +179,6 @@ export function SmartEditor({
         return () => window.removeEventListener("keydown", handleTab, true)
     }, [editor])
 
-    // Sync when external value changes (e.g. loading a saved prompt)
     useEffect(() => {
         if (!editor || value === undefined) return
         const current = nodeToPlain(editor.getJSON())
@@ -169,11 +186,19 @@ export function SmartEditor({
     }, [value]) // eslint-disable-line
 
     const handleMentionCommand = useCallback(
-        (item: { id: string }) => {
+        async (item: MentionItem) => {
             mentionState.command?.(item)
             setMentionState({ show: false, query: "", pos: { top: 0, left: 0 }, command: null })
+
+            if (item.source === "deterministic") {
+                const result = await resolveMention(item.id)
+                if (result?.type === "deterministic") {
+                    onResolvedContext?.(item.id, result.value)
+                }
+            }
+            // rag — stays as mention node, resolved at generation time
         },
-        [mentionState]
+        [mentionState, onResolvedContext]
     )
 
     return (
@@ -185,7 +210,6 @@ export function SmartEditor({
                 <EditorContent editor={editor} />
             </div>
 
-            {/* @mention portal */}
             {mentionState.show && createPortal(
                 <div
                     style={{
@@ -196,15 +220,14 @@ export function SmartEditor({
                     }}
                 >
                     <MentionList
-                        items={DUMMY_MENTIONS.filter((m) =>
-                            m.id.toLowerCase().includes(mentionState.query.toLowerCase())
-                        )}
+                        items={getFilteredItems(mentionState.query)}
                         command={handleMentionCommand}
                         onClose={() =>
                             setMentionState({ show: false, query: "", pos: { top: 0, left: 0 }, command: null })
                         }
                     />
-                </div>, document.body 
+                </div>,
+                document.body
             )}
         </>
     )
