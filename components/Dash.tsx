@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Tab } from "./promptly/Tabbar"
-import { Sidebar } from "@/components/promptly/sidebar"
-import { Workspace } from "./promptly/Workspaces"
+import { Tab } from "./core-components/Tabbar"
+import { Sidebar } from "@/components/core-components/sidebar"
+import { Workspace } from "./core-components/Workspaces"
 import { getCollectionsTree, CollectionTree, createCollection } from "@/services/service.collections"
 import { createPrompt } from "@/services/service.prompt"
 import { useTabViewStore } from "@/hooks/store/TabStore"
@@ -61,8 +61,9 @@ export default function Promptly({ dbReady }: { dbReady: boolean }) {
 
   // ── Tabs ──
   const openTab = useCallback((tab: Tab) => {
-    addTab(tab)
-  }, [addTab])
+  addTab(tab)
+  setActiveView(tab.type)
+}, [addTab, setActiveView])
 
   const markDirty = useCallback((id: string, dirty: boolean) => {
     useTabViewStore.setState((state) => ({

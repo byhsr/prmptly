@@ -4,8 +4,7 @@ import { LibraryView } from "../library/LibraryView"
 import { ViewType } from "@/lib/types/DashTypes"
 import { HomeView, PromptView } from "../Home/HomeView"
 import { TemplateView } from "../template/TemplateView"
-import { div } from "motion/react-client"
-import { FileText } from "lucide-react"
+
 
 
 // ── Props ─────────────────────────────────────────────────────────────────────

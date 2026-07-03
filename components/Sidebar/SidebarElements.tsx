@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react"
 import { ChevronRight, Folder, FolderOpen } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Tab } from "../promptly/Tabbar"
-import { PendingCreate } from "../promptly/sidebar"
+import { Tab } from "../core-components/Tabbar"
+import { PendingCreate } from "../core-components/sidebar"
 import { CollectionNode} from "@/services/service.collections"
 import { PromptFile } from "../Prompt/PromptElements"
 

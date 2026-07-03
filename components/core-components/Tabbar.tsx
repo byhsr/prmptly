@@ -1,4 +1,4 @@
-import { X, PanelLeftClose, PanelLeft, Home, FileText, Layout } from "lucide-react";
+import { X, PanelLeftClose, PanelLeft, Home, FileText, Layout, Settings2Icon } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 import { ViewType } from "@/lib/types/DashTypes";
@@ -28,6 +28,7 @@ function TabTypeDot({ type }: { type: ViewType }) {
     prompt: "#c8f135",
     template: "#6ee7f7",
     library: "#a78bfa",
+    settings: "#c8f135",
   };
   //   if (type === "home") return null;
   return (
@@ -49,7 +50,7 @@ function TabTypeDot({ type }: { type: ViewType }) {
 
 
 export function TabBar() {
-  const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar , setActiveView} = useTabViewStore()
+  const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar , setActiveView, isSettingsOpen, setIsSettingsOpen} = useTabViewStore()
   return (
     <div  data-tauri-drag-region className="border-b min-h-8 p-2 w-full items-center flex justify-between">
       <div className="items-center flex ">
@@ -69,7 +70,14 @@ export function TabBar() {
               <PanelLeft className="h-3.5 w-3.5" />
             )}</div>}
           </button>
-
+          <button
+  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+  className={`rounded-lg p-1.5 transition-colors ${
+    isSettingsOpen ? "text-primary bg-background" : "text-muted hover:text-foreground hover:bg-background"
+  }`}
+>
+  <Settings2Icon className="h-3.5 w-3.5" />
+</button>
           <span
             style={{
               fontFamily: "'Syne', sans-serif",
@@ -80,7 +88,7 @@ export function TabBar() {
               userSelect: "none",
             }}
           >
-            pr0mptly
+            prmptly
           </span>
         </div>
 

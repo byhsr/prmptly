@@ -1,1 +1,1 @@
-export type ViewType = "home" | "prompt" | "template" | "library"
+ export type ViewType = "home" | "prompt" | "template" | "library" | "settings"

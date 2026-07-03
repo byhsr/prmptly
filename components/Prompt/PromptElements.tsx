@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { File } from "lucide-react"
-import { Tab } from "../promptly/Tabbar"
+import { Tab } from "../core-components/Tabbar"
 import { PromptRow } from "@/services/service.collections"
 import { ContextMenu } from "../ui/ContextMenu"
 

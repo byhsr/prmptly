@@ -5,8 +5,11 @@ import {  initDB } from "@/lib/db";
 import { readConfig, setupWorkspace, writeConfig } from "@/lib/fs/fs";
 import { initBasePath } from "@/lib/fs/fsHelpers";
 import Onboarding from "@/components/Onboard";
-import { TabBar } from "@/components/promptly/Tabbar";
+import { TabBar } from "@/components/core-components/Tabbar";
 import { SidebarNotifications } from "@/components/ui/Notifier";
+import { useSettingsStore } from "@/hooks/store/settimgsStore";
+import { useTabViewStore } from "@/hooks/store/TabStore";
+import { SettingsModal } from "@/components/settings/SettingsModal";
 
 function App() {
  const [darkMode, setDarkMode] = useState(true)
@@ -54,7 +57,7 @@ export default App;
 export const AppFlow = () => {
   const [dbReady, setDbReady] = useState(false)
   const [basePath, setBasePath] = useState("")
-
+  const { isSettingsOpen, setIsSettingsOpen } = useTabViewStore()
   useEffect(() => {
     (async () => {
       try {
@@ -77,6 +80,8 @@ export const AppFlow = () => {
         setBasePath(basePath)
         setDbReady(true)
 
+        useSettingsStore.getState().hydrate()
+
       } catch (e) {
         console.error("APP init failed", e)
       }
@@ -84,7 +89,7 @@ export const AppFlow = () => {
   }, [])
 
   const onDone = async (newPath : string) => {
-           initBasePath(newPath)
+      initBasePath(newPath)
       await initDB(newPath)
       await setupWorkspace(newPath)
       setBasePath(newPath)
@@ -95,6 +100,7 @@ export const AppFlow = () => {
     <Onboarding onDone={() => onDone} />
   )
   return ( <div>
+    {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
     <SidebarNotifications />
     <Dash dbReady={dbReady} />
   </div> )

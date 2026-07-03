@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Home,
@@ -11,6 +11,7 @@ import {
   Folder,
   FolderOpen,
   File,
+  Settings,
 } from "lucide-react"
 import { Tab } from "./Tabbar"
 
@@ -20,6 +21,7 @@ import { ViewType } from "@/lib/types/DashTypes"
 import { LibrarySidebarPanel } from "../Sidebar/LibSidebar"
 import { PromptSidebarPanel } from "../Sidebar/PromptSidebar"
 import { TemplateSidebarPanel } from "../template/TemplateSidebar"
+import { SettingsView } from "../settings/SettingsView"
 
 interface SidebarProps {
   isOpen: boolean
@@ -47,7 +49,7 @@ interface RailButtonProps {
 
 
 
-function RailButton({ icon: Icon, label, isActive, onClick }: RailButtonProps) {
+export function RailButton({ icon: Icon, label, isActive, onClick }: RailButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -66,6 +68,8 @@ function RailButton({ icon: Icon, label, isActive, onClick }: RailButtonProps) {
   )
 }
 
+
+
 export function Sidebar({
   isOpen,
   activeTab,
@@ -83,35 +87,30 @@ export function Sidebar({
 }: SidebarProps) {
 
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null)
-
-  // const activeSection = activeView === "home" ? null : activeView
-
+  const [lastSidebarView, setLastSidebarView] = useState<ViewType>(activeView)
   const panelOpen = isOpen && activeView !== null
 
+  // sidebar keeps showing last non-settings view, since settings has no sidebar panel
+  const sidebarView = activeView === "settings" ? lastSidebarView : activeView
 
-  // this toggles Section in sidebar 
+  useEffect(() => {
+    if (activeView !== "settings") setLastSidebarView(activeView)
+  }, [activeView])
+
   function toggleSection(section: ViewType) {
     const newSection = activeView === section ? activeView : section
     setActiveView(newSection)
   }
+
   function toggleExpand(id: string) {
     const next = new Set(expandedCollections)
     next.has(id) ? next.delete(id) : next.add(id)
     setExpandedCollections(next)
   }
 
-  // Given the currently selectedId, figure out which collection to create inside
   function resolveParentCollectionId(): string | null {
     if (!selectedId || !collectionsTree) return null
 
-    // Is the selected a collection?
-    const isCollection = (nodes: CollectionNode[]): boolean =>
-      nodes.some((n) => n.id === selectedId || isCollection(n.children))
-
-    const findCollection = (nodes: CollectionNode[]): boolean =>
-      nodes.some((n) => n.id === selectedId)
-
-    // Walk the tree to find if selectedId is a collection id
     const allCollectionIds = new Set<string>()
     const collectIds = (nodes: CollectionNode[]) => {
       nodes.forEach((n) => {
@@ -122,11 +121,9 @@ export function Sidebar({
     collectIds(collectionsTree.tree)
 
     if (allCollectionIds.has(selectedId)) {
-      // selected is a collection → create inside it
       return selectedId
     }
 
-    // selected is a prompt → find its parent collection
     const findPromptParent = (nodes: CollectionNode[]): string | null => {
       for (const node of nodes) {
         if (node.prompts.some((p) => p.id === selectedId)) return node.id
@@ -142,17 +139,16 @@ export function Sidebar({
   function startCreate(type: "prompt" | "collection") {
     const parentCollectionId = resolveParentCollectionId()
 
-    // If creating inside a collection, expand it
     if (parentCollectionId) {
       setExpandedCollections(new Set([...expandedCollections, parentCollectionId]))
     }
 
     setPendingCreate({ type, parentCollectionId })
   }
+
   let creatingRef = { current: false }
 
   async function confirmCreate(name: string) {
-
     if (creatingRef.current) return
     creatingRef.current = true
     try {
@@ -166,7 +162,6 @@ export function Sidebar({
         await onCreateCollection(name, parentCollectionId)
       }
     } catch (err) {
-
     } finally {
       creatingRef.current = false
     }
@@ -176,13 +171,12 @@ export function Sidebar({
     setPendingCreate(null)
   }
 
-
   return (
     <div
-      className="flex flex-col h-full w-full "
+      className="flex flex-col h-full w-full relative"
       style={{ borderRight: "1.5px solid var(--color-border, #222)" }}
     >
-      {/* Icon rail left view selector  */}
+      {/* Icon rail left view selector */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
@@ -190,13 +184,9 @@ export function Sidebar({
             animate={{ width: 52, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="flex min-w-full  items-center p-2 gap-2 overflow-hidden "
-            style={{
-              background: "var(--color-surface, #0d0d0d)",
-              // borderRight: "0.5px solid var(--color-border, #222)",
-            }}
+            className="flex min-w-full items-center p-2 gap-2 overflow-hidden"
+            style={{ background: "var(--color-surface, #0d0d0d)" }}
           >
-            {/* panel view bar */}
             <motion.div className="flex gap-2 rounded-lg px-4 items-center p-2 bg-background w-full">
               <RailButton
                 icon={Home}
@@ -204,7 +194,6 @@ export function Sidebar({
                 isActive={activeView === "home"}
                 onClick={() => toggleSection("home")}
               />
-
               <RailButton
                 icon={FileText}
                 label="Prompts"
@@ -228,18 +217,16 @@ export function Sidebar({
         )}
       </AnimatePresence>
 
-      {/* Section panel */}
-
+      {/* Section panel — renders sidebarView, not activeView, so it survives settings being open */}
       {panelOpen && (
         <div
-          key={activeView}
+          key={sidebarView}
           className="flex flex-col w-full h-full min-h-0 overflow-y-auto"
           style={{ background: "var(--color-surface, #0d0d0d)" }}
         >
-          <div className="flex flex-col h-full w-full ">
+          <div className="flex flex-col h-full w-full">
 
-
-            {activeView === "prompt" && (
+            {sidebarView === "prompt" && (
               <PromptSidebarPanel
                 collectionsTree={collectionsTree}
                 activeTab={activeTab}
@@ -255,22 +242,17 @@ export function Sidebar({
               />
             )}
 
-            {activeView === "prompt" && !collectionsTree && (
+            {sidebarView === "prompt" && !collectionsTree && (
               <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
                 Loading...
               </span>
             )}
 
-            {/* Templates + Library — wire up when ready */}
-            {activeView === "template" && <TemplateSidebarPanel />}
-            {activeView === "library" && <LibrarySidebarPanel />}
-
+            {sidebarView === "template" && <TemplateSidebarPanel />}
+            {sidebarView === "library" && <LibrarySidebarPanel />}
           </div>
         </div>
-
-  )
-}
- 
-    </div >
+      )}
+    </div>
   )
 }

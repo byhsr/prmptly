@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "pr0mptly",
+  "productName": "prmptly",
   "version": "0.1.0",
   "identifier": "y",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "pr0mptly",
+        "title": "prmptly",
         "decorations": false,
         "devtools": true,
         "resizable": true,
@@ -29,7 +29,7 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/app.png"
+      "icons/app-Icon.png"
     ]
   }
 }

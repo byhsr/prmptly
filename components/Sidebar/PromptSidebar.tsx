@@ -1,5 +1,5 @@
-import { CollectionTree, CollectionNode } from "@/services/service.collections"
-import { Tab } from "../promptly/Tabbar"
+import { CollectionTree } from "@/services/service.collections"
+import { Tab } from "../core-components/Tabbar"
 import {
   Home,
   FileText,
