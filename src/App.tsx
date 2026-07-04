@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import Dash from "../components/Dash"
+import Dash from "../components/core-components/Dash"
 import "./App.css";
 import {  initDB } from "@/lib/db";
 import { readConfig, setupWorkspace, writeConfig } from "@/lib/fs/fs";
 import { initBasePath } from "@/lib/fs/fsHelpers";
-import Onboarding from "@/components/Onboard";
+import Onboarding from "@/components/core-components/Onboard";
 import { TabBar } from "@/components/core-components/Tabbar";
 import { SidebarNotifications } from "@/components/ui/Notifier";
 import { useSettingsStore } from "@/hooks/store/settimgsStore";

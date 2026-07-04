@@ -1,75 +1,63 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  Home,
-  FileText,
-  Layout,
-  BookOpen,
-  FolderPlus,
-  FilePlus,
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  File,
-  Settings,
-} from "lucide-react"
+import { Home, FileText, Layout, BookOpen } from "lucide-react"
 import { Tab } from "./Tabbar"
-
 import { CollectionTree, CollectionNode } from "@/services/service.collections"
+import {PromptSidebarPanel} from "../Sidebar/PromptSidebar"
+import {LibrarySidebarPanel} from "../Sidebar/LibSidebar"
+import {TemplateSidebarPanel }from "../template/TemplateSidebar"
+import {ViewType} from "@/lib/types/DashTypes"
 import { PendingCreate } from "../Sidebar/PromptSidebar"
-import { ViewType } from "@/lib/types/DashTypes"
-import { LibrarySidebarPanel } from "../Sidebar/LibSidebar"
-import { PromptSidebarPanel } from "../Sidebar/PromptSidebar"
-import { TemplateSidebarPanel } from "../template/TemplateSidebar"
-import { SettingsView } from "../settings/SettingsView"
 
-interface SidebarProps {
-  isOpen: boolean
-  activeTab: Tab | undefined
-  collectionsTree: CollectionTree | null
-  selectedId: string | null
-  activeView: ViewType
-  setSelectedId: (id: string | null) => void
-  expandedCollections: Set<string>
-  setExpandedCollections: (s: Set<string>) => void
-  onOpenTab: (tab: Tab) => void
-  onCreatePrompt: (name: string, collectionId: string | null) => Promise<void>
-  onCreateCollection: (name: string, parentId: string | null) => Promise<void>
-  onRefreshTree: () => Promise<void>
-  setActiveView: (view: ViewType) => void
-}
-
-interface RailButtonProps {
+// ── Icon rail button ──────────────────────────────────────────────────────────
+function RailButton({
+  icon: Icon,
+  label,
+  isActive,
+  onClick,
+}: {
   icon: React.ElementType
   label: string
   isActive: boolean
   onClick: () => void
-}
-
-
-
-
-export function RailButton({ icon: Icon, label, isActive, onClick }: RailButtonProps) {
+}) {
   return (
     <button
       onClick={onClick}
       title={label}
-      className={"flex items-center justify-center rounded-lg  transition-colors"}
+      className="flex flex-col items-center justify-center rounded-xl transition-all"
       style={{
-        width: 32,
-        height: 32,
-        // border : isActive ? "1px solid var(--color-accent, #444)" : "1px solid transparent",
-        color: isActive ? "var(--color-muted)" : "var(--color-muted, #555)",
-        background: isActive ? "var(--color-surface)" : "transparent",
+        width: 40,
+        height: 40,
+        background: isActive ? "var(--color-background, #111)" : "transparent",
+        color: isActive ? "#c8f135" : "var(--color-muted, #666)",
+        border: isActive ? "0.5px solid rgba(200,241,53,0.25)" : "0.5px solid transparent",
+        fontFamily: "'Syne', sans-serif",
       }}
     >
-      <Icon size={15} />
+      <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
     </button>
   )
 }
 
+// ── Sidebar props (single source of truth) ────────────────────────────────────
+interface SidebarProps {
+  isOpen: boolean
+  activeTab: Tab | undefined
+  onOpenTab: (tab: Tab) => void
+  collectionsTree: CollectionTree | null
+  selectedId: string | null
+  setSelectedId: (id: string | null) => void
+  expandedCollections: Set<string>
+  setExpandedCollections: React.Dispatch<React.SetStateAction<Set<string>>>
+  onCreatePrompt: (name: string, collectionId: string | null) => Promise<void>
+  onCreateCollection: (name: string, parentId: string | null) => Promise<void>
+  onRefreshTree?: () => Promise<void>
+  activeView: ViewType
+  setActiveView: (v: ViewType) => void
+}
 
-
+// ── Main Sidebar ────────────────────────────────────────────────────────────
 export function Sidebar({
   isOpen,
   activeTab,
@@ -87,15 +75,7 @@ export function Sidebar({
 }: SidebarProps) {
 
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null)
-  const [lastSidebarView, setLastSidebarView] = useState<ViewType>(activeView)
   const panelOpen = isOpen && activeView !== null
-
-  // sidebar keeps showing last non-settings view, since settings has no sidebar panel
-  const sidebarView = activeView === "settings" ? lastSidebarView : activeView
-
-  useEffect(() => {
-    if (activeView !== "settings") setLastSidebarView(activeView)
-  }, [activeView])
 
   function toggleSection(section: ViewType) {
     const newSection = activeView === section ? activeView : section
@@ -217,16 +197,16 @@ export function Sidebar({
         )}
       </AnimatePresence>
 
-      {/* Section panel — renders sidebarView, not activeView, so it survives settings being open */}
+      {/* Section panel — settings is a modal now, no case needed here */}
       {panelOpen && (
         <div
-          key={sidebarView}
+          key={activeView}
           className="flex flex-col w-full h-full min-h-0 overflow-y-auto"
           style={{ background: "var(--color-surface, #0d0d0d)" }}
         >
           <div className="flex flex-col h-full w-full">
 
-            {sidebarView === "prompt" && (
+            {activeView === "prompt" && (
               <PromptSidebarPanel
                 collectionsTree={collectionsTree}
                 activeTab={activeTab}
@@ -242,14 +222,14 @@ export function Sidebar({
               />
             )}
 
-            {sidebarView === "prompt" && !collectionsTree && (
+            {activeView === "prompt" && !collectionsTree && (
               <span style={{ fontSize: 11, color: "var(--color-muted, #555)", padding: "4px 8px" }}>
                 Loading...
               </span>
             )}
 
-            {sidebarView === "template" && <TemplateSidebarPanel />}
-            {sidebarView === "library" && <LibrarySidebarPanel />}
+            {activeView === "template" && <TemplateSidebarPanel />}
+            {activeView === "library" && <LibrarySidebarPanel />}
           </div>
         </div>
       )}

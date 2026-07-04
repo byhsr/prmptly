@@ -1,4 +1,4 @@
-import { FileTab } from "../core-components/fileTab"
+import { FileTab } from "../Prompt/fileTab"
 import { Tab } from "../core-components/Tabbar"
 import { useState, useCallback, useEffect } from "react"
 import { JSONContent } from "@tiptap/core"

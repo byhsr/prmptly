@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Tab } from "./core-components/Tabbar"
-import { Sidebar } from "@/components/core-components/sidebar"
-import { Workspace } from "./core-components/Workspaces"
+import { Tab } from "./Tabbar"
+import {Sidebar} from "./SideBars"
+import { Workspace } from "./Workspaces"
 import { getCollectionsTree, CollectionTree, createCollection } from "@/services/service.collections"
 import { createPrompt } from "@/services/service.prompt"
 import { useTabViewStore } from "@/hooks/store/TabStore"

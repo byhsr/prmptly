@@ -6,7 +6,6 @@ import { HomeView, PromptView } from "../Home/HomeView"
 import { TemplateView } from "../template/TemplateView"
 
 
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface WorkspaceProps {
   activeView: ViewType

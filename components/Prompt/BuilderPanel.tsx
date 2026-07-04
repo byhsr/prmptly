@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical } from "lucide-react"
-import { TemplateSelector } from "../Prompt/TemplateSelector"
+import { TemplateSelector } from "./TemplateSelector"
 import { TemplateSection } from "@/lib/db/template"
 import { Template } from "@/lib/db/template"
 import { SmartEditor } from "../ui/SmartTextEditor"

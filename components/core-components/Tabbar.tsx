@@ -1,4 +1,4 @@
-import { X, PanelLeftClose, PanelLeft, Home, FileText, Layout, Settings2Icon } from "lucide-react";
+import { PanelLeftClose, PanelLeft, Settings2Icon } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 import { ViewType } from "@/lib/types/DashTypes";
@@ -28,7 +28,6 @@ function TabTypeDot({ type }: { type: ViewType }) {
     prompt: "#c8f135",
     template: "#6ee7f7",
     library: "#a78bfa",
-    settings: "#c8f135",
   };
   //   if (type === "home") return null;
   return (
@@ -52,7 +51,7 @@ function TabTypeDot({ type }: { type: ViewType }) {
 export function TabBar() {
   const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar , setActiveView, isSettingsOpen, setIsSettingsOpen} = useTabViewStore()
   return (
-    <div  data-tauri-drag-region className="border-b min-h-8 p-2 w-full items-center flex justify-between">
+    <div  data-tauri-drag-region className="border-b sticky top-0 z-[9999] min-h-8 p-2 w-full items-center flex justify-between">
       <div className="items-center flex ">
         {/* Drag region (ONLY LEFT) */}
         <div   

@@ -1,15 +1,13 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Columns2, Columns3 } from "lucide-react"
-import { BuilderPanel } from "./builder-panel"
+import { BuilderPanel} from "./BuilderPanel"
 import { ScratchpadPanel } from "./scratchpadPanel"
-import { PromptPanel } from "./promptPanel"
-import { Tab } from "./Tabbar"
+import { PromptPanel } from "./GeneratedPromptPanel"
+import { Tab } from "../core-components/Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
-import { TemplateSelector } from "../Prompt/TemplateSelector"
+import { TemplateSelector } from "./TemplateSelector"
 
 
 type SubTab = "builder" | "scratchpad" | "prompt"
