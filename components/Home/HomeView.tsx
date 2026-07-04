@@ -79,8 +79,8 @@ export function HomeView() {
   }
 
   return (
-    <div className="relative h-full w-full flex items-start justify-center pt-16 px-4">
-      <div style={{ width: "100%", maxWidth: 640 }}>
+    <div className="relative h-full w-full flex items-start justify-center pt-16 px-14">
+      <div style={{ width: "100%" }}>
         <AnimatePresence mode="wait">
           {!output ? (
             <motion.div
@@ -95,21 +95,21 @@ export function HomeView() {
                 <div key={section.id} style={{ marginBottom: 14 }}>
                   {section.title && (
                     <input
-  value={section.title}
-  onChange={(e) => updateSectionTitle(section.id, e.target.value)}
-  placeholder="Section title"
-  style={{
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 11,
-    color: "var(--color-muted, #555)",
-    background: "transparent",
-    border: "none",
-    outline: "none",
-    marginBottom: 4,
-    letterSpacing: "0.02em",
-    width: "100%",
-  }}
-/>
+                      value={section.title}
+                      onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                      placeholder="Section title"
+                      style={{
+                        fontFamily: "'IBM Plex Mono', monospace",
+                        fontSize: 11,
+                        color: "var(--color-muted, #555)",
+                        background: "transparent",
+                        border: "none",
+                        outline: "none",
+                        marginBottom: 4,
+                        letterSpacing: "0.02em",
+                        width: "100%",
+                      }}
+                    />
                   )}
                   <SmartEditor
                     value={nodeToPlain(section.doc)}

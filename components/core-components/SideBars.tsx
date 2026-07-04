@@ -29,9 +29,8 @@ function RailButton({
       style={{
         width: 40,
         height: 40,
-        background: isActive ? "var(--color-background, #111)" : "transparent",
-        color: isActive ? "#c8f135" : "var(--color-muted, #666)",
-        border: isActive ? "0.5px solid rgba(200,241,53,0.25)" : "0.5px solid transparent",
+        background: isActive ? "var(--color-surface)" : "transparent",
+        color: isActive ? "var(--color-foreground)" : "var(--color-muted, #666)",
         fontFamily: "'Syne', sans-serif",
       }}
     >

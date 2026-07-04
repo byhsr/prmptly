@@ -49,15 +49,26 @@ function TabTypeDot({ type }: { type: ViewType }) {
 
 
 export function TabBar() {
-  const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar , setActiveView, isSettingsOpen, setIsSettingsOpen} = useTabViewStore()
+  const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar, setActiveView, isSettingsOpen, setIsSettingsOpen } = useTabViewStore()
   return (
-    <div  data-tauri-drag-region className="border-b sticky top-0 z-[9999] min-h-8 p-2 w-full items-center flex justify-between">
+    <div data-tauri-drag-region className="sticky top-0 z-[9999] min-h-8 w-full items-end flex justify-between">
       <div className="items-center flex ">
         {/* Drag region (ONLY LEFT) */}
-        <div   
-          className=" flex items-center shrink-0 h-full select-none"
-          style={{ minWidth: 140, paddingLeft: 8, paddingRight: 12, gap: 8 }}
+        <div className=" flex p-2 items-center shrink-0 h-full select-none"
+          style={{ minWidth: 140, paddingLeft: 18, paddingRight: 18, gap: 8 }}
         >
+                <span
+            style={{
+              fontFamily: "'Syne', sans-serif",
+              fontSize: 13,
+              fontWeight: 800,
+              color: "#c8f135",
+              letterSpacing: "-0.5px",
+              userSelect: "none",
+            }}
+          ><img src="/favicon.ico.png" alt="Logo" className="h-4 w-4 inline-block mr-1" />
+           
+          </span>
           <button
             onClick={() => toggleSidebar()}
             className="rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-background transition-colors"
@@ -70,29 +81,17 @@ export function TabBar() {
             )}</div>}
           </button>
           <button
-  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-  className={`rounded-lg p-1.5 transition-colors ${
-    isSettingsOpen ? "text-primary bg-background" : "text-muted hover:text-foreground hover:bg-background"
-  }`}
->
-  <Settings2Icon className="h-3.5 w-3.5" />
-</button>
-          <span
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: 13,
-              fontWeight: 800,
-              color: "#c8f135",
-              letterSpacing: "-0.5px",
-              userSelect: "none",
-            }}
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={`rounded-lg p-1.5 transition-colors ${isSettingsOpen ? "text-primary bg-background" : "text-muted hover:text-foreground hover:bg-background"
+              }`}
           >
-            prmptly
-          </span>
+            <Settings2Icon className="h-3.5 w-3.5" />
+          </button>
+    
         </div>
 
         {/* Tabs */}
-        <div className="flex w-fit items-center px-2 gap-2 overflow-x-auto ">
+        <div className="flex w-fit h-full items-center gap-2 overflow-x-auto ">
           {tabs.map((tab) => {
             if (tab.type === "home") return
             const isActive = activeTabId === tab.id
@@ -105,20 +104,21 @@ export function TabBar() {
                   setActiveView(tab.type)
                 }}
                 style={{ height: 28 }}
-                className={`flex items-center bg-surface rounded-lg gap-1 px-3 cursor-pointer text-xs font-mono transition-colors
-               ${isActive
-                    ? " border-b border-primary text-foreground"
+                className={`flex items-center  gap-1 px-3 cursor-pointer text-xs font-mono transition-colors
+                ${isActive
+                    ? " bg-surface  border-primary text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   }`}
               >
-                <span>{ isActive &&<TabTypeDot type={tab.type} />}</span>
+                <span>{isActive && <TabTypeDot type={tab.type} />}</span>
                 <span className="truncate ">{tab.label}</span>
 
+                {/* close button */}
                 <button
                   onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}
                   className="ml-1 w-3.5 h-3.5 rounded-sm flex items-center justify-center 
-               text-muted-foreground hover:text-foreground hover:bg-muted-foreground/20 
-               transition-colors"
+                  text-muted-foreground hover:text-foreground hover:bg-muted-foreground/20 
+                  transition-colors"
                 >
                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                     <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -130,9 +130,8 @@ export function TabBar() {
         </div>
       </div>
 
-      <div className="flex-1 h-full ">
+        
 
-      </div>
 
       {/* Window controls */}
       <div
