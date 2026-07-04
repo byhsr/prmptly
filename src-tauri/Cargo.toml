@@ -11,7 +11,7 @@ edition = "2021"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "pr0mptly_lib"
+name = "prmptly_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -20,17 +20,12 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
-serde = { version = "1", features = ["derive"] }
-log = "0.4"
-serde_json = "1"
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-sql = { version = "2.4.0", features = ["sqlite"] }
-fastembed = "5"
-rusqlite = { version = "0.31", features = ["bundled"] }
-sqlite-vec = "0.1.9"
-zerocopy = { version = "0.7", features = ["derive"] }
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
-text-splitter = { version = "0.26", features = ["markdown"] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
 
