@@ -17,7 +17,7 @@ import {
 } from "@/lib/fs/fs";
 import { initWorkspace } from "@/lib/fs/fsHelpers";
 
-import { useSettingsStore } from "@/hooks/store/settimgsStore";
+import { useSettingsStore } from "@/hooks/store/settingsStore";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 
 function App() {

@@ -117,6 +117,20 @@ CREATE TABLE IF NOT EXISTS namespaces (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  section_id TEXT NOT NULL,
+  anchor_from INTEGER NOT NULL,
+  anchor_to INTEGER NOT NULL,
+  quoted_text TEXT NOT NULL,
+  body TEXT NOT NULL,
+  resolved INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_document ON comments(document_id, section_id);
+
 -- ── Deterministic Assets ───────────────────────────
 
 CREATE TABLE IF NOT EXISTS deterministic_assets (

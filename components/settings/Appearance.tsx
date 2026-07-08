@@ -1,4 +1,4 @@
-import { useSettingsStore } from "@/hooks/store/settimgsStore"
+import { useSettingsStore } from "@/hooks/store/settingsStore"
 import { THEMES, FONTS } from "@/lib/config/settings"
 
 
