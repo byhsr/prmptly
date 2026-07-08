@@ -1,8 +1,24 @@
 export type Theme = "light" | "dark" | "system";
 
+export interface Workspace {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: string;
+}
+
 export interface AppConfig {
-  base_path: string;
+  onboarded: boolean;
+
+  // Parent directory containing all workspaces
+  workspaceRoot: string;
+
+  // Active workspace id
+  activeWorkspace: string;
+
+  // Known workspaces
+  workspaces: Workspace[];
+
+  // App-wide settings
   theme?: Theme;
-  model_path?: string;      // relative to base_path, set after first download
-  has_model?: boolean;      // true after user downloads the model
 }

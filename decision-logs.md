@@ -8,3 +8,13 @@
 ## Prompt 
 - Agent builder -> flow chart designer 
 - sections, use templates, -> select a template match to the core flow and make changes with LLM
+
+## Workspaces
+- add different Workspaces within the base directory, so different vaults has clean separation of concerns
+
+
+## New architecture 
+- removed local rag Fast Embeddig 
+- better workspace directory for clean separation of concerns 
+- Cloud sync native architecture 
+- Agents 

@@ -2,158 +2,142 @@ import Database from "@tauri-apps/plugin-sql";
 import { join } from "@tauri-apps/api/path"
 import { invoke } from "@tauri-apps/api/core";
 
-let db: Database;
 export type DB = typeof db
+let db: Database | null = null;
+let currentWorkspacePath: string | null = null;
+
 // ── Migrations ────────────────────────────────────────────────────────────────
 // Add new migrations to the END of this array only. Never edit existing ones.
 const MIGRATIONS: { id: number; sql: string }[] = [
   {
     id: 1,
-    sql: `
-    -- ── Library ─────────────────────────────────────────
+    sql: `-- ── App Settings ───────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
 
-
-
 -- ── Templates ──────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
   is_system INTEGER DEFAULT 0,
-  created_at TEXT NOT NULL
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
--- ── Template Sections ──────────────────────────────
 CREATE TABLE IF NOT EXISTS template_sections (
   id TEXT PRIMARY KEY,
   template_id TEXT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
-  placeholder TEXT,
+  content_json TEXT NOT NULL,
   order_index INTEGER NOT NULL,
+  meta_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_template_sections_template_id
+  ON template_sections(template_id);
+
 -- ── Outputs ────────────────────────────────────────
+
 CREATE TABLE IF NOT EXISTS outputs (
   id TEXT PRIMARY KEY,
   text TEXT,
   json TEXT,
   xml TEXT,
-  created_at TEXT NOT NULL
-);
-
--- ── Prompts (container) ────────────────────────────
-CREATE TABLE IF NOT EXISTS prompts (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  template_id TEXT REFERENCES templates(id) ON DELETE SET NULL,
-  collection_id TEXT REFERENCES collections(id) ON DELETE SET NULL,
-  current_version_id TEXT,
+  meta_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
 
--- ── Prompt Versions ────────────────────────────────
-CREATE TABLE IF NOT EXISTS prompt_versions (
-  id TEXT PRIMARY KEY,
-  prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
-  version_number INTEGER NOT NULL,
-  label TEXT,
-  builder_content TEXT, -- JSON [{ sectionId, order, value }]
-  scratchpad_text_path TEXT,
-  scratchpad_flow_path TEXT,
-  output_id TEXT REFERENCES outputs(id) ON DELETE SET NULL,
-  created_at TEXT NOT NULL
-);
--- ── Assets mapping ─────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS prompt_assets (
-  prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
-  asset_id TEXT NOT NULL REFERENCES library_assets(id) ON DELETE CASCADE,
-  PRIMARY KEY (prompt_id, asset_id)
-);
-
--- ── Collections (folders with nesting) ─────────────
+-- ── Collections ────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS collections (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE,
-  created_at TEXT NOT NULL
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_collections_parent_id
+  ON collections(parent_id);
 
--- ── Quick runs ─────────────────────────────────────
+-- ── Documents (Prompt + Quicks, standalone) ────────
 
-CREATE TABLE IF NOT EXISTS quick_runs (
+CREATE TABLE IF NOT EXISTS documents (
   id TEXT PRIMARY KEY,
-  raw_input TEXT NOT NULL,
-  output_id TEXT REFERENCES outputs(id) ON DELETE SET NULL,
-  created_at TEXT NOT NULL
-);
 
+  type TEXT NOT NULL CHECK(type IN ('quick','prompt')),
 
-
--- ── library ─────────────────────────────────────
-
-CREATE TABLE namespaces (
-  prefix TEXT PRIMARY KEY,   -- "persona", "project"
-  source TEXT CHECK(source IN ('deterministic','rag')) NOT NULL
-);
-
- CREATE TABLE IF NOT EXISTS deterministic_assets(
- 
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  
-);
-
--- ── Rag sources will go here when needed
-CREATE TABLE scopes (
-  name TEXT PRIMARY KEY,
-  status TEXT CHECK(status IN ('active','archived')) DEFAULT 'active',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE documents (
-  id TEXT PRIMARY KEY,
-  scope_name TEXT NOT NULL,
   name TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (scope_name) REFERENCES scopes(name)
+
+  template_id TEXT REFERENCES templates(id) ON DELETE SET NULL,
+  collection_id TEXT REFERENCES collections(id) ON DELETE SET NULL,
+
+  sections_json TEXT NOT NULL,
+
+  scratchpad_text_path TEXT,
+  scratchpad_flow_path TEXT,
+
+  output_id TEXT REFERENCES outputs(id) ON DELETE SET NULL,
+
+  meta_json TEXT NOT NULL DEFAULT '{}',
+
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
-CREATE TABLE nodes (
+CREATE INDEX IF NOT EXISTS idx_documents_template_id ON documents(template_id);
+CREATE INDEX IF NOT EXISTS idx_documents_collection_id ON documents(collection_id);
+CREATE INDEX IF NOT EXISTS idx_documents_output_id ON documents(output_id);
+
+-- ── Context Assets ─────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS document_assets (
+  document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  asset_id TEXT NOT NULL REFERENCES deterministic_assets(id) ON DELETE CASCADE,
+  PRIMARY KEY (document_id, asset_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_assets_asset_id
+  ON document_assets(asset_id);
+
+-- ── Library Namespaces ─────────────────────────────
+
+CREATE TABLE IF NOT EXISTS namespaces (
+  prefix TEXT PRIMARY KEY,
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+
+-- ── Deterministic Assets ───────────────────────────
+
+CREATE TABLE IF NOT EXISTS deterministic_assets (
   id TEXT PRIMARY KEY,
-  document_id TEXT NOT NULL,
-  position INTEGER NOT NULL,  -- chunk order
-  FOREIGN KEY (document_id) REFERENCES documents(id)
-);
 
-CREATE TABLE node_versions (
-  id TEXT PRIMARY KEY,
-  node_id TEXT NOT NULL,
-  content TEXT NOT NULL,
-  embedding BLOB,
-  is_latest BOOLEAN DEFAULT 1,
+  namespace TEXT NOT NULL REFERENCES namespaces(prefix) ON DELETE CASCADE,
+
+  key TEXT NOT NULL,
+  title TEXT,
+  value TEXT NOT NULL,
+
+  meta_json TEXT NOT NULL DEFAULT '{}',
+
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (node_id) REFERENCES nodes(id)
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(namespace, key)
 );
 
-CREATE VIRTUAL TABLE fts_index USING fts5(
-  content,
-  node_version_id UNINDEXED,
-  scope_id UNINDEXED
-);
-`
-
+CREATE INDEX IF NOT EXISTS idx_deterministic_assets_namespace
+  ON deterministic_assets(namespace);`
   },
   // migration 2 goes here when needed
 ];
@@ -191,18 +175,28 @@ async function runMigrations(db: Database) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-export async function initDB(basePath: string) {
-  if (db) return db
 
-  const dbPath = await join(basePath, "app.db")
+export async function initDB(workspacePath: string) {
+  if (db && currentWorkspacePath === workspacePath) return db;
 
-  db = await Database.load(`sqlite:${dbPath}?mode=rwc`)
-  await db.execute("PRAGMA journal_mode=WAL")
-  await db.execute("PRAGMA busy_timeout=5000")
+  // switching workspaces — close the old connection first
+  if (db && currentWorkspacePath !== workspacePath) {
+    await db.close();
+    db = null;
+  }
 
-  await runMigrations(db)
-  await invoke("setup_vec_table", { dbPath })
-  return db
+  const dbPath = await join(workspacePath, ".prmptly", "db.sqlite");
+
+  db = await Database.load(`sqlite:${dbPath}?mode=rwc`);
+
+  await db.execute("PRAGMA journal_mode=WAL");
+  await db.execute("PRAGMA busy_timeout=5000");
+  await db.execute("PRAGMA foreign_keys=ON"); // must be set every connection, SQLite doesn't persist this in the file
+
+  await runMigrations(db);
+
+  currentWorkspacePath = workspacePath;
+  return db;
 }
 
 export function getDB() {
@@ -210,43 +204,51 @@ export function getDB() {
   return db;
 }
 
+export async function closeDB() {
+  if (db) {
+    await db.close();
+    db = null;
+    currentWorkspacePath = null;
+  }
+}
+
 export async function runTransaction<T>(
-  db: any,
-  fn: (db: any) => Promise<T>
+  db: Database,
+  fn: (db: Database) => Promise<T>
 ): Promise<T> {
-  await db.execute("BEGIN")
+  await db.execute("BEGIN");
 
   try {
-    const result = await fn(db)
-    await db.execute("COMMIT")
-    return result
+    const result = await fn(db);
+    await db.execute("COMMIT");
+    return result;
   } catch (err) {
-    await db.execute("ROLLBACK").catch(() => { })
-    throw err
+    await db.execute("ROLLBACK").catch(() => {});
+    throw err;
   }
 }
 
 export async function getSetting(key: string) {
-  const db = getDB()
+  const db = getDB();
 
   const rows = await db.select<{ value: string }[]>(
     `SELECT value FROM app_settings WHERE key = ?`,
     [key]
-  )
+  );
 
-  return rows[0]?.value ?? null
+  return rows[0]?.value ?? null;
 }
 
 export async function setSetting(key: string, value: string) {
-  const db = getDB()
+  const db = getDB();
 
   await db.execute(
     `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`,
     [key, value]
-  )
+  );
 }
 
 export async function getAppBasePath() {
-  const basePath = await getSetting("base_path")
-  return { basePath }
+  const basePath = await getSetting("base_path");
+  return { basePath };
 }

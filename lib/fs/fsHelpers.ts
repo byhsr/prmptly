@@ -1,51 +1,48 @@
+import { join } from "@tauri-apps/api/path";
 
-import { join } from "@tauri-apps/api/path"
+export const dirs = {
+  promptly: ".prmptly",
+  prompts: "prompts",
+  templates: "templates",
+  scratchpads: "scratchpads",
+  outputs: "outputs",
+  assets: "assets",
+  library: "library",
+} as const;
 
- 
-  export const dirs = {
-    prompts: "prompts",
-    library: "library",
-    templates: "templates",
-  } as const
+let WORKSPACE: string | null = null;
 
-
-type PromptType = "quick" | "entries"
-
-let BASE: string | null = null
-
-export function initBasePath(path: string) {
-  BASE = path
+export function initWorkspace(path: string) {
+  WORKSPACE = path;
 }
 
-function getBasePath() {
-  if (!BASE) throw new Error("BASE not initialized")
-  return BASE
+function workspace() {
+  if (!WORKSPACE) {
+    throw new Error("Workspace not initialized");
+  }
+
+  return WORKSPACE;
 }
-
-export async function buildFilePath(folder: string, file: string) {
-  return await join(folder, file)
-}
-
-
-// this reads basepath/prompts || basepath/library etc
 
 export async function getDir(key: keyof typeof dirs) {
-  return await join(getBasePath(), dirs[key])
+  return join(workspace(), dirs[key]);
 }
 
-
-// this reads basepath/prompts/entries || basepath/prompts/quick etc
-export async function getPromptTypeDir(type: PromptType) {
-  const promptsDir = await getDir("prompts")
-  return await join(promptsDir, type)
+export async function buildPath(...parts: string[]) {
+  return join(workspace(), ...parts);
 }
 
-// this reads basepath/prompts/entries/promptId || basepath/prompts/quick/promptId etc
-export async function getPrompt(type: PromptType, promptId: string) {
-  const typeDir = await getPromptTypeDir(type)
-  return await join(typeDir, promptId)
-}
+export const getPromptDir = (id: string) =>
+  buildPath("prompts", id);
 
-// export async function getFolderPath(folder: string) {
-//   return await join(getBasePath(), folder)
-// }
+export const getTemplateDir = (id: string) =>
+  buildPath("templates", id);
+
+export const getScratchpadDir = (id: string) =>
+  buildPath("scratchpads", id);
+
+export const getOutputDir = (id: string) =>
+  buildPath("outputs", id);
+
+export const getAssetDir = (id: string) =>
+  buildPath("assets", id);

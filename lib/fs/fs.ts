@@ -5,103 +5,98 @@ import {
   remove,
   exists,
   readDir,
+} from "@tauri-apps/plugin-fs";
 
-} from "@tauri-apps/plugin-fs"
-import { appDataDir, join } from "@tauri-apps/api/path" 
+import { appDataDir, join } from "@tauri-apps/api/path";
 
-import { buildFilePath } from "./fsHelpers"
-import { AppConfig } from "../types/AppTypes"
+import { AppConfig } from "../types/AppTypes";
 
-// Create folder
-export async function createBaseFolder(fullPath: string) {
-  await mkdir(fullPath, {
-    recursive: true,})
-  }
-
-
- export const _DIRS = [
+export const WORKSPACE_DIRS = [
+  ".prmptly",
   "prompts",
-  "library",
   "templates",
-]
+  "scratchpads",
+  "outputs",
+  "assets",
+  "library",
+] as const;
 
- export async function setupWorkspace(basePath: string) {
- await Promise.all(
-  _DIRS.map(dir =>
-    createBaseFolder(`${basePath}/${dir}`)
-  )
-)
+async function getConfigPath() {
+  return join(await appDataDir(), "config.json");
 }
 
-export async function createFolder(folderName: string) {
-  await mkdir(folderName, {
-    recursive: true
-  })
+export async function ensureDirectory(path: string) {
+  await mkdir(path, {
+    recursive: true,
+  });
 }
 
-// Create file
-export async function createFile(filePath : string, content = "") {
-  await writeTextFile(filePath , content)
+export async function setupWorkspace(workspacePath: string) {
+  await Promise.all(
+    WORKSPACE_DIRS.map(async (dir) =>
+      ensureDirectory(await join(workspacePath, dir))
+    )
+  );
 }
 
-// Read file
-export async function readFile(folderName: string, fileName: string) {
-  const filePath = await buildFilePath(folderName, fileName)
-  return await readTextFile(filePath)
+export async function createFolder(path: string) {
+  await ensureDirectory(path);
 }
 
-// Delete folder
-export async function deleteFolder(folderName: string) {
-
-  await remove(folderName, {
-    recursive: true
-  })
+export async function createFile(filePath: string, content = "") {
+  await writeTextFile(filePath, content);
 }
 
-// Check exists
-export async function folderExists(folderName: string) {
-  return await exists(folderName)
+export async function readFile(filePath: string) {
+  return readTextFile(filePath);
 }
 
-// List everything
-export async function listAll(folder: string) {
-  return await readDir(folder)
-
+export async function deleteFolder(path: string) {
+  await remove(path, {
+    recursive: true,
+  });
 }
 
+export async function pathExists(path: string) {
+  return exists(path);
+}
 
-export async function readConfig() :Promise<AppConfig | null> {
+export async function listDirectory(path: string) {
+  return readDir(path);
+}
+
+export async function readConfig(): Promise<AppConfig | null> {
   try {
-    const dir = await appDataDir()
-    const configPath = await join(dir, "config.json")
+    const configPath = await getConfigPath();
 
-    const fileExists = await exists(configPath)
-    if (!fileExists) return null
+    if (!(await exists(configPath))) {
+      return null;
+    }
 
-    const content = await readTextFile(configPath)
-    return JSON.parse(content)
-
+    const content = await readTextFile(configPath);
+    return JSON.parse(content);
   } catch (err) {
-    console.error("readConfig error:", err)
-    return null
+    console.error("Failed to read config:", err);
+    return null;
   }
 }
 
-export async function writeConfig(update: { [key: string]: any }) {
-  const dir = await appDataDir()
-  const configPath = await join(dir, "config.json")
+export async function writeConfig(
+  update: Partial<AppConfig>
+): Promise<void> {
+  const configPath = await getConfigPath();
 
-  await mkdir(dir, { recursive: true })
+  await ensureDirectory(await appDataDir());
 
-  const existing = (await readConfig()) || {}
+  const existing = (await readConfig()) ?? ({} as AppConfig);
 
-  const newConfig = {
+  const config: AppConfig = {
     ...existing,
     ...update,
-  }
+  };
 
   await writeTextFile(
     configPath,
-    JSON.stringify(newConfig, null, 2)
-  )
+    JSON.stringify(config, null, 2)
+  );
 }
