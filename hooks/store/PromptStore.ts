@@ -1,9 +1,9 @@
 import { create } from "zustand"
 import { readPrompt } from "@/services/service.prompt"
 import { templateService } from "@/lib/db/template"
-import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/prompt"
+import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/document"
 import { createFile } from "@/lib/fs/fs"
-import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/prompt"
+import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/document"
 import { JSONContent } from "@tiptap/react"
 import { serializeDoc, nodeToXml } from "@/lib/client/textEditorFuncs"
 

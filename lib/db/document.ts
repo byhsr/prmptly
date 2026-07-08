@@ -1,57 +1,8 @@
 import { getDB } from "./index";
-
+import { DocumentRow, Document, CreateDocumentInput, UpdateDocumentInput, DocumentType, DocumentSection } from "@/lib/types/Document";
 // ── Types ──────────────────────────────────────────
 
-export type DocumentType = "quick" | "prompt";
 
-export interface DocumentRow {
-  id: string;
-  type: DocumentType;
-  name: string;
-  template_id: string | null;
-  collection_id: string | null;
-  sections_json: string;
-  scratchpad_text_path: string | null;
-  scratchpad_flow_path: string | null;
-  output_id: string | null;
-  meta_json: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Document {
-  id: string;
-  type: DocumentType;
-  name: string;
-  templateId: string | null;
-  collectionId: string | null;
-  sections: unknown; // replace with your Section[] type
-  scratchpadTextPath: string | null;
-  scratchpadFlowPath: string | null;
-  outputId: string | null;
-  meta: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateDocumentInput {
-  type: DocumentType;
-  name: string;
-  templateId?: string | null;
-  collectionId?: string | null;
-  sections: unknown;
-  meta?: Record<string, unknown>;
-}
-
-export interface UpdateDocumentInput {
-  name?: string;
-  collectionId?: string | null;
-  sections?: unknown;
-  scratchpadTextPath?: string | null;
-  scratchpadFlowPath?: string | null;
-  outputId?: string | null;
-  meta?: Record<string, unknown>;
-}
 
 // ── Mapper ─────────────────────────────────────────
 
@@ -62,7 +13,7 @@ function mapRow(row: DocumentRow): Document {
     name: row.name,
     templateId: row.template_id,
     collectionId: row.collection_id,
-    sections: JSON.parse(row.sections_json),
+    sections: JSON.parse(row.sections_json) as DocumentSection[],
     scratchpadTextPath: row.scratchpad_text_path,
     scratchpadFlowPath: row.scratchpad_flow_path,
     outputId: row.output_id,

@@ -2,10 +2,8 @@ import { join } from "@tauri-apps/api/path";
 
 export const dirs = {
   promptly: ".prmptly",
-  prompts: "prompts",
+  documents: "documents",
   templates: "templates",
-  scratchpads: "scratchpads",
-  outputs: "outputs",
   assets: "assets",
   library: "library",
 } as const;
@@ -32,17 +30,26 @@ export async function buildPath(...parts: string[]) {
   return join(workspace(), ...parts);
 }
 
-export const getPromptDir = (id: string) =>
-  buildPath("prompts", id);
+// ── Documents ─────────────────────────────────────
+
+export const getDocumentDir = (id: string) =>
+  buildPath("documents", id);
+
+export const getScratchpadPath = (id: string) =>
+  buildPath("documents", id, "scratchpad.md");
+
+export const getCanvasPath = (id: string) =>
+  buildPath("documents", id, "scratchpad.flow.json");
+
+export const getOutputPath = (id: string) =>
+  buildPath("documents", id, "output.json");
+
+// ── Templates ─────────────────────────────────────
 
 export const getTemplateDir = (id: string) =>
   buildPath("templates", id);
 
-export const getScratchpadDir = (id: string) =>
-  buildPath("scratchpads", id);
-
-export const getOutputDir = (id: string) =>
-  buildPath("outputs", id);
+// ── Assets ────────────────────────────────────────
 
 export const getAssetDir = (id: string) =>
   buildPath("assets", id);

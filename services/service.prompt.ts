@@ -1,7 +1,7 @@
 import { createFile, readFile, createFolder, deleteFolder } from "../lib/fs/fs.ts"
 import { getDB } from "../lib/db/index.ts"
 import { getPromptTypeDir, getPrompt, buildFilePath } from "@/lib/fs/fsHelpers.ts"
-import { BuilderSectionContent } from "@/lib/db/prompt.ts"
+import { BuilderSectionContent } from "@/lib/db/document.ts"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

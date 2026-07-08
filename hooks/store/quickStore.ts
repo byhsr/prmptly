@@ -2,7 +2,7 @@ import { create } from "zustand"
 import { JSONContent } from "@tiptap/core"
 import { nanoid } from "nanoid"
 import { nodeToPlain, docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
-import {parseMarkdownSections} from "@/lib/client/parseMarkdown"
+import {parseMarkdownSections} from "@/lib/editor/parseMarkdown"
 
 export interface QuickSection {
   id: string

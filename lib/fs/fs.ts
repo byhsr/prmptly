@@ -43,7 +43,7 @@ export async function createFolder(path: string) {
   await ensureDirectory(path);
 }
 
-export async function createFile(filePath: string, content = "") {
+export async function writeFile(filePath: string, content = "") {
   await writeTextFile(filePath, content);
 }
 
