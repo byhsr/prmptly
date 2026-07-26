@@ -33,3 +33,19 @@
 - **Removes transitional/experimental UI elements when a feature is finalized** — considers cleaning up leftover UI scaffolding (e.g., an icon pill in the sidebar) as the last step before marking a feature "done". Does not leave behind feature-toggle-style visual cruft. Confidence: 0.5
 
 - **Prefers minimal sidebar UI without category label headers** — sidebar panels should not display text labels like "Prompts", "Snippets", "Templates" as section headers; instead, keep only compact create/action buttons. Sidebar should be streamlined and uncluttered. Confidence: 0.7
+
+- **Prefers inline content resolution over placeholder chips in editors** — when selecting a mention/snippet from a suggestion popup, resolve the content immediately and insert the actual text at cursor position, rather than inserting a pending chip/placeholder node that resolves asynchronously. Confidence: 0.9
+
+- **Prefers content excerpts with truncation in suggestion/mention dropdowns** — show a truncated preview (e.g., 120 chars) of the content beneath each item label so users can identify what they're selecting at a glance. Confidence: 0.7
+
+- **Prefers both Enter and Tab to confirm selections in suggestion popovers** — Tab key (alongside Enter) should populate/confirm the selected item, not just move focus. Confidence: 0.7
+
+- **Omits backend/source implementation labels from user-facing UI** — labels like "deterministic" or "rag" that describe the internal source mechanism should not appear in menus, dropdowns, or any UI the user sees. Confidence: 0.6
+
+- **Deletes the trigger syntax when inserting resolved content from mention popups** — when a user selects a mention/snippet from a suggestion list, the entire `@namespace:key` text (including the `@` symbol) must be removed from the document before inserting the resolved content, leaving no trigger syntax behind. Confidence: 0.8
+
+- **Filters out implicit/internal synthetic scopes from user-facing dropdowns** — synthetic namespaces like `__global__` that are internal defaults (not user-created) should be hidden from namespace/scope selection menus and never shown as selectable options. Confidence: 0.7
+
+- **Prefers flat key-value snippet model over namespaced/scoped snippets** — explicitly prefers simple key-value pairs for snippets (just "key" and "value" fields) rather than a hierarchical namespace:key model with scopes. Considers scopes unnecessary complexity. Confidence: 0.8
+
+- **Prioritizes frontend simplification over backend data purity** — willing to remove features from the UI (scope/namespace fields, scope display in sidebar) even if the database schema still stores the legacy data. Pragmatic approach: "you dont have to do it from the db just remove it from the front." Confidence: 0.6

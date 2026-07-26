@@ -8,7 +8,7 @@ import { createPortal } from "react-dom"
 import type { JSONContent } from "@tiptap/react"
 import { cn } from "@/lib/utils"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
-import { getNamespaces, resolveMention, getDeterministicKeys, type Namespace } from "@/services/contextInjection"
+import { getNamespaces, type Namespace } from "@/services/contextInjection"
 import "@/src/styles/TextEditor.css"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -31,6 +31,8 @@ export interface MentionItem {
     id: string
     label: string
     source: "deterministic" | "rag"
+    excerpt?: string
+    value?: string
 }
 type MentionStage = "namespace" | "key" | "rag-query"
 
@@ -42,6 +44,7 @@ interface MentionStateType {
     stage: MentionStage
     selectedNamespace: { prefix: string; source: "deterministic" | "rag" } | null
     subItems: MentionItem[]
+    mentionFrom?: number  // doc position where @ was typed
 }
 
 const RESET_MENTION: MentionStateType = {
@@ -159,6 +162,11 @@ interface MentionListProps {
 
 function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChange, onRagCommit }: MentionListProps) {
     const [selected, setSelected] = useState(0)
+    const listRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        setSelected(0)
+    }, [items])
 
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -169,16 +177,21 @@ function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChang
             }
             if (e.key === "ArrowDown") { e.preventDefault(); setSelected((s) => (s + 1) % items.length) }
             else if (e.key === "ArrowUp") { e.preventDefault(); setSelected((s) => (s - 1 + items.length) % items.length) }
-            else if (e.key === "Enter") { e.preventDefault(); if (items[selected]) command(items[selected]) }
+            else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); if (items[selected]) command(items[selected]) }
             else if (e.key === "Escape") { onClose() }
         }
         window.addEventListener("keydown", handler)
         return () => window.removeEventListener("keydown", handler)
     }, [items, selected, command, onClose, stage, onRagCommit])
 
+    useEffect(() => {
+        const el = listRef.current?.children[selected] as HTMLElement | undefined
+        el?.scrollIntoView({ block: "nearest" })
+    }, [selected])
+
     if (stage === "rag-query") {
         return (
-            <div className="min-w-[220px] rounded-lg border border-border bg-background shadow-lg overflow-hidden">
+            <div className="min-w-[260px] rounded-lg border border-border bg-background shadow-lg overflow-hidden">
                 <p className="px-3 pt-2 text-[10px] text-muted font-mono">query this scope</p>
                 <input
                     autoFocus
@@ -193,21 +206,29 @@ function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChang
     }
 
     if (!items.length) return (
-        <div className="min-w-[180px] rounded-lg border border-border bg-background shadow-lg px-3 py-2">
-            <p className="text-xs text-muted">No context yet — add data to Snippet or Context to inject</p>
+        <div className="min-w-[220px] rounded-lg border border-border bg-background shadow-lg px-3 py-2">
+            <p className="text-xs text-muted">No snippets for this namespace yet</p>
         </div>
     )
 
     return (
-        <div className="min-w-[180px] rounded-lg border border-border bg-background shadow-lg overflow-hidden">
+        <div ref={listRef} className="min-w-[240px] max-h-48 overflow-y-auto rounded-lg border border-border bg-background shadow-lg">
             {items.map((item, i) => (
                 <button
                     key={item.id}
                     onMouseDown={(e) => { e.preventDefault(); command(item) }}
-                    className={`w-full px-3 py-1.5 text-left text-xs font-mono transition-colors ${i === selected ? "bg-foreground/10 text-foreground" : "text-muted hover:bg-foreground/5"}`}
+                    onMouseEnter={() => setSelected(i)}
+                    className={`w-full px-3 py-2 text-left transition-colors border-b border-border/40 last:border-0 ${i === selected ? "bg-foreground/10" : "hover:bg-foreground/5"}`}
                 >
-                    <span>{item.label}</span>
-                    <span className="ml-2 opacity-40 text-[10px]">{item.source}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-foreground font-medium">{item.label}</span>
+                    </div>
+                    {item.excerpt && (
+                        <p className="text-[11px] text-muted mt-0.5 leading-relaxed line-clamp-2 font-sans">
+                            {item.excerpt}
+                            {item.excerpt.length >= 120 ? "…" : ""}
+                        </p>
+                    )}
                 </button>
             ))}
         </div>
@@ -225,6 +246,7 @@ export function SmartEditor({
     minHeight = 20,
 }: SmartEditorProps) {
     const namespacesRef = useRef<Namespace[]>([])
+    const snippetsRef = useRef<MentionItem[]>([])
     const [mentionState, setMentionState] = useState<MentionStateType & { ragQuery: string }>(
         { ...RESET_MENTION, ragQuery: "" }
     )
@@ -233,65 +255,23 @@ export function SmartEditor({
         getNamespaces().then((ns) => { namespacesRef.current = ns })
     }, [])
 
+    useEffect(() => {
+        // Load all snippets into the ref for real-time search
+        import("@/lib/db/library").then(({ libraryService }) =>
+            libraryService.getAll().then((snippets) => {
+                snippetsRef.current = snippets.map((s) => ({
+                    id: s.key,
+                    label: s.key,
+                    value: s.value,
+                    source: "deterministic" as const,
+                    excerpt: s.value.slice(0, 120),
+                }))
+            })
+        )
+    }, [])
+
     const resetMention = useCallback(() =>
         setMentionState({ ...RESET_MENTION, ragQuery: "" }), [])
-
-    // Insert a context chip into the editor and kick off resolution
-    const insertChip = useCallback((
-        editorInstance: ReturnType<typeof useEditor>,
-        item: MentionItem,
-        ragQuery = ""
-    ) => {
-        if (!editorInstance) return
-
-        const chipId = item.source === "deterministic" ? item.id : `${item.id}:${ragQuery}`
-        const label = item.source === "deterministic" ? `@${item.id}` : `@${item.id}`
-
-        editorInstance.chain().focus().insertContent({
-            type: "contextChip",
-            attrs: {
-                id: chipId,
-                label,
-                source: item.source,
-                query: ragQuery,
-                status: "pending",
-                resolvedContent: "",
-            },
-        }).run()
-
-        // Resolve immediately after insert
-        if (item.source === "deterministic") {
-            resolveMention(item.id).then((result) => {
-                if (result?.type === "deterministic") {
-                    // Find and update the chip node
-                    const { state, dispatch } = editorInstance.view
-                    state.doc.descendants((node, pos) => {
-                        if (node.type.name === "contextChip" && node.attrs.id === chipId) {
-                            const tr = state.tr.setNodeMarkup(pos, undefined, {
-                                ...node.attrs,
-                                status: "resolved",
-                                resolvedContent: result.value,
-                            })
-                            dispatch(tr)
-                            onResolvedContext?.(chipId, result.value)
-                        }
-                    })
-                } else {
-                    // mark empty
-                    const { state, dispatch } = editorInstance.view
-                    state.doc.descendants((node, pos) => {
-                        if (node.type.name === "contextChip" && node.attrs.id === chipId) {
-                            dispatch(state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, status: "empty" }))
-                        }
-                    })
-                }
-            })
-        } else {
-            // RAG — vector search stub, wire your invoke here
-            // invoke("vector_search", { scope: item.id, query: ragQuery }).then(chunks => { ... })
-            // For now mark pending → you'll resolve this when backend is ready
-        }
-    }, [onResolvedContext])
 
     const editor = useEditor({
         extensions: [
@@ -304,16 +284,22 @@ export function SmartEditor({
             }),
             ContextChipNode,
             Mention.configure({
-                HTMLAttributes: { class: "mention" },
+                HTMLAttributes: { class: "" },
+                renderLabel: () => "",
                 suggestion: {
-                    items: ({ query }) =>
-                        namespacesRef.current
-                            .filter((ns) => ns.prefix.toLowerCase().includes(query.toLowerCase()))
-                            .map((ns) => ({ id: ns.prefix, label: `@${ns.prefix}`, source: ns.source })),
+                    items: ({ query }) => {
+                        // Show all snippet keys as flat list, filtered by query
+                        return snippetsRef.current
+                            .filter((s) => s.label.toLowerCase().includes(query.toLowerCase()))
+                            .slice(0, 50)
+                    },
                     render: () => ({
                         onStart: (props) => {
                             const rect = props.clientRect?.()
                             if (!rect) return
+                            // Capture the cursor position where @ was typed
+                            const { state } = editor!.view
+                            const mentionFrom = state.selection.from - 1  // the @ char
                             setMentionState((s) => ({
                                 ...s,
                                 show: true,
@@ -323,6 +309,7 @@ export function SmartEditor({
                                 stage: "namespace",
                                 subItems: [],
                                 selectedNamespace: null,
+                                mentionFrom,
                             }))
                         },
                         onUpdate: (props) => {
@@ -377,52 +364,30 @@ export function SmartEditor({
 
     const handleMentionCommand = useCallback(
         async (item: MentionItem) => {
-            if (mentionState.stage === "namespace") {
-                if (item.source === "deterministic") {
-                    const keys = await getDeterministicKeys(item.id)
-                    setMentionState((s) => ({
-                        ...s,
-                        stage: "key",
-                        selectedNamespace: { prefix: item.id, source: "deterministic" },
-                        subItems: keys,
-                        query: "",
-                    }))
-                } else {
-                    // RAG — cancel the default mention, show query input
-                    mentionState.command?.({ id: "\x00" }) // dismiss tiptap mention
-                    setMentionState((s) => ({ ...s, stage: "rag-query" as any, selectedNamespace: { prefix: item.id, source: "rag" } }))
-                }
-                return
-            }
-
-            if (mentionState.stage === "key") {
-                // deterministic final key selected — dismiss tiptap mention, insert chip
-                mentionState.command?.({ id: "\x00" })
-                resetMention()
-                insertChip(editor, item)
-                return
+            // Let Tiptap's built-in mention command delete the @key text first
+            mentionState.command?.({ id: item.id })
+            resetMention()
+            if (item.value && editor) {
+                // Replace the just-inserted mention node with the resolved snippet content
+                const { state, dispatch } = editor.view
+                state.doc.descendants((node, pos) => {
+                    if (node.type.name === "mention" && node.attrs.id === item.id) {
+                        dispatch(state.tr.replaceWith(pos, pos + node.nodeSize, state.schema.text(item.value!)))
+                        return false
+                    }
+                })
+                onResolvedContext?.(item.id, item.value)
             }
         },
-        [mentionState, editor, insertChip, resetMention]
+        [mentionState, editor, resetMention]
     )
 
-    const handleRagCommit = useCallback(() => {
-        if (!mentionState.selectedNamespace || !mentionState.ragQuery.trim()) return
-        const item: MentionItem = {
-            id: mentionState.selectedNamespace.prefix,
-            label: `@${mentionState.selectedNamespace.prefix}`,
-            source: "rag",
-        }
-        resetMention()
-        insertChip(editor, item, mentionState.ragQuery.trim())
-    }, [mentionState, editor, insertChip, resetMention])
+    const handleRagCommit = useCallback(() => {}, [])
 
     const visibleItems: MentionItem[] =
-        mentionState.stage === "key"
-            ? mentionState.subItems.filter((i) => i.label.toLowerCase().includes(mentionState.query.toLowerCase()))
-            : namespacesRef.current
-                .filter((ns) => ns.prefix.toLowerCase().includes(mentionState.query.toLowerCase()))
-                .map((ns) => ({ id: ns.prefix, label: `@${ns.prefix}`, source: ns.source }))
+        snippetsRef.current
+            .filter((s) => s.label.toLowerCase().includes(mentionState.query.toLowerCase()))
+            .slice(0, 50)
 
     return (
         <>

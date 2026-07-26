@@ -9,7 +9,7 @@ export interface Namespace {
 // ─── All namespaces for the initial @ dropdown ────────────────────────────────
 export async function getNamespaces(): Promise<Namespace[]> {
     const db = await getDB()
-    return db.select<Namespace[]>(`SELECT prefix, source FROM namespaces ORDER BY prefix ASC`)
+    return db.select<Namespace[]>(`SELECT prefix, source FROM namespaces WHERE prefix != '__global__' ORDER BY prefix ASC`)
 }
 
 // ─── Resolve a mention string like "writer:persona" ──────────────────────────
@@ -39,8 +39,13 @@ export async function resolveMention(raw: string): Promise<{ type: "deterministi
 
 export async function getDeterministicKeys(namespace: string): Promise<MentionItem[]> {
     const db = await getDB()
-    const rows = await db.select<{ key: string }[]>(
-        `SELECT key FROM deterministic_assets WHERE namespace = ? ORDER BY key ASC`, [namespace]
+    const rows = await db.select<{ key: string; value: string }[]>(
+        `SELECT key, value FROM deterministic_assets WHERE namespace = ? ORDER BY key ASC`, [namespace]
     )
-    return rows.map((r) => ({ id: `${namespace}:${r.key}`, label: `${namespace}:${r.key}`, source: "deterministic" as const }))
+    return rows.map((r) => ({
+        id: `${namespace}:${r.key}`,
+        label: `${namespace}:${r.key}`,
+        excerpt: r.value.slice(0, 120),
+        source: "deterministic" as const,
+    }))
 }

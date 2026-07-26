@@ -3,6 +3,9 @@ import { getDB } from "@/lib/db"
 export async function claimNamespace(prefix: string, source: "deterministic" | "rag"): Promise<void> {
     const db = await getDB()
 
+    // __global__ is implicit — never create an entry for it
+    if (prefix === "__global__") return
+
     const rows = await db.select<{ source: string }[]>(
         `SELECT source FROM namespaces WHERE prefix = ?`, [prefix]
     )

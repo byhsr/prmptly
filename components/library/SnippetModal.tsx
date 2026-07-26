@@ -142,23 +142,19 @@ import { LibraryTab } from "./LibraryView"
 
 type SnippetModalProps = {
   onClose: () => void
-  onSave: (data: { scope?: string; key: string; value: string }) => void
-  existingScopes?: string[]
   snippet?: Snippet
   isCreating: LibraryTab | null
 }
 
-export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating }: SnippetModalProps) => {
+export const SnippetModal = ({ onClose, snippet, isCreating }: SnippetModalProps) => {
   const isEditing = !!snippet && !isCreating
   const { notify } = useNotifications()
-  const [scope, setScope] = useState(snippet?.scope ?? "")
   const [key, setKey] = useState(snippet?.key ?? "")
   const [value, setValue] = useState(snippet?.value ?? "")
 
   const { setSnippets, snippets } = useLibraryStore()
 
   useEffect(() => {
-    setScope(snippet?.scope ?? "")
     setKey(snippet?.key ?? "")
     setValue(snippet?.value ?? "")
   }, [snippet])
@@ -168,17 +164,8 @@ export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating
     .toLowerCase()
     .replace(/\s+/g, "-")
 
-  const normalizedScope = scope
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-
-  const callsign = normalizedScope
-    ? `@${normalizedScope}:${normalizedKey}`
-    : `@${normalizedKey}`
-
   const handleSave = async () => {
-    if (isEditing && snippet!.scope === scope.trim() && snippet!.key === key.trim() && snippet!.value === value.trim()) {
+    if (isEditing && snippet!.key === key.trim() && snippet!.value === value.trim()) {
       notify("No changes made")
       return
     }
@@ -188,7 +175,7 @@ export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating
     }
 
     const newSnippet = {
-      scope: scope.trim() || undefined,
+      scope: undefined as string | undefined,
       key: key.trim(),
       value: value.trim(),
     }
@@ -198,7 +185,7 @@ export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating
         await libraryService.update(
           snippet!.scope,
           snippet!.key,
-          newSnippet.scope,
+          undefined,
           newSnippet.key,
           newSnippet.value
         )
@@ -246,21 +233,6 @@ export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating
         {/* Body */}
         <div className="flex bg-background flex-col flex-1 gap-4 ">
           <div className="flex gap-2 border-b p-6 ">
-            <Field label="Scope" optional className="text-muted text-sm">
-              <input
-                value={scope}
-                onChange={(e) => setScope(e.target.value)}
-                placeholder="global"
-                list="scope-list"
-                autoComplete="off"
-                style={{ textTransform: "lowercase" }}
-                className="outline-0 text-foreground text-sm"
-              />
-              <datalist id="scope-list">
-                {existingScopes.map((s) => <option key={s} value={s} />)}
-              </datalist>
-            </Field>
-
             <Field label="Key" className="text-muted text-sm">
               <input
                 value={key}
@@ -293,7 +265,7 @@ export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating
             {/* <SquareAsterisk style={{ width: 13, height: 13, color: "var(--color-accent)" }} /> */}
             <div className=" px-2 py-1 rounded">
               <span style={{ color: "var(--color-accent)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
-                {callsign}
+                @{normalizedKey}
               </span>
             </div>
             {/* <input

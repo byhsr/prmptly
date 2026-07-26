@@ -79,14 +79,7 @@ const SnippetRow = ({
     />
     <div className="flex flex-col min-w-0">
       <span className="text-[11px] font-mono truncate">
-        {snippet.scope ? (
-          <>
-            <span style={{ color: "var(--color-muted)" }}>{snippet.scope}:</span>
-            {snippet.key}
-          </>
-        ) : (
-          snippet.key
-        )}
+        {snippet.key}
       </span>
     </div>
   </button>

@@ -41,7 +41,6 @@ const SnippetsPanel = () => {
         isCreating={activeMode}
         snippet={snippet ?? undefined}
         onClose={() => { setActiveMode(null); useLibraryStore.getState().clearSelection() }}
-        onSave={() => { setActiveMode(null) }}
       />
     )
   }
