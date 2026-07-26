@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import type { JSONContent } from "@tiptap/react"
 
 interface HeadingEntry {
   id: string
@@ -6,35 +7,32 @@ interface HeadingEntry {
   text: string
 }
 
-function extractHeadingsFromText(text: string): HeadingEntry[] {
-  const headings: HeadingEntry[] = []
-  const lines = text.split("\n")
+function extractHeadingsFromDoc(doc: JSONContent | null | string): HeadingEntry[] {
+  if (!doc || typeof doc === "string") return []
+  const entries: HeadingEntry[] = []
   let index = 0
 
-  for (const line of lines) {
-    const m1 = line.match(/^# (.+)/)
-    if (m1) {
-      headings.push({ id: `h-${index}`, level: 1, text: m1[1].trim() })
+  function walk(node: JSONContent) {
+    if (node.type === "heading" && (node.attrs?.level === 1 || node.attrs?.level === 2)) {
+      const text = node.content?.map((c: JSONContent) => c.text ?? "").join("") || ""
+      entries.push({ id: `h-${index}`, level: node.attrs.level, text })
       index++
-      continue
     }
-    const m2 = line.match(/^## (.+)/)
-    if (m2) {
-      headings.push({ id: `h-${index}`, level: 2, text: m2[1].trim() })
-      index++
-      continue
+    if (node.content) {
+      for (const child of node.content) walk(child)
     }
   }
 
-  return headings
+  walk(doc)
+  return entries
 }
 
 interface OutlinePanelProps {
-  text: string
+  doc: JSONContent | string | null
 }
 
-export function OutlinePanel({ text }: OutlinePanelProps) {
-  const headings = useMemo(() => extractHeadingsFromText(text), [text])
+export function OutlinePanel({ doc }: OutlinePanelProps) {
+  const headings = useMemo(() => extractHeadingsFromDoc(doc), [doc])
 
   const handleClick = (id: string) => {
     const el = document.querySelector(`[data-heading-id="${id}"]`)
@@ -51,9 +49,7 @@ export function OutlinePanel({ text }: OutlinePanelProps) {
 
   return (
     <div className="flex flex-col h-full p-3 space-y-1">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted mb-2 px-1">
-        Outline
-      </span>
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted mb-2 px-1">Outline</span>
       <div className="flex-1 overflow-y-auto space-y-0.5">
         {headings.map((h) => (
           <button

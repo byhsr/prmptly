@@ -16,6 +16,8 @@ interface SettingsState {
     module: K,
     variant: AppSettings["moduleVariants"][K]
   ) => Promise<void>
+  updateHeadingSize: (level: "h1" | "h2" | "h3", size: number) => Promise<void>
+  updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<void>
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -37,5 +39,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const next = { ...get().settings.moduleVariants, [module]: variant }
     set((s) => ({ settings: { ...s.settings, moduleVariants: next } }))
     await saveAppSettings({ moduleVariants: next })
+  },
+
+  updateHeadingSize: async (level, size) => {
+    const next = { ...get().settings.headingSizes, [level]: size }
+    set((s) => ({ settings: { ...s.settings, headingSizes: next } }))
+    await saveAppSettings({ headingSizes: next })
+  },
+
+  updateSetting: async (key, value) => {
+    set((s) => ({ settings: { ...s.settings, [key]: value } }))
+    await saveAppSettings({ [key]: value })
   },
 }))

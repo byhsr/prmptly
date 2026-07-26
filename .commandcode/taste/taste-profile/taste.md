@@ -64,7 +64,7 @@
 
 - **Expects rich text formatting to be visually apparent immediately** — structural formatting changes (e.g., creating an h1/h2/h3 node via `# ` shortcut) must come with corresponding CSS styling so the user can see the effect. Without visible typographic differentiation (font-size, weight, margin), the formatting feature is considered broken/non-functional from the user's perspective — the node existing in the DOM is not enough. Applies to all rich text formatting (headings, lists, blockquotes, etc.). Confidence: 0.8
 
-- **Shows content analytics (char count, word count, token estimate) as a subtle footer bar in editor views** — wants quantitative writing metrics visible at a glance, especially token estimates relevant to LLM usage. Confidence: 0.7
+- **Shows content analytics (char count, word count, token estimate) as a subtle top bar in editor views** — wants quantitative writing metrics visible at a glance, especially token estimates relevant to LLM usage. The stats/analytics bar should be positioned at the **top** of the editor view (above the editor content), not at the bottom. Confidence: 0.8
 
 - **Prefers ultra-compact styling for secondary/ambient metadata** — secondary info like stats bars should use minimum visual weight (`text-[10px] font-mono text-muted`, thin border separator) so it's available without competing with primary content. Confidence: 0.6
 
@@ -97,3 +97,17 @@
 - **Smart display name fallback for sidebar documents** — sidebar document labels should derive from: (1) user-assigned name if set and non-empty, (2) first-line excerpt from document content (truncated to ~60 chars), (3) "Untitled" as final fallback. Never shows an empty/blank label. Confidence: 0.7
 
 - **Quicks open in the home/quicks view, not the prompt builder** — clicking a quick document in the sidebar should load it into the quicks editing store and switch the main application view to "home". It must NOT open as a tab in the prompt builder workspace. Quicks are edited in-place in the dedicated quicks/home view, not as separate prompt builder tabs. Confidence: 0.9
+
+- **Prefers floating/flyover UI for transient tool panels (like Find & Replace)** — temporary tools should appear as floating overlays on top of content rather than pinned/fixed toolbars that shift the layout. The panel should be positioned relative to the trigger button and overlay the content beneath it. Confidence: 0.6
+
+- **Click-outside-to-dismiss (click-off) for floating UI panels** — floating panels, popovers, and transient tool UIs should close automatically when the user clicks anywhere outside the panel. Dismissal should happen on `mousedown` for immediate feel, not on scroll or inside clicks. Confidence: 0.7
+
+- **Enter key as confirmation action in tool panel input fields** — pressing Enter within an input field inside a tool panel (e.g., replace field in Find & Replace, rename input) should trigger the panel's primary action (replace all, commit rename, etc.), not just move focus. Escape should cancel/close. Confidence: 0.6
+
+- **Settings stored in DB (fonts, heading sizes, theme) must be actively wired to the DOM** — persisted settings should not remain inert data; they must be applied as CSS custom properties on `documentElement` so they actually render visually. Uses `useEffect` in App.tsx to sync settings state to `--font-heading`, `--font-body`, `--font-mono`, `--heading-h1/2/3` CSS variables. Confidence: 0.8
+
+- **Extends theming beyond dark/light via `data-theme` attribute and CSS custom properties** — prefers an extensible theme system where custom themes (e.g., cyberpunk) get their own `[data-theme="..."]` CSS variable block rather than being shoehorned into the `.dark`/`.light` class toggle. Confidence: 0.7
+
+- **Cyberpunk theme should be a terminal-green palette** — dark-green background (`#0d1b0e`), lime-green foreground/text (`#c8f135`), muted green secondary elements, dark green borders/surfaces. The "cyberpunk" aesthetic translates to monochrome green-on-dark with high-contrast accent. Confidence: 0.8
+
+- **Outline/table-of-contents extraction must operate on the editor's semantic JSONContent tree (heading nodes), not on compiled/flat text output** — outline panels should walk the Tiptap JSON tree for `heading` nodes with their level and text content, rather than regex-scanning a rendered flat string. Ensures headings are detected from the structured editor state even when the compiled output format doesn't preserve `#` markers. Confidence: 0.7

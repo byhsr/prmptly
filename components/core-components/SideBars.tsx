@@ -35,7 +35,7 @@ function RailButton({
       }}
     >
       <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
-      <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 pointer-events-none">{label}</span>
+      <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">{label}</span>
     </button>
   )
 }

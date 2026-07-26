@@ -38,6 +38,16 @@ body {
   --accent-foreground: #111111;
 }
 
+[data-theme="cyberpunk"] {
+  --background: #0d1b0e;
+  --foreground: #c8f135;
+  --surface: #112312;
+  --border: #1e3a1e;
+  --muted: #4a7c4a;
+  --accent: #c8f135;
+  --accent-foreground: #0d1b0e;
+}
+
 .sections-scroll::-webkit-scrollbar {
   width:4px;
   height: 3px;

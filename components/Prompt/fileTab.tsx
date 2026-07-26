@@ -165,7 +165,7 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   <ListTree className="h-3.5 w-3.5" />
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Outline</span>
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">Outline</span>
               </div>
 
               <div className="relative group">
@@ -177,7 +177,7 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   <Search className="h-3.5 w-3.5" />
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Find & Replace</span>
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">Find & Replace</span>
               </div>
 
               <div className="flex items-center gap-1">
@@ -191,7 +191,7 @@ export function FileTab({ tab }: { tab: Tab }) {
                     >
                       <Icon className="h-3.5 w-3.5" />
                     </motion.button>
-                    <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">
                       {label}
                     </span>
                   </div>
@@ -207,7 +207,7 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   {getSplitIcon()}
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">
                   {splitMode === "none" ? "Split view" : splitMode === "two" ? "Builder + Prompt" : splitMode === "two-prompt" ? "Builder + Scratchpad" : "Show all three"}
                 </span>
               </div>
@@ -216,7 +216,7 @@ export function FileTab({ tab }: { tab: Tab }) {
         </div>
 
         {showRectify && (
-          <RectifyBar editor={activeEditorRef.current} onClose={() => setShowRectify(false)} />
+          <RectifyBar editorRef={activeEditorRef} onClose={() => setShowRectify(false)} />
         )}
       </div>
 
@@ -239,7 +239,7 @@ export function FileTab({ tab }: { tab: Tab }) {
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto shrink-0">
-              <OutlinePanel text={compiledOutput} />
+              <OutlinePanel doc={compiledOutput} />
             </div>
           )}
         </div>

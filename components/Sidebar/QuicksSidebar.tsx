@@ -34,14 +34,16 @@ export function QuicksSidebarPanel() {
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-end px-3 py-1.5 shrink-0">
-        <button
-          onClick={() => {}}
-          className="rounded p-0.5 transition-colors hover:bg-background"
-          style={{ color: "var(--color-muted, #666)" }}
-          title="New Quick"
-        >
-          <FilePlus size={12} />
-        </button>
+        <div className="relative group">
+          <button
+            onClick={() => {}}
+            className="rounded p-0.5 transition-colors hover:bg-background"
+            style={{ color: "var(--color-muted, #666)" }}
+          >
+            <FilePlus size={12} />
+          </button>
+          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">New Quick</span>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
         {quicks.length === 0 && (

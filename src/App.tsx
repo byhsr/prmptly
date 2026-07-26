@@ -19,9 +19,11 @@ import { initWorkspace } from "@/lib/fs/fsHelpers";
 
 import { useSettingsStore } from "@/hooks/store/settingsStore";
 import { useTabViewStore } from "@/hooks/store/TabStore";
+import { FONTS } from "@/lib/config/settings";
 
 function App() {
   const [, setDarkMode] = useState(true);
+  const settings = useSettingsStore((s) => s.settings);
 
   useEffect(() => {
     async function loadTheme() {
@@ -31,10 +33,32 @@ function App() {
 
       setDarkMode(isDark);
       document.documentElement.classList.toggle("dark", isDark);
+      if (config?.theme && config.theme !== "dark" && config.theme !== "light") {
+        document.documentElement.dataset.theme = config.theme;
+      }
     }
 
     loadTheme();
   }, []);
+
+  // Apply font families
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--font-heading", FONTS[settings.fonts.heading]?.family ?? "Inter");
+    root.style.setProperty("--font-body", FONTS[settings.fonts.body]?.family ?? "Inter");
+    root.style.setProperty("--font-mono", FONTS[settings.fonts.mono]?.family ?? "'Geist Mono', monospace");
+
+    // Update theme inline font-family too
+    root.style.fontFamily = `var(--font-body)`;
+  }, [settings.fonts]);
+
+  // Apply heading sizes
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--heading-h1", `${settings.headingSizes.h1}rem`);
+    root.style.setProperty("--heading-h2", `${settings.headingSizes.h2}rem`);
+    root.style.setProperty("--heading-h3", `${settings.headingSizes.h3}rem`);
+  }, [settings.headingSizes]);
 
   // toggleTheme — kept for future use
 

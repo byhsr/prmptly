@@ -8,6 +8,9 @@ import { useNotifications } from "@/hooks/store/SidebarStore"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { Tab } from "../core-components/Tabbar"
 import { FileTab } from "../Prompt/fileTab"
+import { RectifyBar } from "../Prompt/RectifyBar"
+
+const homeEditorRef = { current: null as any }
 
 const emptyDoc: JSONContent = { type: "doc", content: [{ type: "paragraph" }] }
 
@@ -29,6 +32,7 @@ export function HomeView() {
   const [hasContent, setHasContent] = useState(false)
   const [activeTab, setActiveTab] = useState<OutputTab>("plain")
   const [copied, setCopied] = useState(false)
+  const [showRectify, setShowRectify] = useState(false)
 
   const allText = sections.map((s) => typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc)).join("\n")
   const charCount = allText.length
@@ -42,6 +46,10 @@ export function HomeView() {
         e.preventDefault()
         if (output) handleSaveOutput()
         else handleSave()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "r") {
+        e.preventDefault()
+        setShowRectify((v) => !v)
       }
     }
     window.addEventListener("keydown", handler)
@@ -119,8 +127,27 @@ export function HomeView() {
   }
 
   return (
-    <div className="relative h-full w-full flex flex-col pt-16">
-      <div className="w-full flex flex-col h-full min-h-0">
+    <div className="relative h-full w-full flex flex-col">
+      <div className="w-full flex flex-col h-full min-h-0 relative">
+
+        {/* Rectify bar — pushes content down when open */}
+        {showRectify && !output && (
+          <div className="shrink-0">
+            <RectifyBar editorRef={homeEditorRef} clickOff onClose={() => setShowRectify(false)} />
+          </div>
+        )}
+
+        {/* Stats bar — on top */}
+        {allText.length > 0 && !output && (
+          <div className="flex items-center gap-3 px-6 py-1.5 text-[10px] font-mono text-muted shrink-0 ml-auto justify-end">
+            <span>{charCount} chars</span>
+            <span>·</span>
+            <span>{wordCount} words</span>
+            <span>·</span>
+            <span>~{tokenEstimate} tokens</span>
+          </div>
+        )}
+
         <div className="flex-1 min-h-0">
           <AnimatePresence mode="wait">
           {!output ? (
@@ -158,6 +185,7 @@ export function HomeView() {
                     onChange={handleSectionChange(section.id)}
                     placeholder={section.title || "Type your prompt… use @ to inject context"}
                     minHeight={28}
+                    onEditorReady={(e) => { homeEditorRef.current = e }}
                   />
                 </div>
               ))}
@@ -364,16 +392,6 @@ export function HomeView() {
         )}
       </AnimatePresence>
     </div>
-    {/* Stats bar */}
-    {allText.length > 0 && (
-      <div className="flex items-center gap-3 px-6 py-2 text-[10px] font-mono text-muted border-t border-border shrink-0">
-        <span>{charCount} chars</span>
-        <span>·</span>
-        <span>{wordCount} words</span>
-        <span>·</span>
-        <span>~{tokenEstimate} tokens</span>
-      </div>
-    )}
   </div>
   )
 }
