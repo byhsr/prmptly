@@ -1,15 +1,19 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Workflow } from "lucide-react"
+import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Workflow, Search, ListTree } from "lucide-react"
 import { BuilderPanel} from "./BuilderPanel"
 import { ScratchpadPanel } from "./scratchpadPanel"
 import { PromptPanel } from "./GeneratedPromptPanel"
 import { Canvas } from "../canvas/Canvas"
+import { OutlinePanel } from "./OutlinePanel"
+import { RectifyBar } from "./RectifyBar"
 import { Tab } from "../core-components/Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
 import { TemplateSelector } from "./TemplateSelector"
 import { CanvasFlow } from "@/lib/types/canvas.types"
+import { activeEditorRef } from "./BuilderPanel"
+import { documentNameOverrides } from "@/lib/state"
 
 
 type SubTab = "builder" | "scratchpad" | "prompt" | "canvas"
@@ -26,11 +30,28 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("builder")
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
   const { loadDocument, reset, activeDocument, updateTemplate, clearTemplate, persist } = usePromptStore()
+  const compiledOutput = usePromptStore((s) => s.compiledOutput)
   const [canvasFlow, setCanvasFlow] = useState<CanvasFlow>({ nodes: [], edges: [] })
+  const [docName, setDocName] = useState(tab.label)
+  const [showRectify, setShowRectify] = useState(false)
+  const [showOutline, setShowOutline] = useState(false)
 
   useEffect(() => {
     loadDocument(tab.id)
+    setDocName(tab.label)
     return () => reset()
+  }, [tab.id])
+
+  const handleNameChange = useCallback(async (newName: string) => {
+    setDocName(newName)
+    documentNameOverrides.set(tab.id, newName)
+    const { updateDocument } = await import("@/lib/db/document")
+    await updateDocument(tab.id, { name: newName })
+    const { useTabViewStore } = await import("@/hooks/store/TabStore")
+    const state = useTabViewStore.getState()
+    useTabViewStore.setState({
+      tabs: state.tabs.map((t) => t.id === tab.id ? { ...t, label: newName } : t),
+    })
   }, [tab.id])
 
   useEffect(() => {
@@ -38,6 +59,10 @@ export function FileTab({ tab }: { tab: Tab }) {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault()
         persist()
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "r") {
+        e.preventDefault()
+        setShowRectify((v) => !v)
       }
     }
     window.addEventListener("keydown", handler)
@@ -108,95 +133,116 @@ export function FileTab({ tab }: { tab: Tab }) {
 
   return (
     <div className="flex relative h-full w-full flex-col">
-      <div className="w-full sticky top-0 flex justify-between bg-surface z-40">
-        {/* tab Title */}
-        <div className="w-fit flex-1 flex items-center px-6">
-          <input
-            defaultValue={tab.label}
-            onBlur={() => {}}
-            className="bg-transparent min-w-full outline-none text-sm font-medium tracking-wide"
-          />
-        </div>
-
-        {/* controls */}
-        <div className="flex">
-          {/* template selector */}
-          <div className="z-50 flex items-center justify-center">
-            {showTemplate && (
-              <TemplateSelector
-                value={activeDocument?.templateId ?? null}
-                onChange={handleTemplateChange}
-              />
-            )}
+      <div className="w-full sticky top-0 flex flex-col bg-surface z-40">
+        <div className="flex justify-between">
+          <div className="w-fit flex-1 flex items-center px-6">
+            <input
+              value={docName}
+              onChange={(e) => setDocName(e.target.value)}
+              onBlur={() => handleNameChange(docName)}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur() }}
+              className="bg-transparent min-w-full outline-none text-sm font-medium tracking-wide"
+            />
           </div>
 
-          {/* panel selector */}
-          <div className="flex items-center justify-end gap-4 px-4 pt-2">
-            {/* Tab Switcher */}
-            <div className="flex items-center gap-1">
-              {SUB_TABS.map(({ id, icon: Icon, label }) => (
-                <div key={id} className="relative group">
-                  <motion.button
-                    onClick={() => setActiveSubTab(id)}
-                    whileTap={{ scale: 0.88 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                    className={`rounded-lg p-2 transition-colors duration-150 ${
-                      activeSubTab === id
-                        ? "bg-background text-foreground"
-                        : "text-muted hover:text-foreground hover:bg-background"
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                  </motion.button>
-                  <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                    {label}
-                  </span>
-                </div>
-              ))}
+          <div className="flex">
+            <div className="z-50 flex items-center justify-center">
+              {showTemplate && (
+                <TemplateSelector
+                  value={activeDocument?.templateId ?? null}
+                  onChange={handleTemplateChange}
+                />
+              )}
             </div>
 
-            {/* Split Button */}
-            <motion.button
-              onClick={cycleSplitMode}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              className={`rounded-lg p-2 transition-colors ${
-                splitMode !== "none"
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted hover:text-foreground hover:bg-background"
-              }`}
-              title={
-                splitMode === "none" ? "Split view" :
-                splitMode === "two" ? "Builder + Prompt" :
-                splitMode === "two-prompt" ? "Builder + Scratchpad" :
-                "Show all three"
-              }
-            >
-              {getSplitIcon()}
-            </motion.button>
+            <div className="flex items-center justify-end gap-1 px-4 pt-2">
+              <div className="relative group">
+                <motion.button
+                  onClick={() => setShowOutline((v) => !v)}
+                  whileTap={{ scale: 0.88 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className={`rounded-lg p-2 transition-colors ${showOutline ? "bg-background text-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
+                >
+                  <ListTree className="h-3.5 w-3.5" />
+                </motion.button>
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Outline</span>
+              </div>
+
+              <div className="relative group">
+                <motion.button
+                  onClick={() => setShowRectify((v) => !v)}
+                  whileTap={{ scale: 0.88 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className={`rounded-lg p-2 transition-colors ${showRectify ? "bg-background text-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </motion.button>
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Find & Replace</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {SUB_TABS.map(({ id, icon: Icon, label }) => (
+                  <div key={id} className="relative group">
+                    <motion.button
+                      onClick={() => setActiveSubTab(id)}
+                      whileTap={{ scale: 0.88 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                      className={`rounded-lg p-2 transition-colors duration-150 ${activeSubTab === id ? "bg-background text-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </motion.button>
+                    <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="relative group">
+                <motion.button
+                  onClick={cycleSplitMode}
+                  whileTap={{ scale: 0.88 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className={`rounded-lg p-2 transition-colors ${splitMode !== "none" ? "bg-accent text-accent-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
+                >
+                  {getSplitIcon()}
+                </motion.button>
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                  {splitMode === "none" ? "Split view" : splitMode === "two" ? "Builder + Prompt" : splitMode === "two-prompt" ? "Builder + Scratchpad" : "Show all three"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+
+        {showRectify && (
+          <RectifyBar editor={activeEditorRef.current} onClose={() => setShowRectify(false)} />
+        )}
       </div>
 
-      {/* Panel Content */}
       <div className="flex-1 w-full overflow-hidden">
-        <motion.div className={`flex h-full w-full ${panelsToShow.length > 1 ? "flex-row" : ""}`} layout>
-            {panelsToShow.map((panel, index) => (
-              <motion.div
-                key={panel}
-                layout
-                initial={false}
-                animate={{ opacity: 1 }}
-                className={`h-full overflow-hidden ${
-                  index > 0 ? "border-l border-border" : ""
-                } ${panelsToShow.length > 1 ? "flex-1 min-w-0" : "min-w-full"}`}
-              >
-                <div className="h-full overflow-y-auto">
-                  {renderPanel(panel)}
-                </div>
-              </motion.div>
-            ))}
-        </motion.div>
+        <div className="flex h-full w-full">
+          <div className={`flex h-full ${showOutline ? "flex-1 min-w-0" : "w-full"}`}>
+            <motion.div className={`flex h-full w-full ${panelsToShow.length > 1 ? "flex-row" : ""}`} layout>
+              {panelsToShow.map((panel, index) => (
+                <motion.div
+                  key={panel}
+                  layout
+                  initial={false}
+                  animate={{ opacity: 1 }}
+                  className={`h-full overflow-hidden ${index > 0 ? "border-l border-border" : ""} ${panelsToShow.length > 1 ? "flex-1 min-w-0" : "min-w-full"}`}
+                >
+                  <div className="h-full overflow-y-auto">{renderPanel(panel)}</div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+          {showOutline && (
+            <div className="w-56 border-l border-border overflow-y-auto shrink-0">
+              <OutlinePanel text={compiledOutput} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

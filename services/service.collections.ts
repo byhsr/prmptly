@@ -68,7 +68,7 @@ export async function getCollectionsTree(): Promise<CollectionTree> {
   )
 
   const documents = await db.select<DocumentRow[]>(
-    `SELECT id, name, collection_id FROM documents ORDER BY name ASC`
+    `SELECT id, name, collection_id FROM documents WHERE type = 'prompt' ORDER BY name ASC`
   )
 
   const collectionMap = new Map<string | null, CollectionRow[]>()

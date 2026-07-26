@@ -23,6 +23,7 @@ type PromptSidebarPanelProps = {
   onStartCreate: (type: "prompt" | "collection") => void
   onConfirmCreate: (name: string) => void
   onCancelCreate: () => void
+  onRefreshTree?: () => Promise<void>
 }
 
 export const PromptSidebarPanel = ({
@@ -37,6 +38,7 @@ export const PromptSidebarPanel = ({
   onStartCreate,
   onConfirmCreate,
   onCancelCreate,
+  onRefreshTree,
 }: PromptSidebarPanelProps) => (
   <div className="flex flex-col h-full w-full">
     <div className="flex items-center justify-end px-3 py-1.5 gap-1 shrink-0">
@@ -76,6 +78,7 @@ export const PromptSidebarPanel = ({
               isSelected={selectedId === p.id}
               onSelect={() => setSelectedId(p.id)}
               onOpenTab={onOpenTab}
+              onRefresh={onRefreshTree}
             />
           ))}
 
@@ -97,6 +100,7 @@ export const PromptSidebarPanel = ({
               pendingCreate={pendingCreate}
               onInlineConfirm={onConfirmCreate}
               onInlineCancel={onCancelCreate}
+              onRefreshTree={onRefreshTree}
             />
           ))}
         </>

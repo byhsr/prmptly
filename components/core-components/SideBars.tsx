@@ -4,6 +4,7 @@ import { Home, FileText, Layout, BookOpen } from "lucide-react"
 import { Tab } from "./Tabbar"
 import { CollectionTree, CollectionNode } from "@/services/service.collections"
 import {PromptSidebarPanel} from "../Sidebar/PromptSidebar"
+import {QuicksSidebarPanel} from "../Sidebar/QuicksSidebar"
 import {LibrarySidebarPanel} from "../Sidebar/LibSidebar"
 import {TemplateSidebarPanel }from "../template/TemplateSidebar"
 import {ViewType} from "@/lib/types/DashTypes"
@@ -24,8 +25,7 @@ function RailButton({
   return (
     <button
       onClick={onClick}
-      title={label}
-      className="flex flex-col items-center justify-center rounded-xl transition-all"
+      className="flex flex-col items-center justify-center rounded-xl transition-all relative group"
       style={{
         width: 40,
         height: 40,
@@ -35,6 +35,7 @@ function RailButton({
       }}
     >
       <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
+      <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 pointer-events-none">{label}</span>
     </button>
   )
 }
@@ -68,6 +69,7 @@ export function Sidebar({
   onOpenTab,
   onCreatePrompt,
   onCreateCollection,
+  onRefreshTree,
   setActiveView,
   activeView
 }: SidebarProps) {
@@ -204,6 +206,8 @@ export function Sidebar({
         >
           <div className="flex flex-col h-full w-full">
 
+            {activeView === "home" && <QuicksSidebarPanel />}
+
             {activeView === "prompt" && (
               <PromptSidebarPanel
                 collectionsTree={collectionsTree}
@@ -217,6 +221,7 @@ export function Sidebar({
                 onStartCreate={startCreate}
                 onConfirmCreate={confirmCreate}
                 onCancelCreate={cancelCreate}
+                onRefreshTree={onRefreshTree}
               />
             )}
 

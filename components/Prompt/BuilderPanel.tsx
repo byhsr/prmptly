@@ -20,6 +20,9 @@ import { GripVertical } from "lucide-react"
 import { TemplateSection } from "@/lib/db/template"
 import { SmartEditor } from "../ui/SmartTextEditor"
 
+// Global ref for RectifyBar — last focused editor
+export const activeEditorRef = { current: null as any }
+
 
 // ── SectionBlock ───────────────────────────────────────────────────────────────
 
@@ -55,10 +58,11 @@ function SectionBlock({ section, value }: SectionBlockProps) {
         </label>
       </div>
       <div className="border relative z-0">
-           <SmartEditor
-        value={value}
+       <SmartEditor
+        initialContent={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
         placeholder={section.content_json ? JSON.parse(section.content_json).placeholder : `Enter ${section.title.toLowerCase()}...`}
+        onEditorReady={(e) => { activeEditorRef.current = e }}
       />
       </div>
      
@@ -107,7 +111,7 @@ export function BuilderPanel() {
       <div className="flex-1 overflow-y-auto p-6 ">
         {!sections.length ? (
           <SmartEditor
-            value={filledSections["__freeform__"] || ""}
+            initialContent={filledSections["__freeform__"] || ""}
             onChange={(plain, doc) => updateSection("__freeform__", plain, doc)}
             minHeight={300}
           />

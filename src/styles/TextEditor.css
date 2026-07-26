@@ -1,4 +1,22 @@
 
+        .smart-editor-content h1 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          line-height: 1.3;
+          margin: 1rem 0 0.5rem;
+        }
+        .smart-editor-content h2 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          line-height: 1.3;
+          margin: 0.75rem 0 0.4rem;
+        }
+        .smart-editor-content h3 {
+          font-size: 1.1rem;
+          font-weight: 600;
+          line-height: 1.3;
+          margin: 0.5rem 0 0.3rem;
+        }
         .smart-editor-content p {
           margin: 0;
           line-height: 1.6;

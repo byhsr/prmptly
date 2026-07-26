@@ -18,11 +18,12 @@ export type ChipStatus = "pending" | "resolved" | "empty"
 
 
 export interface SmartEditorProps {
-    value?: string
+    initialContent?: string | JSONContent
     placeholder?: string
     outputFormat?: OutputFormat
     onChange?: (plain: string, structured: JSONContent) => void
     onResolvedContext?: (key: string, value: string) => void
+    onEditorReady?: (editor: any) => void
     className?: string
     minHeight?: number
 }
@@ -238,10 +239,11 @@ function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChang
 // ─── SmartEditor ──────────────────────────────────────────────────────────────
 
 export function SmartEditor({
-    value,
+    initialContent,
     placeholder = "Write here… use - for bullets, Tab to nest, @ to reference",
     onChange,
     onResolvedContext,
+    onEditorReady,
     className = "",
     minHeight = 20,
 }: SmartEditorProps) {
@@ -328,7 +330,7 @@ export function SmartEditor({
                 },
             }),
         ],
-        content: value || "",
+        content: initialContent || "",
         editorProps: {
             attributes: {
                 class: "smart-editor-content focus:outline-none",
@@ -340,6 +342,13 @@ export function SmartEditor({
             onChange?.(nodeToPlain(doc), doc)
         },
     })
+
+    // Expose editor instance to parent
+    useEffect(() => {
+        if (editor && onEditorReady) {
+            onEditorReady(editor)
+        }
+    }, [editor, onEditorReady])
 
     useEffect(() => {
         if (!editor) return
@@ -355,12 +364,6 @@ export function SmartEditor({
         window.addEventListener("keydown", handleTab, true)
         return () => window.removeEventListener("keydown", handleTab, true)
     }, [editor])
-
-    useEffect(() => {
-        if (!editor || value === undefined) return
-        const current = nodeToPlain(editor.getJSON())
-        if (current !== value) editor.commands.setContent(value || "", { emitUpdate: false })
-    }, [value]) // eslint-disable-line
 
     const handleMentionCommand = useCallback(
         async (item: MentionItem) => {

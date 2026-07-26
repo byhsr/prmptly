@@ -5,6 +5,7 @@ import { SmartEditor } from "../ui/SmartTextEditor"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
 import { useNotifications } from "@/hooks/store/SidebarStore"
+import { useTabViewStore } from "@/hooks/store/TabStore"
 import { Tab } from "../core-components/Tabbar"
 import { FileTab } from "../Prompt/fileTab"
 
@@ -29,17 +30,25 @@ export function HomeView() {
   const [activeTab, setActiveTab] = useState<OutputTab>("plain")
   const [copied, setCopied] = useState(false)
 
+  const allText = sections.map((s) => typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc)).join("\n")
+  const charCount = allText.length
+  const wordCount = allText ? allText.trim().split(/\s+/).length : 0
+  // ~4 chars per token on average for English
+  const tokenEstimate = Math.round(charCount / 4)
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault()
         if (output) handleSaveOutput()
-        else if (hasContent) handleSave()
+        else handleSave()
       }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [hasContent, output])
+
+  // autosave handled at store level via zustand subscribe — no component effect needed
 
   // ensure one empty section exists so there's always something to type into
   useEffect(() => {
@@ -83,24 +92,11 @@ export function HomeView() {
   }
 
   const handleSave = async () => {
-    const { createDocument } = await import("@/lib/db/document")
-    const { useTabViewStore } = await import("@/hooks/store/TabStore")
-    try {
-      const doc = await createDocument({
-        type: "quick",
-        name: sections[0]?.title || "Untitled Quick",
-        sections: sections.map((s) => ({
-          id: s.id,
-          title: s.title,
-          order: sections.indexOf(s),
-          value: nodeToPlain(s.doc),
-          doc: s.doc,
-        })),
-        meta: {},
-      })
+    const id = await useQuicksStore.getState().save()
+    if (id) {
       useNotifications.getState().notify("Quick saved")
-      useTabViewStore.getState().addTab({ id: doc.id, label: doc.name, type: "prompt" })
-    } catch (e) {
+      useTabViewStore.getState().addTab({ id, label: useQuicksStore.getState().name, type: "prompt" })
+    } else {
       useNotifications.getState().notify("Failed to save quick", true)
     }
   }
@@ -123,9 +119,10 @@ export function HomeView() {
   }
 
   return (
-    <div className="relative h-full w-full flex items-start justify-center pt-16 px-14">
-      <div style={{ width: "100%" }}>
-        <AnimatePresence mode="wait">
+    <div className="relative h-full w-full flex flex-col pt-16">
+      <div className="w-full flex flex-col h-full min-h-0">
+        <div className="flex-1 min-h-0">
+          <AnimatePresence mode="wait">
           {!output ? (
             <motion.div
               key="editor"
@@ -134,9 +131,10 @@ export function HomeView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
+              className="h-full overflow-y-auto px-6 space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent"
             >
               {sections.map((section) => (
-                <div key={section.id} style={{ marginBottom: 14 }}>
+                <div key={section.id}>
                   {section.title && (
                     <input
                       value={section.title}
@@ -156,7 +154,7 @@ export function HomeView() {
                     />
                   )}
                   <SmartEditor
-                    value={nodeToPlain(section.doc)}
+                    initialContent={section.doc}
                     onChange={handleSectionChange(section.id)}
                     placeholder={section.title || "Type your prompt… use @ to inject context"}
                     minHeight={28}
@@ -171,6 +169,7 @@ export function HomeView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
+              className="h-full overflow-y-auto"
             >
               {/* Tabs */}
               <div style={{ display: "flex", marginBottom: 16, gap: 2 }}>
@@ -365,6 +364,17 @@ export function HomeView() {
         )}
       </AnimatePresence>
     </div>
+    {/* Stats bar */}
+    {allText.length > 0 && (
+      <div className="flex items-center gap-3 px-6 py-2 text-[10px] font-mono text-muted border-t border-border shrink-0">
+        <span>{charCount} chars</span>
+        <span>·</span>
+        <span>{wordCount} words</span>
+        <span>·</span>
+        <span>~{tokenEstimate} tokens</span>
+      </div>
+    )}
+  </div>
   )
 }
 

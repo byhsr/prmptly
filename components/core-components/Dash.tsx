@@ -59,6 +59,13 @@ export default function Promptly({ dbReady }: { dbReady: boolean }) {
     setDash()
   }, [dbReady, setDash])
 
+  // listen for quick-saved events to refresh sidebar tree
+  useEffect(() => {
+    const handler = () => { refreshTree() }
+    window.addEventListener("quick-saved", handler)
+    return () => window.removeEventListener("quick-saved", handler)
+  }, [refreshTree])
+
   // ── Tabs ──
   const openTab = useCallback((tab: Tab) => {
   addTab(tab)

@@ -26,6 +26,7 @@ interface CollectionItemProps {
   pendingCreate: PendingCreate | null
   onInlineConfirm: (name: string) => void
   onInlineCancel: () => void
+  onRefreshTree?: () => Promise<void>
 }
 
 
@@ -78,6 +79,7 @@ export function CollectionItem({
   pendingCreate,
   onInlineConfirm,
   onInlineCancel,
+  onRefreshTree,
 }: CollectionItemProps) {
   const isExpanded = expandedCollections.has(node.id)
   const isSelected = selectedId === node.id
@@ -154,6 +156,7 @@ export function CollectionItem({
                 pendingCreate={pendingCreate}
                 onInlineConfirm={onInlineConfirm}
                 onInlineCancel={onInlineCancel}
+                onRefreshTree={onRefreshTree}
               />
             ))}
 
@@ -167,6 +170,7 @@ export function CollectionItem({
                 isSelected={selectedId === p.id}
                 onSelect={() => onSelect(p.id)}
                 onOpenTab={onOpenTab}
+                onRefresh={onRefreshTree}
               />
             ))}
 
