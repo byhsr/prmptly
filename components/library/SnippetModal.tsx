@@ -226,6 +226,7 @@ export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose()
+    if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); handleSave() }
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSave()
   }
 

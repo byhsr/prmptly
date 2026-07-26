@@ -25,13 +25,24 @@ const SUB_TABS = [
 export function FileTab({ tab }: { tab: Tab }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("builder")
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
-  const { loadDocument, reset, activeDocument, updateTemplate, clearTemplate } = usePromptStore()
+  const { loadDocument, reset, activeDocument, updateTemplate, clearTemplate, persist } = usePromptStore()
   const [canvasFlow, setCanvasFlow] = useState<CanvasFlow>({ nodes: [], edges: [] })
 
   useEffect(() => {
     loadDocument(tab.id)
     return () => reset()
   }, [tab.id])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault()
+        persist()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [persist])
 
   const cycleSplitMode = () => {
     const modes: SplitMode[] = ["none", "two", "two-prompt", "three"]
@@ -43,13 +54,13 @@ export function FileTab({ tab }: { tab: Tab }) {
   const getSplitIcon = () => {
     switch (splitMode) {
       case "none":
-        return <LayoutPanelTop className="h-4 w-4" />
+        return <LayoutPanelTop className="h-3.5 w-3.5" />
       case "two":
-        return <Columns2 className="h-4 w-4" />
+        return <Columns2 className="h-3.5 w-3.5" />
       case "two-prompt":
-        return <Columns2 className="h-4 w-4" />
+        return <Columns2 className="h-3.5 w-3.5" />
       case "three":
-        return <Columns3 className="h-4 w-4" />
+        return <Columns3 className="h-3.5 w-3.5" />
     }
   }
 
@@ -135,7 +146,7 @@ export function FileTab({ tab }: { tab: Tab }) {
                         : "text-muted hover:text-foreground hover:bg-background"
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3.5 w-3.5" />
                   </motion.button>
                   <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                     {label}

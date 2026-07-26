@@ -13,7 +13,7 @@ export async function claimNamespace(prefix: string, source: "deterministic" | "
 
     if (rows.length === 0) {
         await db.execute(
-            `INSERT INTO namespaces (prefix, source) VALUES (?, ?)`, [prefix, source]
+            `INSERT INTO namespaces (prefix, source, meta_json, created_at) VALUES (?, ?, '{}', ?)`, [prefix, source, new Date().toISOString()]
         )
     }
 

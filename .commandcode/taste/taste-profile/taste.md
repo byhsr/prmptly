@@ -27,3 +27,9 @@
 - Prefers **spring-based micro-interactions on interactive UI elements** — uses `motion.button` with `whileTap={{ scale: 0.88 }}` and spring transitions (type: spring, stiffness: 500, damping: 20) for a smooth tactile feel on buttons, toggles, and tab icons. Confidence: 0.6
 - Prefers **dedicated top-level tab per distinct feature** rather than burying tools inside other panels — each major tool (builder, scratchpad, canvas/agent builder, prompt) gets its own visible tab with a unique icon. Confidence: 0.7
 - Uses **SQLite via Tauri plugin** (not better-sqlite3 or sql.js). Confidence: 0.9
+
+- Prefers **keyboard shortcuts for common actions** — explicitly requested Ctrl+S for save/update operations, applied consistently across all relevant views (SnippetModal, FileTab/prompt builder, HomeView). Confidence: 0.6
+
+- **Removes transitional/experimental UI elements when a feature is finalized** — considers cleaning up leftover UI scaffolding (e.g., an icon pill in the sidebar) as the last step before marking a feature "done". Does not leave behind feature-toggle-style visual cruft. Confidence: 0.5
+
+- **Prefers minimal sidebar UI without category label headers** — sidebar panels should not display text labels like "Prompts", "Snippets", "Templates" as section headers; instead, keep only compact create/action buttons. Sidebar should be streamlined and uncluttered. Confidence: 0.7

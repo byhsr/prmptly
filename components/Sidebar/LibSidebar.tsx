@@ -17,12 +17,6 @@ export const LibrarySidebarPanel = () => {
 
   return (
     <div className="flex flex-col h-full w-full">
-      <div className="flex shrink-0 p-2 px-4 gap-2 justify-end">
-        <div className="flex gap-2 text-muted items-center p-1 justify-center h-full border border-border rounded-lg flex-1">
-          <SquareAsterisk size={12} />Snippet
-        </div>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
         {snippets.length === 0 && (
           <span style={{ fontSize: 11, color: "var(--color-muted)", padding: "4px 8px" }}>

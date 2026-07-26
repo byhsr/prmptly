@@ -39,46 +39,24 @@ export const PromptSidebarPanel = ({
   onCancelCreate,
 }: PromptSidebarPanelProps) => (
   <div className="flex flex-col h-full w-full">
-    {/* Header */}
-    <div
-      className="flex items-center justify-between px-3 py-2 shrink-0"
-      style={{ borderBottom: "0.5px solid var(--color-border, #222)" }}
-    >
-      <div
-        onClick={() => { onCancelCreate(); setSelectedId(null) }}
-        style={{
-          fontSize: 10,
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--color-muted, #666)",
-          cursor: "pointer",
-        }}
+    <div className="flex items-center justify-end px-3 py-1.5 gap-1 shrink-0">
+      <button
+        onClick={() => onStartCreate("collection")}
+        className="rounded p-0.5 transition-colors hover:bg-background"
+        style={{ color: "var(--color-muted, #666)" }}
+        title="New Collection"
       >
-        Prompts
-      </div>
-
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onStartCreate("collection")}
-          className="rounded p-0.5 transition-colors hover:bg-background"
-          style={{ color: "var(--color-muted, #666)" }}
-          title="New Collection"
-        >
-          <FolderPlus size={12} />
-        </button>
-        <button
-          onClick={() => onStartCreate("prompt")}
-          className="rounded p-0.5 transition-colors hover:bg-background"
-          style={{ color: "var(--color-muted, #666)" }}
-          title="New Prompt"
-        >
-          <FilePlus size={12} />
-        </button>
-      </div>
+        <FolderPlus size={12} />
+      </button>
+      <button
+        onClick={() => onStartCreate("prompt")}
+        className="rounded p-0.5 transition-colors hover:bg-background"
+        style={{ color: "var(--color-muted, #666)" }}
+        title="New Prompt"
+      >
+        <FilePlus size={12} />
+      </button>
     </div>
-
     {/* Body */}
     <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
       {!collectionsTree && (

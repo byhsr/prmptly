@@ -29,6 +29,18 @@ export function HomeView() {
   const [activeTab, setActiveTab] = useState<OutputTab>("plain")
   const [copied, setCopied] = useState(false)
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault()
+        if (output) handleSaveOutput()
+        else if (hasContent) handleSave()
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [hasContent, output])
+
   // ensure one empty section exists so there's always something to type into
   useEffect(() => {
     if (sections.length === 0) {
