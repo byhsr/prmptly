@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace } from "lucide-react"
+import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { parseMarkdownSections } from "@/lib/editor/parseMarkdown"
 import { useNotifications } from "@/hooks/store/SidebarStore"
@@ -57,6 +57,8 @@ export function HomeView() {
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
   const [rectifyKey, setRectifyKey] = useState(0)
+  const [rectifyCase, setRectifyCase] = useState(false)
+  const [rectifyWord, setRectifyWord] = useState(false)
 
   const allText = sections.map((s) => flattenDoc(s.doc)).join("\n")
   const sectionTitles = sections.map((s) => s.title || "").filter(Boolean)
@@ -141,14 +143,27 @@ export function HomeView() {
               className="w-24 bg-background border border-border rounded px-2 py-1 text-xs outline-none text-foreground placeholder:text-muted/50"
             />
             <button
+              onClick={() => setRectifyCase((v) => !v)}
+              className={`rounded p-1 transition-colors ${rectifyCase ? "bg-accent/20 text-accent" : "text-muted hover:text-foreground"}`}
+            ><CaseSensitive className="h-3 w-3" /></button>
+            <button
+              onClick={() => setRectifyWord((v) => !v)}
+              className={`rounded p-1 transition-colors ${rectifyWord ? "bg-accent/20 text-accent" : "text-muted hover:text-foreground"}`}
+            ><WholeWord className="h-3 w-3" /></button>
+            <button
               onClick={() => {
                 const find = (document.getElementById("rectify-find") as HTMLInputElement)?.value || ""
                 const replace = (document.getElementById("rectify-replace") as HTMLInputElement)?.value || ""
                 if (!find) return
+                let flags = "g"
+                if (!rectifyCase) flags += "i"
+                const escaped = find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                const pattern = rectifyWord ? `\\b${escaped}\\b` : escaped
+                const regex = new RegExp(pattern, flags)
                 const { sections } = useQuicksStore.getState()
                 const updated = sections.map((s) => {
                   if (typeof s.doc !== "string") return s
-                  return { ...s, doc: s.doc.split(find).join(replace) }
+                  return { ...s, doc: s.doc.replace(regex, replace) }
                 })
                 useQuicksStore.setState({ sections: updated })
                 setRectifyKey((k) => k + 1)
@@ -176,7 +191,7 @@ export function HomeView() {
               className="h-full overflow-y-auto px-6 w-full"
             >
               {Array.isArray(sections) && sections.map((section, _i) => (
-                <SectionEditor key={section.id} section={section} onSave={handleTextChange} />
+                <SectionEditor key={section.id + '-' + rectifyKey} section={section} onSave={handleTextChange} />
               ))}
             </motion.div>
           ) : (
