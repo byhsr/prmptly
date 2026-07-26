@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react"
 import { ChevronRight, Folder, FolderOpen } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tab } from "../core-components/Tabbar"
-import { PendingCreate } from "../core-components/sidebar"
+import { PendingCreate } from "./PromptSidebar"
 import { CollectionNode} from "@/services/service.collections"
 import { PromptFile } from "../Prompt/PromptElements"
 
@@ -157,8 +157,8 @@ export function CollectionItem({
               />
             ))}
 
-            {/* Prompts in this collection */}
-            {node.prompts.map((p) => (
+            {/* Documents in this collection */}
+            {node.documents.map((p) => (
               <PromptFile
                 key={p.id}
                 prompt={p}

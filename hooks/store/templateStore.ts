@@ -13,7 +13,7 @@ interface TemplateStore {
   updateTemplate: (id: string, fields: Partial<Pick<Template, "name" | "description">>) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
   addSection: () => Promise<void>;
-  updateSection: (id: string, fields: Partial<Pick<TemplateSection, "title" | "placeholder">>) => Promise<void>;
+  updateSection: (id: string, fields: Partial<Pick<TemplateSection, "title" | "content_json">>) => Promise<void>;
   deleteSection: (id: string) => Promise<void>;
   reorderSections: (sections: TemplateSection[]) => Promise<void>;
 }

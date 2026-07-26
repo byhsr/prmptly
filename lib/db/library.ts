@@ -1,107 +1,113 @@
-import {getDB}  from "./index.ts"
-import { Snippet } from "../types/library.ts"
-import { Document } from "@/components/library/ScopeDocumentsPanel.tsx"
-import { Scope } from "@/components/library/AddContextPanel.tsx"
-import { invoke } from "@tauri-apps/api/core"
-import { claimNamespace } from "@/services/namespaces.ts"
+import { getDB } from "./index";
+import { claimNamespace } from "@/services/namespaces";
+import { Snippet } from "../types/library";
 
-type RawSnippet = { key: string; value: string; created_at: string; updated_at: string }
-
-export const createSnippet = async (
-  scope: string | undefined,
-  key: string,
-  value: string
-) => {
-  const db = await getDB()
-  const fullKey = scope ? `${scope}:${key}` : key
-
-  const existing = await db.select<{ key: string }[]>(
-    "SELECT key FROM deterministic_assets WHERE key = $1",
-    [fullKey]
-  )
-
-  if (existing.length > 0) {
-    throw new Error("Snippet key already exists")
-  }
-
-  if (scope) await claimNamespace(scope, "deterministic")
-
-  await db.execute(
-    "INSERT INTO deterministic_assets (key, value) VALUES ($1, $2)",
-    [fullKey, value]
-  )
+interface DeterministicAssetRow {
+  id: string;
+  namespace: string;
+  key: string;
+  title: string | null;
+  value: string;
+  meta_json: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export const updateSnippet = async (
-  prevKey: string,
-  scope: string | undefined,
-  key: string,
-  value: string
-) => {
-  const db = await getDB()
-  const newFullKey = scope ? `${scope}:${key}` : key
-  
-  if (prevKey !== newFullKey) {
-    const existing = await db.select<{ key: string }[]>(
-      "SELECT key FROM deterministic_assets WHERE key = $1",
-      [newFullKey]
-    )
-    if (existing.length > 0) {
-      throw new Error("Snippet key already exists")
-    }
-  }
-
-  await db.execute(
-    "UPDATE deterministic_assets SET key = $1, value = $2 WHERE key = $3",
-    [newFullKey, value, prevKey]
-  )
-}
-
-export const upsertSnippet = async (scope: string | undefined, key: string, value: string) => {
-  const db = await getDB()
-  const fullKey = scope ? `${scope}:${key}` : key
-  await db.execute(
-    "INSERT OR REPLACE INTO deterministic_assets (key, value) VALUES ($1, $2)",
-    [fullKey, value]
-  )
-}
-
-const normalize = (row: RawSnippet): Snippet => {
-  const [scope, ...rest] = row.key.includes(":") ? row.key.split(":") : [undefined, row.key]
+function mapRow(row: DeterministicAssetRow): Snippet {
   return {
-    key: rest.length ? rest.join(":") : scope!,
-    scope: rest.length ? scope : undefined,
+    key: row.key,
     value: row.value,
-  }
+    scope: row.namespace,
+  };
 }
 
-export const getSnippets = async (): Promise<Snippet[]> => {
-  const db = getDB()
-  const rows = await db.select<RawSnippet[]>(
-    "SELECT key, value, created_at, updated_at FROM deterministic_assets ORDER BY created_at DESC"
-  )
-  return rows.map(normalize)
-}
+export const libraryService = {
+  async create(namespace: string | undefined, key: string, value: string, title?: string): Promise<void> {
+    const db = getDB();
+    const ns = namespace ?? "__global__";
+    const id = crypto.randomUUID();
 
-// context.ts
+    // Ensure namespace exists
+    await claimNamespace(ns, "deterministic");
 
-export async function getScopes(): Promise<Scope[]> {
-  const db = await getDB()
-  return db.select<Scope[]>(
-    `SELECT name, status, created_at FROM scopes WHERE status = 'active' ORDER BY created_at DESC`
-  )
-}
+    const existing = await db.select<{ id: string }[]>(
+      `SELECT id FROM deterministic_assets WHERE namespace = ? AND key = ?`,
+      [ns, key]
+    );
 
-export async function getDocumentsByScope(scopeName: string): Promise<Document[]> {
-  const db = await getDB()
-  return db.select<Document[]>(
-    `SELECT id, scope_name, name, created_at FROM documents WHERE scope_name = ? ORDER BY created_at DESC`,
-    [scopeName]
-  )
-}
+    if (existing.length > 0) {
+      throw new Error(`Asset "${ns}:${key}" already exists`);
+    }
 
-export async function deleteDocument(id: string): Promise<void> {
-  const db = await getDB()
-  await invoke("delete_document_data", { documentId: id }) // cleans vec, fts, node_versions, nodes
-  await db.execute(`DELETE FROM documents WHERE id = ?`, [id])
-}
+    await db.execute(
+      `INSERT INTO deterministic_assets (id, namespace, key, title, value, meta_json)
+       VALUES (?, ?, ?, ?, ?, '{}')`,
+      [id, ns, key, title ?? null, value]
+    );
+  },
+
+  async update(oldNamespace: string | undefined, oldKey: string, newNamespace: string | undefined, newKey: string, value: string, title?: string): Promise<void> {
+    const db = getDB();
+    const oldNs = oldNamespace ?? "__global__";
+    const newNs = newNamespace ?? "__global__";
+
+    if (oldNs !== newNs || oldKey !== newKey) {
+      const existing = await db.select<{ id: string }[]>(
+        `SELECT id FROM deterministic_assets WHERE namespace = ? AND key = ?`,
+        [newNs, newKey]
+      );
+      if (existing.length > 0) {
+        throw new Error(`Asset "${newNs}:${newKey}" already exists`);
+      }
+    }
+
+    await db.execute(
+      `UPDATE deterministic_assets SET namespace = ?, key = ?, value = ?, title = ? WHERE namespace = ? AND key = ?`,
+      [newNs, newKey, value, title ?? null, oldNs, oldKey]
+    );
+  },
+
+  async upsert(namespace: string | undefined, key: string, value: string, title?: string): Promise<void> {
+    const db = getDB();
+    const ns = namespace ?? "__global__";
+
+    await claimNamespace(ns, "deterministic");
+
+    await db.execute(
+      `INSERT INTO deterministic_assets (id, namespace, key, title, value, meta_json)
+       VALUES (?, ?, ?, ?, ?, '{}')
+       ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, title = COALESCE(excluded.title, title), updated_at = CURRENT_TIMESTAMP`,
+      [crypto.randomUUID(), ns, key, title ?? null, value]
+    );
+  },
+
+  async getAll(): Promise<Snippet[]> {
+    const db = getDB();
+    const rows = await db.select<DeterministicAssetRow[]>(
+      `SELECT * FROM deterministic_assets ORDER BY created_at DESC`
+    );
+    return rows.map(mapRow);
+  },
+
+  async getByNamespace(namespace: string): Promise<Snippet[]> {
+    const db = getDB();
+    const rows = await db.select<DeterministicAssetRow[]>(
+      `SELECT * FROM deterministic_assets WHERE namespace = ? ORDER BY key ASC`,
+      [namespace]
+    );
+    return rows.map(mapRow);
+  },
+
+  async delete(namespace: string, key: string): Promise<void> {
+    const db = getDB();
+    await db.execute(
+      `DELETE FROM deterministic_assets WHERE namespace = ? AND key = ?`,
+      [namespace, key]
+    );
+  },
+
+  async deleteByKey(fullKey: string): Promise<void> {
+    const db = getDB();
+    await db.execute(`DELETE FROM deterministic_assets WHERE key = ?`, [fullKey]);
+  },
+};

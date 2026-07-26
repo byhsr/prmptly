@@ -1,250 +1,138 @@
-import { createFile, readFile, createFolder, deleteFolder } from "../lib/fs/fs.ts"
-import { getDB } from "../lib/db/index.ts"
-import { getPromptTypeDir, getPrompt, buildFilePath } from "@/lib/fs/fsHelpers.ts"
-import { BuilderSectionContent } from "@/lib/db/document.ts"
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+// Rewritten for document schema — kept as a thin compatibility layer
+import { createDocument, getDocument, deleteDocument } from "@/lib/db/document";
+import { getScratchpadPath, getCanvasPath, getOutputPath, getDocumentDir } from "@/lib/fs/fsHelpers";
+import { writeFile, readFile, ensureDirectory } from "@/lib/fs/fs";
+import { writeJson } from "@/lib/editor/ReadAndCompile";
+import { DocumentSection } from "@/lib/types/Document";
+import { CanvasFlow } from "@/lib/types/canvas.types";
 
 type CreatePromptInput = {
-  name: string
-  template_id?: string | null
-  collection_id?: string | null
-}
+  name: string;
+  template_id?: string | null;
+  collection_id?: string | null;
+};
 
 type PromptResult = {
-  id: string
-  name: string
-  template_id: string | null
-  collection_id: string | null
+  id: string;
+  name: string;
+  template_id: string | null;
+  collection_id: string | null;
   version: {
-    id: string
-    version_number: number
-    label: string | null
-    builder_content: BuilderSectionContent[]
-    scratchpad: string
-    output: { text: string | null; json: string | null; xml: string | null }
-  }
+    id: string;
+    version_number: number;
+    label: string | null;
+    builder_content: { sectionId: string; order: number; value: string; doc?: unknown }[];
+    scratchpad: string;
+    output: { text: string | null; json: string | null; xml: string | null };
+  };
+};
+
+const EMPTY_CANVAS: CanvasFlow = { nodes: [], edges: [] };
+
+export async function createPrompt({ name, template_id = null, collection_id = null }: CreatePromptInput) {
+  const id = crypto.randomUUID();
+
+  // Create directory for scratchpad files
+  await ensureDirectory(await getDocumentDir(id));
+
+  const scratchpadTextPath = await getScratchpadPath(id);
+  const scratchpadFlowPath = await getCanvasPath(id);
+  const outputPath = await getOutputPath(id);
+
+  // Create empty scratchpad files
+  await writeFile(scratchpadTextPath, "");
+  await writeJson(scratchpadFlowPath, EMPTY_CANVAS);
+
+  // Create the document in DB
+  const doc = await createDocument({
+    type: "prompt",
+    name,
+    templateId: template_id ?? undefined,
+    collectionId: collection_id ?? undefined,
+    sections: [],
+    meta: {},
+  });
+
+  // Write initial empty output
+  await writeJson(outputPath, { output: "" });
+
+  return { id: doc.id, version_id: doc.id };
 }
-
-type PromptRow = {
-  id: string
-  name: string
-  template_id: string | null
-  collection_id: string | null
-  current_version_id: string
-  created_at: string
-  updated_at: string
-}
-
-type PromptVersionRow = {
-  id: string
-  prompt_id: string
-  version_number: number
-  label: string | null
-  builder_content: string | null
-  scratchpad_text_path: string | null
-  scratchpad_flow_path: string | null
-  output_id: string | null
-  created_at: string
-}
-
-type OutputRow = {
-  id: string
-  text: string | null
-  json: string | null
-  xml: string | null
-  created_at: string
-}
-
-type UpdatePromptInput = {
-  promptId: string
-  scratchpad?: string
-  output?: { text?: string; json?: string; xml?: string }
-  builder_content?: Array<{ sectionId: string; order: number; value: string }>
-}
-
-// ── Create ────────────────────────────────────────────────────────────────────
-
-export async function createPrompt({
-  name,
-  template_id = null,
-  collection_id = null,
-}: CreatePromptInput) {
-  const db = await getDB()
-
-  const promptId = crypto.randomUUID()
-  const versionId = crypto.randomUUID()
-  const outputId = crypto.randomUUID()
-  const createdAt = new Date().toISOString()
-
-  const entriesDir = await getPromptTypeDir("entries")
-  const promptFolder = await getPrompt("entries", promptId)
-
-  try {
-    // ── FS: scratchpad files only ──────────────────────────────────────────
-    await createFolder(entriesDir)
-    await createFolder(promptFolder)
-
-    const scratchpadTextPath = await buildFilePath(promptFolder, "scratchpad.md")
-    const scratchpadFlowPath = await buildFilePath(promptFolder, "scratchpad.excalidraw")
-
-    await createFile(scratchpadTextPath, "")
-    await createFile(scratchpadFlowPath, JSON.stringify({ type: "excalidraw", elements: [], appState: {} }))
-
-    // ── DB ─────────────────────────────────────────────────────────────────
-    await db.execute(
-      `INSERT INTO outputs (id, text, json, xml, created_at) VALUES (?, ?, ?, ?, ?)`,
-      [outputId, null, null, null, createdAt]
-    )
-
-    await db.execute(
-      `INSERT INTO prompts (id, name, template_id, collection_id, current_version_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [promptId, name, template_id, collection_id, versionId, createdAt, createdAt]
-    )
-
-    await db.execute(
-      `INSERT INTO prompt_versions (id, prompt_id, version_number, label, builder_content, scratchpad_text_path, scratchpad_flow_path, output_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [versionId, promptId, 1, "v1", "[]", scratchpadTextPath, scratchpadFlowPath, outputId, createdAt]
-    )
-
-    return { id: promptId, version_id: versionId }
-  } catch (err) {
-    console.error("createPrompt failed:", err)
-    throw err
-  }
-}
-
-// ── Read ──────────────────────────────────────────────────────────────────────
 
 export async function readPrompt(promptId: string): Promise<PromptResult | null> {
-  const db = await getDB()
+  const doc = await getDocument(promptId);
+  if (!doc) return null;
 
-  const promptRows = await db.select<PromptRow[]>(
-    `SELECT * FROM prompts WHERE id = ? LIMIT 1`,
-    [promptId]
-  )
-  if (!promptRows.length) return null
-  const prompt = promptRows[0]
-
-  const versionRows = await db.select<PromptVersionRow[]>(
-    `SELECT * FROM prompt_versions WHERE id = ? LIMIT 1`,
-    [prompt.current_version_id]
-  )
-  if (!versionRows.length) return null
-  const version = versionRows[0]
-
-  // builder_content
-  let builderContent : BuilderSectionContent[] = []
+  // Read scratchpad text from file
+  let scratchpad = "";
   try {
-    builderContent = JSON.parse(version.builder_content || "[]")
-  } catch {
-    builderContent = []
-  }
+    scratchpad = await readFile(await getScratchpadPath(promptId));
+  } catch { /* file may not exist yet */ }
 
-  // output from DB
-  let output: { id: string | null; text: string | null; json: string | null; xml: string | null } = { id: null, text: null, json: null, xml: null }
-  if (version.output_id) {
-    const outputRows = await db.select<OutputRow[]>(
-      `SELECT * FROM outputs WHERE id = ? LIMIT 1`,
-      [version.output_id]
-    )
-    if (outputRows.length) {
-      output = {
-        id: outputRows[0].id,
-        text: outputRows[0].text,
-        json: outputRows[0].json,
-        xml: outputRows[0].xml,
-      }
-    }
-  }
-
-  // scratchpad from FS
-  let scratchpad = ""
-  try {
-    const folder = await getPrompt("entries", promptId)
-    scratchpad = await readFile(folder, "scratchpad.md")
-  } catch {}
+  // Read output from DB's linked output or build from sections
+  const output = {
+    text: null as string | null,
+    json: null as string | null,
+    xml: null as string | null,
+  };
 
   return {
-    id: prompt.id,
-    name: prompt.name,
-    template_id: prompt.template_id,
-    collection_id: prompt.collection_id,
+    id: doc.id,
+    name: doc.name,
+    template_id: doc.templateId,
+    collection_id: doc.collectionId,
     version: {
-      id: version.id,
-      version_number: version.version_number,
-      label: version.label,
-      builder_content: builderContent ,
+      id: doc.id,
+      version_number: 1,
+      label: "v1",
+      builder_content: (doc.sections || []).map((s, i) => ({
+        sectionId: s.id,
+        order: s.order ?? i,
+        value: s.value || "",
+        doc: s.doc,
+      })),
       scratchpad,
       output,
     },
-  }
+  };
 }
 
-// ── Update ────────────────────────────────────────────────────────────────────
+export async function updatePromptContent(input: {
+  promptId: string;
+  scratchpad?: string;
+  output?: { text?: string; json?: string; xml?: string };
+  builder_content?: Array<{ sectionId: string; order: number; value: string; doc?: unknown }>;
+}) {
+  const { promptId, scratchpad, output, builder_content } = input;
 
-export async function updatePromptContent({
-  promptId,
-  scratchpad,
-  output,
-  builder_content,
-}: UpdatePromptInput) {
-  const db = await getDB()
-
-  const promptRows = await db.select<{ current_version_id: string }[]>(
-    `SELECT current_version_id FROM prompts WHERE id = ? LIMIT 1`,
-    [promptId]
-  )
-  if (!promptRows.length) throw new Error("Prompt not found")
-
-  const versionId = promptRows[0].current_version_id
-
-  const versionRows = await db.select<{ output_id: string | null; scratchpad_text_path: string | null }[]>(
-    `SELECT output_id, scratchpad_text_path FROM prompt_versions WHERE id = ? LIMIT 1`,
-    [versionId]
-  )
-  if (!versionRows.length) throw new Error("Version not found")
-
-  const { output_id, scratchpad_text_path } = versionRows[0]
-
-  // builder_content
   if (builder_content) {
-    await db.execute(
-      `UPDATE prompt_versions SET builder_content = ? WHERE id = ?`,
-      [JSON.stringify(builder_content), versionId]
-    )
+    const sections: DocumentSection[] = builder_content.map((b) => ({
+      id: b.sectionId,
+      order: b.order,
+      title: "",
+      value: b.value,
+      doc: b.doc as any,
+    }));
+
+    await (await import("@/lib/db/document")).updateDocument(promptId, { sections });
   }
 
-  // output → DB
-  if (output && output_id) {
-    const fields = Object.entries(output).filter(([, v]) => v !== undefined)
-    if (fields.length) {
-      const sql = `UPDATE outputs SET ${fields.map(([k]) => `${k} = ?`).join(", ")} WHERE id = ?`
-      await db.execute(sql, [...fields.map(([, v]) => v), output_id])
-    }
+  if (typeof scratchpad === "string") {
+    await writeFile(await getScratchpadPath(promptId), scratchpad);
   }
 
-  // scratchpad → FS
-  if (typeof scratchpad === "string" && scratchpad_text_path) {
-    await createFile(scratchpad_text_path, scratchpad)
+  if (output) {
+    const outputPath = await getOutputPath(promptId);
+    await writeJson(outputPath, output);
   }
 
-  // update prompt timestamp
-  await db.execute(
-    `UPDATE prompts SET updated_at = ? WHERE id = ?`,
-    [new Date().toISOString(), promptId]
-  )
-
-  return { ok: true }
+  return { ok: true };
 }
-
-// ── Delete ────────────────────────────────────────────────────────────────────
 
 export async function deletePrompt(promptId: string) {
-  const db = await getDB()
-  const folder = await getPrompt("entries", promptId)
-  await db.execute(`DELETE FROM prompts WHERE id = ?`, [promptId])
-  try { await deleteFolder(folder) } catch {}
+  await deleteDocument(promptId);
+  try {
+    const { deleteFolder } = await import("@/lib/fs/fs");
+    await deleteFolder(await getDocumentDir(promptId));
+  } catch { /* folder may not exist */ }
 }

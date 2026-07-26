@@ -1,11 +1,11 @@
 import { useState } from "react"
 import { File } from "lucide-react"
 import { Tab } from "../core-components/Tabbar"
-import { PromptRow } from "@/services/service.collections"
+import { DocumentRow } from "@/services/service.collections"
 import { ContextMenu } from "../ui/ContextMenu"
 
 interface PromptItemProps {
-  prompt: PromptRow
+  prompt: DocumentRow
   depth?: number
   isActive: boolean
   isSelected: boolean

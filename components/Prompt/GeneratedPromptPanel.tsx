@@ -4,8 +4,6 @@ import { Copy, Check } from "lucide-react"
 import { codeToHtml } from "shiki"
 import { usePromptStore, OutputFormat } from "@/hooks/store/PromptStore"
 
-type Format = "plain" | "json" | "xml"
-
 export function PromptPanel() {
   const [copied, setCopied] = useState(false)
   const [highlighted, setHighlighted] = useState("")

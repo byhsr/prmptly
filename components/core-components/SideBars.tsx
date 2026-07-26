@@ -68,7 +68,6 @@ export function Sidebar({
   onOpenTab,
   onCreatePrompt,
   onCreateCollection,
-  onRefreshTree,
   setActiveView,
   activeView
 }: SidebarProps) {
@@ -105,7 +104,7 @@ export function Sidebar({
 
     const findPromptParent = (nodes: CollectionNode[]): string | null => {
       for (const node of nodes) {
-        if (node.prompts.some((p) => p.id === selectedId)) return node.id
+        if (node.documents.some((p) => p.id === selectedId)) return node.id
         const found = findPromptParent(node.children)
         if (found) return found
       }

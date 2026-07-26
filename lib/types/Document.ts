@@ -57,7 +57,7 @@ export interface Document {
 
   scratchpadFlowPath: string | null
 
-  outputPath: string | null
+  outputId: string | null
 
   meta: Record<string, unknown>
 

@@ -1,14 +1,13 @@
 import { JSONContent } from "@tiptap/react"
 import { CanvasFlow } from "@/lib/types/canvas.types"
-import { Document } from "@/lib/db/document"
-import { TemplateSection } from "@/lib/db/template"
+import { Document, DocumentSection } from "@/lib/types/Document"
 
 export type OutputFormat = "plain" | "json" | "xml"
 
 export interface DocumentStore {
   activeDocument: Document | null
 
-  sections: TemplateSection[]
+  sections: DocumentSection[]
 
   sectionValues: Record<string, string>
   sectionDocs: Record<string, JSONContent>
@@ -36,7 +35,7 @@ export interface DocumentStore {
 
   updateCanvas: (flow: CanvasFlow) => void
 
-  reorderSections: (sections: TemplateSection[]) => void
+  reorderSections: (sections: DocumentSection[]) => void
 
   setTemplate: (templateId: string | null) => Promise<void>
 

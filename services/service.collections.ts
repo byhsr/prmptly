@@ -6,7 +6,7 @@ export type CollectionRow = {
   parent_id: string | null
 }
 
-export type PromptRow = {
+export type DocumentRow = {
   id: string
   name: string
   collection_id: string | null
@@ -16,12 +16,12 @@ export type CollectionNode = {
   id: string
   name: string
   children: CollectionNode[]
-  prompts: PromptRow[]
+  documents: DocumentRow[]
 }
 
 export type CollectionTree = {
   tree: CollectionNode[]
-  rootPrompts: PromptRow[]
+  rootDocuments: DocumentRow[]
 }
 
 export async function createCollection(
@@ -36,8 +36,8 @@ export async function createCollection(
   const now = new Date().toISOString()
 
   await db.execute(
-    `INSERT INTO collections (id, name, parent_id, created_at) VALUES (?, ?, ?, ?)`,
-    [id, name, parent_id, now]
+    `INSERT INTO collections (id, name, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+    [id, name, parent_id, now, now]
   )
 
   return { id }
@@ -57,19 +57,19 @@ export async function renameCollection(id: string, name: string): Promise<void> 
 export async function deleteCollection(id: string): Promise<void> {
   const db = await getDB()
   await db.execute(`DELETE FROM collections WHERE id = ?`, [id])
-  // CASCADE handles nested children, SET NULL floats prompts to root
+  // CASCADE handles nested children, SET NULL floats documents to root
 }
 
 export async function getCollectionsTree(): Promise<CollectionTree> {
   const db = await getDB()
 
-  const collections = await db.select(
-    `SELECT id, name, parent_id FROM collections`
-  ) as CollectionRow[]
+  const collections = await db.select<CollectionRow[]>(
+    `SELECT id, name, parent_id FROM collections ORDER BY name ASC`
+  )
 
-  const prompts = await db.select(
-    `SELECT id, name, collection_id FROM prompts`
-  ) as PromptRow[]
+  const documents = await db.select<DocumentRow[]>(
+    `SELECT id, name, collection_id FROM documents ORDER BY name ASC`
+  )
 
   const collectionMap = new Map<string | null, CollectionRow[]>()
   for (const col of collections) {
@@ -78,11 +78,11 @@ export async function getCollectionsTree(): Promise<CollectionTree> {
     collectionMap.get(key)!.push(col)
   }
 
-  const promptMap = new Map<string | null, PromptRow[]>()
-  for (const p of prompts) {
-    const key = p.collection_id ?? null
-    if (!promptMap.has(key)) promptMap.set(key, [])
-    promptMap.get(key)!.push(p)
+  const documentMap = new Map<string | null, DocumentRow[]>()
+  for (const d of documents) {
+    const key = d.collection_id ?? null
+    if (!documentMap.has(key)) documentMap.set(key, [])
+    documentMap.get(key)!.push(d)
   }
 
   function build(parentId: string | null): CollectionNode[] {
@@ -90,12 +90,12 @@ export async function getCollectionsTree(): Promise<CollectionTree> {
       id: col.id,
       name: col.name,
       children: build(col.id),
-      prompts: promptMap.get(col.id) || [],
+      documents: documentMap.get(col.id) || [],
     }))
   }
 
   return {
     tree: build(null),
-    rootPrompts: promptMap.get(null) || [],
+    rootDocuments: documentMap.get(null) || [],
   }
 }

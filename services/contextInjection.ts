@@ -17,33 +17,30 @@ export async function resolveMention(raw: string): Promise<{ type: "deterministi
     const colonIdx = raw.indexOf(":")
     if (colonIdx === -1) return null
 
-    const prefix = raw.slice(0, colonIdx)       // "writer"
-    const rest   = raw.slice(colonIdx + 1)      // "persona"  or  "some user query"
+    const ns = raw.slice(0, colonIdx)       // "writer"
+    const key = raw.slice(colonIdx + 1)     // "persona"
 
     const db = await getDB()
-    const rows = await db.select<Namespace[]>(
-        `SELECT prefix, source FROM namespaces WHERE prefix = ?`, [prefix]
+    const rows = await db.select<{ source: string }[]>(
+        `SELECT source FROM namespaces WHERE prefix = ?`, [ns]
     )
-    const ns = rows[0]
-    if (!ns) return null
+    const namespace = rows[0]
+    if (!namespace) return null
 
-    if (ns.source === "deterministic") {
-        const key = `${prefix}:${rest}`         // "writer:persona"
+    if (namespace.source === "deterministic") {
         const asset = await db.select<{ value: string }[]>(
-            `SELECT value FROM deterministic_assets WHERE key = ?`, [key]
+            `SELECT value FROM deterministic_assets WHERE namespace = ? AND key = ?`, [ns, key]
         )
         return asset[0] ? { type: "deterministic", value: asset[0].value } : null
     }
 
-    // rag — caller handles vector search with prefix as scope + rest as query
-    return { type: "rag", prefix, query: rest }
+    return { type: "rag", prefix: ns, query: key }
 }
 
-
-export async function getDeterministicKeys(prefix: string): Promise<MentionItem[]> {
+export async function getDeterministicKeys(namespace: string): Promise<MentionItem[]> {
     const db = await getDB()
     const rows = await db.select<{ key: string }[]>(
-        `SELECT key FROM deterministic_assets WHERE key LIKE ?`, [`${prefix}:%`]
+        `SELECT key FROM deterministic_assets WHERE namespace = ? ORDER BY key ASC`, [namespace]
     )
-    return rows.map((r) => ({ id: r.key, label: r.key, source: "deterministic" as const }))
+    return rows.map((r) => ({ id: `${namespace}:${r.key}`, label: `${namespace}:${r.key}`, source: "deterministic" as const }))
 }

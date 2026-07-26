@@ -6,7 +6,6 @@ import {
   deleteDocument,
   getDocument,
   updateDocument,
-
 } from "@/lib/db/document"
 
 import { readFile, writeFile } from "@/lib/fs/fs"
@@ -16,6 +15,8 @@ import {
   writeJson,
   buildOutput,
 } from "@/lib/editor/ReadAndCompile"
+
+import { getScratchpadPath, getCanvasPath, getOutputPath, getDocumentDir } from "@/lib/fs/fsHelpers"
 
 export interface DocumentState {
   document: Document
@@ -29,28 +30,14 @@ const EMPTY_CANVAS: CanvasFlow = {
   edges: [],
 }
 
-function scratchpadPath(document: Document) {
-  if (!document.scratchpadTextPath) {
-    throw new Error(`Missing scratchpad path for document ${document.id}`)
-  }
-
-  return document.scratchpadTextPath
+async function readScratchpad(document: Document): Promise<string> {
+  if (!document.scratchpadTextPath) return ""
+  return readFile(document.scratchpadTextPath).catch(() => "")
 }
 
-function canvasPath(document: Document) {
-  if (!document.scratchpadFlowPath) {
-    throw new Error(`Missing canvas path for document ${document.id}`)
-  }
-
-  return document.scratchpadFlowPath
-}
-
-function outputPath(document: Document) {
-  if (!document.outputPath) {
-    throw new Error(`Missing output path for document ${document.id}`)
-  }
-
-  return document.outputPath
+async function readCanvas(document: Document): Promise<CanvasFlow> {
+  if (!document.scratchpadFlowPath) return EMPTY_CANVAS
+  return (await readJson<CanvasFlow>(document.scratchpadFlowPath)) ?? EMPTY_CANVAS
 }
 
 export const documentService = {
@@ -59,74 +46,56 @@ export const documentService = {
     format: OutputFormat = "plain"
   ): Promise<DocumentState> {
     const document = await getDocument(id)
+    if (!document) throw new Error(`Document "${id}" not found`)
 
-    if (!document) {
-      throw new Error(`Document "${id}" not found`)
-    }
-
-    const scratchpad =
-      (await readFile(scratchpadPath(document)).catch(() => "")) ?? ""
-
-    const canvas =
-      (await readJson<CanvasFlow>(canvasPath(document))) ??
-      EMPTY_CANVAS
-
+    const scratchpad = await readScratchpad(document)
+    const canvas = await readCanvas(document)
     const output = buildOutput(document.sections, format)
 
-    return {
-      document,
-      scratchpad,
-      canvas,
-      output,
-    }
+    return { document, scratchpad, canvas, output }
   },
 
-  async saveDocument(
-    state: DocumentState
-  ): Promise<Document> {
+  async saveDocument(state: DocumentState): Promise<Document> {
     const { document, scratchpad, canvas, output } = state
 
     const updated = await updateDocument(document.id, {
       sections: document.sections,
     })
 
+    const scratchpadPath = document.scratchpadTextPath ?? await getScratchpadPath(document.id)
+    const canvasPath = document.scratchpadFlowPath ?? await getCanvasPath(document.id)
+    const outputFilePath = await getOutputPath(document.id)
+
     await Promise.all([
-      writeFile(scratchpadPath(updated), scratchpad),
-      writeJson(canvasPath(updated), canvas),
-      writeJson(outputPath(updated), {
-        output,
-      }),
+      writeFile(scratchpadPath, scratchpad),
+      writeJson(canvasPath, canvas),
+      writeJson(outputFilePath, { output }),
     ])
 
     return updated
   },
 
-  async createDocument(
+  async create(
     input: CreateDocumentInput,
     format: OutputFormat = "plain"
   ): Promise<DocumentState> {
     const document = await createDocument(input)
-
     const output = buildOutput(document.sections, format)
 
+    const docDir = await getDocumentDir(document.id)
+    const { ensureDirectory } = await import("@/lib/fs/fs")
+    await ensureDirectory(docDir)
+
     await Promise.all([
-      writeFile(scratchpadPath(document), ""),
-      writeJson(canvasPath(document), EMPTY_CANVAS),
-      writeJson(outputPath(document), {
-        output,
-      }),
+      writeFile(await getScratchpadPath(document.id), ""),
+      writeJson(await getCanvasPath(document.id), EMPTY_CANVAS),
+      writeJson(await getOutputPath(document.id), { output }),
     ])
 
-    return {
-      document,
-      scratchpad: "",
-      canvas: EMPTY_CANVAS,
-      output,
-    }
+    return { document, scratchpad: "", canvas: EMPTY_CANVAS, output }
   },
 
-  async deleteDocument(id: string): Promise<void> {
+  async remove(id: string): Promise<void> {
     await deleteDocument(id)
-    // delete document directory here if desired
   },
 }

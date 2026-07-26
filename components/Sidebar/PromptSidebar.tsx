@@ -1,16 +1,8 @@
 import { CollectionTree } from "@/services/service.collections"
 import { Tab } from "../core-components/Tabbar"
 import {
-  Home,
-  FileText,
-  Layout,
-  BookOpen,
   FolderPlus,
   FilePlus,
-  ChevronRight,
-  Folder,
-  FolderOpen,
-  File,
 } from "lucide-react"
 import { PromptFile } from "../Prompt/PromptElements";
 import { CollectionItem, InlineInput } from "./SidebarElements";
@@ -97,7 +89,7 @@ export const PromptSidebarPanel = ({
 
       {collectionsTree && (
         <>
-          {collectionsTree.rootPrompts.map((p) => (
+          {collectionsTree.rootDocuments.map((p) => (
             <PromptFile
               key={p.id}
               prompt={p}

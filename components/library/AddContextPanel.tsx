@@ -126,7 +126,7 @@ export const AddContextPanel = ({ scopes, onBack }: AddContextPanelProps) => {
     try {
       const db = getDB();
       const config = await readConfig();
-      const basePath = config?.base_path;
+      const basePath = (config as any)?.base_path;
 
       const result1 = await db.select("SELECT sql FROM sqlite_master WHERE name = 'documents'")
       console.log("[documents schema]", result1)

@@ -1,10 +1,10 @@
-import { SquareAsterisk, X } from "lucide-react"
+import { X } from "lucide-react"
 import { useState } from "react"
-import { Button } from "../ui/button"
+import { Button } from "../ui/Button"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
 import { snippetId, useLibraryStore, useNotifications } from "@/hooks/store/SidebarStore"
-import { createSnippet, updateSnippet, upsertSnippet } from "@/lib/db/library"
+import { libraryService } from "@/lib/db/library"
 import { useEffect } from "react"
 import { LibraryTab } from "./LibraryView"
 // type SnippetModalProps = {
@@ -148,7 +148,7 @@ type SnippetModalProps = {
   isCreating: LibraryTab | null
 }
 
-export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet, isCreating }: SnippetModalProps) => {
+export const SnippetModal = ({ onClose, existingScopes = [], snippet, isCreating }: SnippetModalProps) => {
   const isEditing = !!snippet && !isCreating
   const { notify } = useNotifications()
   const [scope, setScope] = useState(snippet?.scope ?? "")
@@ -195,8 +195,9 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet, is
 
     try {
       if (isEditing) {
-        await updateSnippet(
-          snippetId(snippet),
+        await libraryService.update(
+          snippet!.scope,
+          snippet!.key,
           newSnippet.scope,
           newSnippet.key,
           newSnippet.value
@@ -204,11 +205,11 @@ export const SnippetModal = ({ onClose, onSave, existingScopes = [], snippet, is
         useLibraryStore.getState().updateSnippet(snippetId(snippet!), newSnippet)
         notify("snippet updated")
       } else {
-        await createSnippet(newSnippet.scope, newSnippet.key, newSnippet.value)
+        await libraryService.create(newSnippet.scope, newSnippet.key, newSnippet.value)
         const newId = snippetId(newSnippet)
         setSnippets([...snippets, newSnippet])
         useLibraryStore.getState().selectSnippet(newId)
-        useLibraryStore.getState().setCreating(null)
+        useLibraryStore.getState().setActiveMode(null)
         notify("snippet saved")
       }
 

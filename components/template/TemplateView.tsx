@@ -23,7 +23,7 @@ import { TemplateSection } from "@/lib/db/template";
 function SectionRow({ section }: { section: TemplateSection }) {
   const { updateSection, deleteSection } = useTemplateStore();
   const [title, setTitle] = useState(section.title);
-  const [placeholder, setPlaceholder] = useState(section.placeholder ?? "");
+  const [contentJson, setContentJson] = useState(section.content_json ?? "");
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: section.id });
@@ -63,10 +63,10 @@ function SectionRow({ section }: { section: TemplateSection }) {
           style={{ color: "var(--foreground)" }}
         />
         <input
-          value={placeholder}
-          onChange={(e) => setPlaceholder(e.target.value)}
-          onBlur={() => updateSection(section.id, { placeholder })}
-          placeholder="Placeholder hint..."
+          value={contentJson}
+          onChange={(e) => setContentJson(e.target.value)}
+          onBlur={() => updateSection(section.id, { content_json: contentJson })}
+          placeholder="Content (e.g. default text or JSON)"
           className="w-full bg-transparent text-xs outline-none"
           style={{ color: "var(--muted)" }}
         />
@@ -258,7 +258,7 @@ function TemplateForm() {
 // ── Template View ─────────────────────────────────────────────────────────────
 
 export function TemplateView() {
-  const { selectedTemplateId, selectTemplate } = useTemplateStore();
+  const { selectedTemplateId } = useTemplateStore();
 
   return (
     <div className="flex  flex-col h-full max-w-full">

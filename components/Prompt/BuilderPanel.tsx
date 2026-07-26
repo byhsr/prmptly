@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import {
   DndContext,
@@ -18,9 +17,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical } from "lucide-react"
-import { TemplateSelector } from "./TemplateSelector"
 import { TemplateSection } from "@/lib/db/template"
-import { Template } from "@/lib/db/template"
 import { SmartEditor } from "../ui/SmartTextEditor"
 
 
@@ -29,10 +26,9 @@ import { SmartEditor } from "../ui/SmartTextEditor"
 interface SectionBlockProps {
   section: TemplateSection
   value: string
-  onChange: (value: string) => void
 }
 
-function SectionBlock({ section, value, onChange }: SectionBlockProps) {
+function SectionBlock({ section, value }: SectionBlockProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   })
@@ -62,7 +58,7 @@ function SectionBlock({ section, value, onChange }: SectionBlockProps) {
            <SmartEditor
         value={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
-        placeholder={section.placeholder || `Enter ${section.title.toLowerCase()}...`}
+        placeholder={section.content_json ? JSON.parse(section.content_json).placeholder : `Enter ${section.title.toLowerCase()}...`}
       />
       </div>
      
@@ -123,7 +119,6 @@ export function BuilderPanel() {
                   key={section.id}
                   section={section}
                   value={filledSections[section.id] || ""}
-                  onChange={(val) => updateSection(section.id, val)}
                 />
               ))}
             </SortableContext>

@@ -1,10 +1,10 @@
 import { useLibraryStore } from "@/hooks/store/SidebarStore"
-import { Sparkle, Folder, ChevronRight } from "lucide-react"
+import { Sparkle, Folder } from "lucide-react"
 import { Scope } from "./AddContextPanel"
 import { cn } from "@/lib/utils"
 
 export const ScopeListPanel = () => {
-  const { scopes, selectScope, setCreating, resetAddContext, selectedScopeId} = useLibraryStore()
+  const { scopes, selectScope, selectedScopeId} = useLibraryStore()
 
   if (scopes.length === 0) return (
     <div

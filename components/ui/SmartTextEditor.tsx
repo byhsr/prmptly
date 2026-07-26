@@ -61,7 +61,7 @@ interface ChipNodeAttrs {
     resolvedContent: string
 }
 
-function ChipNodeView({ node, updateAttributes }: { node: any; updateAttributes: (attrs: Partial<ChipNodeAttrs>) => void }) {
+function ChipNodeView({ node }: { node: any }) {
     const attrs = node.attrs as ChipNodeAttrs
     const [popoverOpen, setPopoverOpen] = useState(false)
     const [anchorPos, setAnchorPos] = useState({ top: 0, left: 0 })
@@ -219,7 +219,6 @@ function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChang
 export function SmartEditor({
     value,
     placeholder = "Write here… use - for bullets, Tab to nest, @ to reference",
-    outputFormat = "plain",
     onChange,
     onResolvedContext,
     className = "",

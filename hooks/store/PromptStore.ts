@@ -1,67 +1,38 @@
 import { create } from "zustand"
-import { readPrompt } from "@/services/service.prompt"
-import { templateService } from "@/lib/db/template"
-import { saveBuilderContent, saveOutput, updatePromptTemplate } from "@/lib/db/document"
-import { createFile } from "@/lib/fs/fs"
-import type { TemplateSection, BuilderSectionContent, } from "@/lib/db/document"
 import { JSONContent } from "@tiptap/react"
+import { Document } from "@/lib/types/Document"
+import { readPrompt, updatePromptContent } from "@/services/service.prompt"
+import { templateService, TemplateSection } from "@/lib/db/template"
+import { updateDocument } from "@/lib/db/document"
 import { serializeDoc, nodeToXml } from "@/lib/client/textEditorFuncs"
-
 
 export type OutputFormat = "plain" | "json" | "xml"
 
-interface PromptVersion {
-  id: string
-  version_number: number
-  label: string | null
-  builder_content: BuilderSectionContent[]
-  scratchpad: string
-  scratchpad_text_path: string | null
-  output: {
-    id: string | null
-    text: string | null
-    json: string | null
-    xml: string | null
-  }
-}
-
-interface ActivePrompt {
-  id: string
-  name: string
-  template_id: string | null
-  collection_id: string | null
-  version: PromptVersion
-}
-
 interface PromptStore {
-  activePrompt: ActivePrompt | null
+  activeDocument: Document | null
   sections: TemplateSection[]
   filledSections: Record<string, string>
-  filledSectionDocs: Record<string, JSONContent>  // add
+  filledSectionDocs: Record<string, JSONContent>
   outputFormat: OutputFormat
   compiledOutput: string
   loading: boolean
   scratchpadText: string
-  clearTemplate: () => Promise<void>
 
-  // Actions
-  loadPrompt: (promptId: string) => Promise<void>
+  loadDocument: (id: string) => Promise<void>
+  updateSection: (sectionId: string, value: string, doc?: JSONContent) => void
+  setOutputFormat: (format: OutputFormat) => void
+  updateTemplate: (templateId: string) => Promise<void>
+  clearTemplate: () => Promise<void>
   updateScratchpad: (text: string) => void
   reorderSections: (sections: TemplateSection[]) => void
-  updateTemplate: (templateId: string) => Promise<void>
-  updateSection: (sectionId: string, value: string, doc?: JSONContent) => void  // doc optional, no breaking changes
-  setOutputFormat: (format: OutputFormat) => void
   persist: () => Promise<void>
   reset: () => void
 }
 
-// ── Compile ────────────────────────────────────────────────────────────────────
-
-
 function compile(
   sections: TemplateSection[],
   filled: Record<string, string>,
-  filledDocs: Record<string, JSONContent>,  // add this
+  filledDocs: Record<string, JSONContent>,
   format: OutputFormat
 ): string {
   if (!sections.length) {
@@ -77,14 +48,11 @@ function compile(
   const pairs = ordered.map((s) => ({
     title: s.title,
     key: s.title.toLowerCase().replace(/\s+/g, "_"),
-    // serialize each section's doc in the target format
     value: filledDocs[s.id] ? serializeDoc(filledDocs[s.id], format) : filled[s.id] || "",
   }))
 
   if (format === "plain") {
-    return pairs
-      .map((p) => `${p.title.toUpperCase()}:\n${p.value}`)
-      .join("\n\n")
+    return pairs.map((p) => `${p.title.toUpperCase()}:\n${p.value}`).join("\n\n")
   }
 
   if (format === "json") {
@@ -112,22 +80,24 @@ function compile(
   return ""
 }
 
-// ── Store ──────────────────────────────────────────────────────────────────────
-
 export const usePromptStore = create<PromptStore>((set, get) => ({
-  activePrompt: null,
+  activeDocument: null,
   sections: [],
   filledSections: {},
+  filledSectionDocs: {},
   outputFormat: "plain",
   compiledOutput: "",
   loading: false,
-  filledSectionDocs: {} as Record<string, JSONContent>,
+  scratchpadText: "",
 
-  loadPrompt: async (promptId: string) => {
+  loadDocument: async (id: string) => {
     set({ loading: true })
     try {
-      const result = await readPrompt(promptId)
-      if (!result) return
+      const result = await readPrompt(id)
+      if (!result) {
+        set({ loading: false })
+        return
+      }
 
       let sections: TemplateSection[] = []
       if (result.template_id) {
@@ -139,12 +109,13 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
 
       for (const entry of result.version.builder_content) {
         filledSections[entry.sectionId] = entry.value
-        if (entry.doc) filledSectionDocs[entry.sectionId] = entry.doc
+        if (entry.doc) filledSectionDocs[entry.sectionId] = entry.doc as JSONContent
       }
+
       const compiledOutput = compile(sections, filledSections, filledSectionDocs, "plain")
 
       set({
-        activePrompt: result as ActivePrompt,
+        activeDocument: result as unknown as Document,
         sections,
         filledSections,
         filledSectionDocs,
@@ -154,11 +125,10 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
         scratchpadText: result.version.scratchpad,
       })
     } catch (err) {
-      console.error("loadPrompt failed:", err)
+      console.error("loadDocument failed:", err)
       set({ loading: false })
     }
   },
-  scratchpadText: "",
 
   updateSection: (sectionId: string, value: string, doc?: JSONContent) => {
     const { sections, filledSections, filledSectionDocs, outputFormat } = get()
@@ -175,98 +145,82 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set({ outputFormat: format, compiledOutput: compiled })
   },
 
- updateTemplate: async (templateId: string) => {
-  const { activePrompt, filledSections, filledSectionDocs, outputFormat, sections } = get()
-  if (!activePrompt) return
+  updateTemplate: async (templateId: string) => {
+    const { activeDocument, filledSections, sections } = get()
+    if (!activeDocument) return
 
-  // Dump current content to scratchpad before wiping
-  const dump = sections
-    .map((s) => `${s.title}:\n${filledSections[s.id] || ""}`)
-    .filter((s) => s.trim())
-    .join("\n\n")
+    const dump = sections
+      .map((s) => `${s.title}:\n${filledSections[s.id] || ""}`)
+      .filter((s) => s.trim())
+      .join("\n\n")
 
-  if (dump) {
-    const current = get().scratchpadText
-    const newScratchpad = current ? `${current}\n\n---\n\n${dump}` : dump
-    get().updateScratchpad(newScratchpad)
-  }
+    if (dump) {
+      const current = get().scratchpadText
+      const newScratchpad = current ? `${current}\n\n---\n\n${dump}` : dump
+      get().updateScratchpad(newScratchpad)
+    }
 
-  await updatePromptTemplate(activePrompt.id, templateId)
-  const newSections = await templateService.getSections(templateId)
-  const compiled = compile(newSections, {}, {}, outputFormat)
+    // Update template_id on the document
+    await updateDocument(activeDocument.id, { meta: { ...activeDocument.meta, template_id: templateId } })
+    const newSections = await templateService.getSections(templateId)
+    const outputFormat = get().outputFormat
+    const compiled = compile(newSections, {}, {}, outputFormat)
 
-  set({
-    sections: newSections,
-    filledSections: {},
-    filledSectionDocs: {},
-    compiledOutput: compiled,
-    activePrompt: { ...activePrompt, template_id: templateId },
-  })
-},
+    set({
+      sections: newSections,
+      filledSections: {},
+      filledSectionDocs: {},
+      compiledOutput: compiled,
+      activeDocument: { ...activeDocument, templateId, meta: { ...activeDocument.meta, template_id: templateId } },
+    })
+  },
+
+  clearTemplate: async () => {
+    if (persistTimer) clearTimeout(persistTimer)
+
+    const { activeDocument, filledSections, sections } = get()
+    if (!activeDocument) return
+
+    const dump = sections
+      .map((s) => `${s.title}:\n${filledSections[s.id] || ""}`)
+      .filter((s) => s.trim())
+      .join("\n\n")
+
+    if (dump) {
+      const current = get().scratchpadText
+      const newScratchpad = current ? `${current}\n\n---\n\n${dump}` : dump
+      get().updateScratchpad(newScratchpad)
+    }
+
+    await updateDocument(activeDocument.id, { meta: { ...activeDocument.meta, template_id: null } })
+    set({
+      sections: [],
+      filledSections: {},
+      filledSectionDocs: {},
+      compiledOutput: "",
+      activeDocument: { ...activeDocument, templateId: null, meta: { ...activeDocument.meta, template_id: null } },
+    })
+  },
 
   persist: async () => {
-    const { activePrompt, filledSections, filledSectionDocs, sections, compiledOutput, outputFormat } = get()
-    if (!activePrompt) return
+    const { activeDocument, filledSections, filledSectionDocs, sections } = get()
+    if (!activeDocument) return
 
-    const builderContent: BuilderSectionContent[] = sections
+    const builder_content = sections
       .sort((a, b) => a.order_index - b.order_index)
       .map((s, i) => ({
         sectionId: s.id,
         order: i,
         value: filledSections[s.id] || "",
-        doc: filledSectionDocs[s.id],
+        doc: filledSectionDocs[s.id] ?? null,
       }))
 
-    await saveBuilderContent(activePrompt.version.id, builderContent)
-
-    const outputId = activePrompt.version.output.id
-    if (outputId) {
-      await saveOutput(
-        outputId,
-        outputFormat === "plain" ? compiledOutput : null,
-        outputFormat === "json" ? compiledOutput : null,
-        outputFormat === "xml" ? compiledOutput : null,
-      )
-    }
+    await updatePromptContent({
+      promptId: activeDocument.id,
+      builder_content,
+      scratchpad: get().scratchpadText,
+    })
   },
-
-  clearTemplate: async () => {
-  if (persistTimer) clearTimeout(persistTimer)
-
-  const { activePrompt, filledSections, filledSectionDocs, sections, outputFormat } = get()
-  if (!activePrompt) return
-
-  // Dump to scratchpad
-  const dump = sections
-    .map((s) => `${s.title}:\n${filledSections[s.id] || ""}`)
-    .filter((s) => s.trim())
-    .join("\n\n")
-
-  if (dump) {
-    const current = get().scratchpadText
-    const newScratchpad = current ? `${current}\n\n---\n\n${dump}` : dump
-    get().updateScratchpad(newScratchpad)
-  }
-
-  await updatePromptTemplate(activePrompt.id, null)
-  set({
-    sections: [],
-    filledSections: {},
-    filledSectionDocs: {},
-    compiledOutput: "",
-    activePrompt: { ...activePrompt, template_id: null },
-  })
-},
-
-  reset: () => set({
-    activePrompt: null,
-    sections: [],
-    filledSections: {},
-    outputFormat: "plain",
-    compiledOutput: "",
-    loading: false,
-    scratchpadText: "",
-  }),
 
   updateScratchpad: (text: string) => {
     set({ scratchpadText: text })
@@ -279,9 +233,18 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     set({ sections: reordered, compiledOutput: compiled })
     debouncedPersist()
   },
-}))
 
-// ── Debounce ───────────────────────────────────────────────────────────────────
+  reset: () => set({
+    activeDocument: null,
+    sections: [],
+    filledSections: {},
+    filledSectionDocs: {},
+    outputFormat: "plain",
+    compiledOutput: "",
+    loading: false,
+    scratchpadText: "",
+  }),
+}))
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -297,8 +260,12 @@ let scratchpadTimer: ReturnType<typeof setTimeout> | null = null
 function debouncedScratchpadPersist() {
   if (scratchpadTimer) clearTimeout(scratchpadTimer)
   scratchpadTimer = setTimeout(async () => {
-    const { activePrompt, scratchpadText } = usePromptStore.getState()
-    const path = activePrompt?.version.scratchpad_text_path
-    if (path) await createFile(path, scratchpadText)
+    const { activeDocument, scratchpadText } = usePromptStore.getState()
+    if (activeDocument) {
+      const { writeFile } = await import("@/lib/fs/fs")
+      const { getScratchpadPath } = await import("@/lib/fs/fsHelpers")
+      const path = await getScratchpadPath(activeDocument.id)
+      await writeFile(path, scratchpadText)
+    }
   }, 800)
 }

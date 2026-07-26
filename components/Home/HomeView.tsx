@@ -1,22 +1,22 @@
-import { FileTab } from "../Prompt/fileTab"
-import { Tab } from "../core-components/Tabbar"
 import { useState, useCallback, useEffect } from "react"
 import { JSONContent } from "@tiptap/core"
-import { nanoid } from "nanoid"
 import { AnimatePresence, motion } from "framer-motion"
 import { SmartEditor } from "../ui/SmartTextEditor"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
+import { useNotifications } from "@/hooks/store/SidebarStore"
+import { Tab } from "../core-components/Tabbar"
+import { FileTab } from "../Prompt/fileTab"
 
 const emptyDoc: JSONContent = { type: "doc", content: [{ type: "paragraph" }] }
 
-// ── Quick actions shown in idle state ──────────────────────────────────────
-const QUICK_ACTIONS = [
-  { label: "@p:cold-email", hint: "prompt" },
-  { label: "@p:system-prompt", hint: "prompt" },
-  { label: "/t:brief", hint: "template" },
-  { label: "/f:upload", hint: "file" },
-]
+// Quick actions — commented out for now, will use later
+// const QUICK_ACTIONS = [
+//   { label: "@p:cold-email", hint: "prompt" },
+//   { label: "@p:system-prompt", hint: "prompt" },
+//   { label: "/t:brief", hint: "template" },
+//   { label: "/f:upload", hint: "file" },
+// ]
 
 type OutputTab = "plain" | "json" | "xml"
 
@@ -32,7 +32,7 @@ export function HomeView() {
   // ensure one empty section exists so there's always something to type into
   useEffect(() => {
     if (sections.length === 0) {
-      setSections([{ id: nanoid(), title: "", doc: emptyDoc }])
+      setSections([{ id: crypto.randomUUID(), title: "", doc: emptyDoc }])
     }
   }, [sections.length, setSections])
 
@@ -46,7 +46,7 @@ export function HomeView() {
   }
 
   const handleSectionChange = useCallback(
-    (id: string) => (plain: string, doc: JSONContent) => {
+    (id: string) => (_plain: string, doc: JSONContent) => {
       updateSection(id, doc)
       setHasContent(true)
     },
@@ -70,12 +70,44 @@ export function HomeView() {
     setHasContent(false)
   }
 
-  const handleSave = () => {
-    // save flow — wire next
+  const handleSave = async () => {
+    const { createDocument } = await import("@/lib/db/document")
+    const { useTabViewStore } = await import("@/hooks/store/TabStore")
+    try {
+      const doc = await createDocument({
+        type: "quick",
+        name: sections[0]?.title || "Untitled Quick",
+        sections: sections.map((s) => ({
+          id: s.id,
+          title: s.title,
+          order: sections.indexOf(s),
+          value: nodeToPlain(s.doc),
+          doc: s.doc,
+        })),
+        meta: {},
+      })
+      useNotifications.getState().notify("Quick saved")
+      useTabViewStore.getState().addTab({ id: doc.id, label: doc.name, type: "prompt" })
+    } catch (e) {
+      useNotifications.getState().notify("Failed to save quick", true)
+    }
   }
 
-  const handleSaveOutput = () => {
-    // save output flow — wire next
+  const handleSaveOutput = async () => {
+    if (!output) return
+    try {
+      const { getDB } = await import("@/lib/db")
+      const db = await getDB()
+      const outputId = crypto.randomUUID()
+      const now = new Date().toISOString()
+      await db.execute(
+        `INSERT INTO outputs (id, text, json, xml, meta_json, created_at, updated_at) VALUES (?, ?, ?, ?, '{}', ?, ?)`,
+        [outputId, output.plain, output.json, output.xml, now, now]
+      )
+      useNotifications.getState().notify("Output saved")
+    } catch (e) {
+      useNotifications.getState().notify("Failed to save output", true)
+    }
   }
 
   return (

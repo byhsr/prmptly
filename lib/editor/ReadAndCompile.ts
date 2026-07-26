@@ -30,6 +30,7 @@ export function buildOutput(
     value: section.doc
       ? serializeDoc(section.doc, format)
       : section.value,
+    doc: section.doc,
   }))
 
   if (format === "plain") {

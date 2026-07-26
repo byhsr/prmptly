@@ -20,7 +20,7 @@ type TabsState = {
   toggleSidebar: () => void
 }
 
-export const useTabViewStore = create<TabsState>((set, get) => ({
+export const useTabViewStore = create<TabsState>((set) => ({
   tabs: [],
   activeTabId: null,
   activeView : "home",

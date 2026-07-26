@@ -21,7 +21,7 @@ import { useSettingsStore } from "@/hooks/store/settingsStore";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 
 function App() {
-  const [darkMode, setDarkMode] = useState(true);
+  const [, setDarkMode] = useState(true);
 
   useEffect(() => {
     async function loadTheme() {
@@ -36,16 +36,7 @@ function App() {
     loadTheme();
   }, []);
 
-  async function toggleTheme() {
-    const next = !darkMode;
-
-    setDarkMode(next);
-    document.documentElement.classList.toggle("dark", next);
-
-    await writeConfig({
-      theme: next ? "dark" : "light",
-    });
-  }
+  // toggleTheme — kept for future use
 
   return (
     <main className="w-full">
@@ -97,7 +88,7 @@ export const AppFlow = () => {
       setWorkspacePath(workspacePath);
       setDbReady(true);
 
-      await useSettingsStore.getState().hydrate();
+      await useSettingsStore.getState().init();
 
       console.log("Workspace initialized:", workspacePath);
     } catch (err) {
@@ -128,7 +119,7 @@ export const AppFlow = () => {
     setWorkspacePath(workspacePath);
     setDbReady(true);
 
-    await useSettingsStore.getState().hydrate();
+    await useSettingsStore.getState().init();
   }
 
   if (!dbReady) return <div>Loading...</div>;

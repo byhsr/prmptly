@@ -1,5 +1,4 @@
 import { JSONContent } from "@tiptap/react"
-import { nanoid } from "nanoid"
 
 export interface QuickSection {
   id: string
@@ -44,7 +43,7 @@ export function parseMarkdownSections(raw: string): QuickSection[] {
   const hasHeaders = headerRegex.test(raw)
 
   if (!hasHeaders) {
-    return [{ id: nanoid(), title: "", doc: textToDoc(raw) }]
+    return [{ id: crypto.randomUUID(), title: "", doc: textToDoc(raw) }]
   }
 
   const parts = raw.split(/^##\s+(.+)$/gm).slice(1) // [title, body, title, body, ...]
@@ -53,7 +52,7 @@ export function parseMarkdownSections(raw: string): QuickSection[] {
   for (let i = 0; i < parts.length; i += 2) {
     const title = parts[i].trim()
     const body = (parts[i + 1] || "").trim()
-    sections.push({ id: nanoid(), title, doc: textToDoc(body) })
+    sections.push({ id: crypto.randomUUID(), title, doc: textToDoc(body) })
   }
 
   return sections

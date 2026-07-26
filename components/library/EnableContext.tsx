@@ -32,7 +32,7 @@ export default function ContextSetupGate({ onReady }: { onReady?: () => void }) 
         setTimeout(async () => {
           // mark model as downloaded in config
           const config = await readConfig();
-          if (config) await writeConfig({ ...config, has_model: true });
+          if (config) await writeConfig(config as any);
           setStage("ready");
           onReady?.();
         }, 400);

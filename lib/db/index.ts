@@ -1,6 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
 import { join } from "@tauri-apps/api/path"
-import { invoke } from "@tauri-apps/api/core";
 
 export type DB = typeof db
 let db: Database | null = null;
@@ -113,6 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_document_assets_asset_id
 
 CREATE TABLE IF NOT EXISTS namespaces (
   prefix TEXT PRIMARY KEY,
+  source TEXT NOT NULL DEFAULT 'deterministic',
   meta_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
@@ -153,7 +153,11 @@ CREATE TABLE IF NOT EXISTS deterministic_assets (
 CREATE INDEX IF NOT EXISTS idx_deterministic_assets_namespace
   ON deterministic_assets(namespace);`
   },
-  // migration 2 goes here when needed
+  // migration 2: add source column to namespaces for existing databases
+  {
+    id: 2,
+    sql: `ALTER TABLE namespaces ADD COLUMN source TEXT NOT NULL DEFAULT 'deterministic';`
+  },
 ];
 
 async function runMigrations(db: Database) {

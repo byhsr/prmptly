@@ -1,9 +1,15 @@
 import { useSettingsStore } from "@/hooks/store/settingsStore"
-import { THEMES, FONTS } from "@/lib/config/settings"
-
+import { THEMES, FONTS, type FontKey } from "@/lib/config/settings"
 
 export function Appearance() {
-  const { theme, font, setTheme, setFont } = useSettingsStore()
+  const { settings, updateFonts } = useSettingsStore()
+
+  const handleTheme = async (key: string) => {
+    const { writeConfig, readConfig } = await import("@/lib/fs/fs")
+    const config = await readConfig()
+    await writeConfig({ ...config, theme: key as any })
+    document.documentElement.classList.toggle("dark", key !== "light")
+  }
 
   return (
     <div className="space-y-6">
@@ -13,8 +19,8 @@ export function Appearance() {
           {Object.entries(THEMES).map(([key, t]) => (
             <button
               key={key}
-              onClick={() => setTheme(key as any)}
-              className={theme === key ? "border-lime-400" : "border-transparent"}
+              onClick={() => handleTheme(key)}
+              className={key === "dark" ? "border-lime-400" : "border-transparent"}
             >
               {t.label}
             </button>
@@ -28,8 +34,8 @@ export function Appearance() {
           {Object.entries(FONTS).map(([key, f]) => (
             <button
               key={key}
-              onClick={() => setFont(key as any)}
-              className={font === key ? "border-lime-400" : "border-transparent"}
+              onClick={() => updateFonts({ mono: key as FontKey })}
+              className={settings.fonts.mono === key ? "border-lime-400" : "border-transparent"}
             >
               {f.label}
             </button>

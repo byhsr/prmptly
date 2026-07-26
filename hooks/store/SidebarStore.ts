@@ -67,7 +67,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   set({
     activeMode: type,
     selectedSnippetId: type ? null : get().selectedSnippetId,
-    selectedScopeId: type === "context" ? null : get().selectedScopeId,
+    selectedScopeId: type ? null : get().selectedScopeId,
   }),
 
   // snippets

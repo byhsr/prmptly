@@ -9,16 +9,6 @@ export interface Tab {
   isDirty?: boolean; // unsaved changes indicator
 }
 
-interface TabBarProps {
-  tabs: Tab[];
-  activeTabId: string;
-  onTabSelect: (id: string) => void;
-  onTabClose: (id: string) => void;
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-}
-
-
 
 const appWindow = getCurrentWindow()
 // Tiny dot to indicate tab type 
@@ -51,7 +41,7 @@ function TabTypeDot({ type }: { type: ViewType }) {
 export function TabBar() {
   const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar, setActiveView, isSettingsOpen, setIsSettingsOpen } = useTabViewStore()
   return (
-    <div data-tauri-drag-region className="sticky top-0 z-[9999] min-h-8 w-full items-end flex justify-between">
+    <div data-tauri-drag-region className="sticky top-0 z-[9999] min-h-8 border-b w-full items-center flex justify-between">
       <div className="items-center flex ">
         {/* Drag region (ONLY LEFT) */}
         <div className=" flex p-2 items-center shrink-0 h-full select-none"
@@ -118,7 +108,7 @@ export function TabBar() {
                   onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}
                   className="ml-1 w-3.5 h-3.5 rounded-sm flex items-center justify-center 
                   text-muted-foreground hover:text-foreground hover:bg-muted-foreground/20 
-                  transition-colors"
+                  transition-colors "
                 >
                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                     <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -135,7 +125,7 @@ export function TabBar() {
 
       {/* Window controls */}
       <div
-        className="flex justify-end items-center w-fitl shrink-0"
+        className="flex justify-end h-full items-center w-fit shrink-0"
         style={{ paddingRight: 6, gap: 2 }}
       >
         <button
