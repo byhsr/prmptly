@@ -121,7 +121,7 @@ export default function Promptly({ dbReady }: { dbReady: boolean }) {
 
 
   return (
-    <div className="flex flex-col w-screen h-screen overflow-hidden">
+    <div className="flex flex-col w-full h-full overflow-hidden">
       <div className="flex w-full h-full overflow-hidden">
         <Group
           defaultLayout={defaultLayout}

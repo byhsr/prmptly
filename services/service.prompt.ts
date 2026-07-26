@@ -17,6 +17,7 @@ type PromptResult = {
   name: string;
   template_id: string | null;
   collection_id: string | null;
+  meta: Record<string, unknown>;
   version: {
     id: string;
     version_number: number;
@@ -81,6 +82,7 @@ export async function readPrompt(promptId: string): Promise<PromptResult | null>
     name: doc.name,
     template_id: doc.templateId,
     collection_id: doc.collectionId,
+    meta: doc.meta,
     version: {
       id: doc.id,
       version_number: 1,

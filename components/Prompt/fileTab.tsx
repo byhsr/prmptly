@@ -31,6 +31,8 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
   const { loadDocument, reset, activeDocument, updateTemplate, clearTemplate, persist } = usePromptStore()
   const compiledOutput = usePromptStore((s) => s.compiledOutput)
+  const sections = usePromptStore((s) => s.sections)
+  const templateSectionTitles = Array.isArray(sections) ? sections.map((sec) => sec?.title || "").filter(Boolean) : []
   const [canvasFlow, setCanvasFlow] = useState<CanvasFlow>({ nodes: [], edges: [] })
   const [docName, setDocName] = useState(tab.label)
   const [showRectify, setShowRectify] = useState(false)
@@ -68,6 +70,17 @@ export function FileTab({ tab }: { tab: Tab }) {
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [persist])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "o") {
+        e.preventDefault()
+        setShowOutline((v) => !v)
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [])
 
   const cycleSplitMode = () => {
     const modes: SplitMode[] = ["none", "two", "two-prompt", "three"]
@@ -239,7 +252,7 @@ export function FileTab({ tab }: { tab: Tab }) {
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto shrink-0">
-              <OutlinePanel doc={compiledOutput} />
+              <OutlinePanel doc={compiledOutput} sectionTitles={templateSectionTitles.length > 0 ? templateSectionTitles : undefined} />
             </div>
           )}
         </div>

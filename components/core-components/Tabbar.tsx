@@ -41,7 +41,7 @@ function TabTypeDot({ type }: { type: ViewType }) {
 export function TabBar() {
   const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar, setActiveView, isSettingsOpen, setIsSettingsOpen } = useTabViewStore()
   return (
-    <div data-tauri-drag-region className="sticky top-0 z-[9999] min-h-8 border-b w-full items-center flex justify-between">
+    <div data-tauri-drag-region className="min-h-8 border-b w-full items-center flex justify-between">
       <div className="items-center flex ">
         {/* Drag region (ONLY LEFT) */}
         <div className=" flex p-2 items-center shrink-0 h-full select-none"

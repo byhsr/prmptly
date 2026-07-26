@@ -143,20 +143,20 @@ export function markdownToHtml(text: string): string {
 }
 
 export function parseMarkdownSections(raw: string): QuickSection[] {
-  const headerRegex = /^##\s+(.+)$/gm
-  const hasHeaders = headerRegex.test(raw)
+  // No caps — textarea handles any size
+  const hasHeaders = /^##\s/m.test(raw)
 
   if (!hasHeaders) {
-    return [{ id: crypto.randomUUID(), title: "", doc: markdownToDoc(raw) }]
+    return [{ id: crypto.randomUUID(), title: "", doc: raw }]
   }
 
-  const parts = raw.split(/^##\s+(.+)$/gm).slice(1)
+  const parts = raw.split(/^##\s+(.+)$/m).slice(1)
   const sections: QuickSection[] = []
 
-  for (let i = 0; i < parts.length; i += 2) {
+  for (let i = 0; i < parts.length && sections.length < 20; i += 2) {
     const title = parts[i].trim()
-    const body = (parts[i + 1] || "").trim()
-    sections.push({ id: crypto.randomUUID(), title, doc: markdownToDoc(body) })
+    const body = parts[i + 1] || ""
+    sections.push({ id: crypto.randomUUID(), title, doc: body })
   }
 
   return sections

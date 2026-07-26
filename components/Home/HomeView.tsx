@@ -1,103 +1,106 @@
 import { useState, useCallback, useEffect } from "react"
-import { JSONContent } from "@tiptap/core"
 import { AnimatePresence, motion } from "framer-motion"
-import { SmartEditor } from "../ui/SmartTextEditor"
+import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
-import { nodeToPlain } from "@/lib/client/textEditorFuncs"
+import { parseMarkdownSections } from "@/lib/editor/parseMarkdown"
 import { useNotifications } from "@/hooks/store/SidebarStore"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { Tab } from "../core-components/Tabbar"
 import { FileTab } from "../Prompt/fileTab"
-import { RectifyBar } from "../Prompt/RectifyBar"
+import { SmartEditor } from "../ui/SmartTextEditor"
+import { OutlinePanel } from "../Prompt/OutlinePanel"
 
 const homeEditorRef = { current: null as any }
-
-const emptyDoc: JSONContent = { type: "doc", content: [{ type: "paragraph" }] }
-
-// Quick actions — commented out for now, will use later
-// const QUICK_ACTIONS = [
-//   { label: "@p:cold-email", hint: "prompt" },
-//   { label: "@p:system-prompt", hint: "prompt" },
-//   { label: "/t:brief", hint: "template" },
-//   { label: "/f:upload", hint: "file" },
-// ]
-
 type OutputTab = "plain" | "json" | "xml"
 
-// ── HomeView ───────────────────────────────────────────────────────────────
-export function HomeView() {
-  const { sections, output, setSections, updateSection, updateSectionTitle, loadFromPaste, generate, reset } =
-    useQuicksStore()
+function SectionEditor({ section, onSave }: { section: { id: string; doc: string | any; title?: string }, onSave: (id: string, text: string) => void }) {
+  const getContent = () => {
+    if (typeof section.doc === "string") return section.doc.slice(0, 15000)
+    return section.doc
+  }
 
-  const [hasContent, setHasContent] = useState(false)
+  return (
+    <div className="py-2">
+      {section.title && (
+        <input
+          value={section.title}
+          onChange={(e) => useQuicksStore.getState().updateSectionTitle(section.id, e.target.value)}
+          placeholder="Section title"
+          className="w-full bg-transparent outline-none text-xs font-mono text-muted mb-2"
+        />
+      )}
+      <SmartEditor
+        initialContent={getContent()}
+        onChange={(plain, _doc) => onSave(section.id, plain)}
+        placeholder="Type here…"
+        minHeight={60}
+        onEditorReady={(e) => { homeEditorRef.current = e }}
+      />
+    </div>
+  )
+}
+
+function flattenDoc(doc: string | any): string {
+  if (typeof doc === "string") return doc
+  if (!doc?.content) return ""
+  return doc.content.map((n: any) => {
+    if (n.content) return n.content.map((c: any) => c.text || "").join("")
+    return n.text || ""
+  }).filter(Boolean).join("\n")
+}
+
+export function HomeView() {
+  const { sections, output, setSections, updateSection, generate, reset, hasContent } =
+    useQuicksStore()
   const [activeTab, setActiveTab] = useState<OutputTab>("plain")
   const [copied, setCopied] = useState(false)
   const [showRectify, setShowRectify] = useState(false)
+  const [showOutline, setShowOutline] = useState(false)
+  const [rectifyKey, setRectifyKey] = useState(0)
 
-  const allText = sections.map((s) => typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc)).join("\n")
+  const allText = sections.map((s) => flattenDoc(s.doc)).join("\n")
+  const sectionTitles = sections.map((s) => s.title || "").filter(Boolean)
   const charCount = allText.length
   const wordCount = allText ? allText.trim().split(/\s+/).length : 0
-  // ~4 chars per token on average for English
   const tokenEstimate = Math.round(charCount / 4)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault()
-        if (output) handleSaveOutput()
-        else handleSave()
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "r") {
-        e.preventDefault()
-        setShowRectify((v) => !v)
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); handleSave() }
+      if ((e.metaKey || e.ctrlKey) && e.key === "r") { e.preventDefault(); setShowRectify((v) => !v) }
+      if ((e.metaKey || e.ctrlKey) && e.key === "o") { e.preventDefault(); setShowOutline((v) => !v) }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [hasContent, output])
+  }, [sections, output])
 
-  // autosave handled at store level via zustand subscribe — no component effect needed
-
-  // ensure one empty section exists so there's always something to type into
   useEffect(() => {
     if (sections.length === 0) {
-      setSections([{ id: crypto.randomUUID(), title: "", doc: emptyDoc }])
+      setSections([{ id: crypto.randomUUID(), title: "", doc: "" }])
     }
   }, [sections.length, setSections])
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData("text/plain")
-    if (text.includes("## ")) {
-      e.preventDefault()
-      loadFromPaste(text)
-      setHasContent(true)
-    }
+    const nativeEvent = e.nativeEvent as ClipboardEvent
+    const text = nativeEvent.clipboardData?.getData("text/plain") || ""
+    e.stopPropagation()
+    if (!text.includes("## ")) return
+    e.preventDefault()
+    const result = parseMarkdownSections(text)
+    useQuicksStore.setState({ sections: result, output: null, hasContent: true })
   }
 
-  const handleSectionChange = useCallback(
-    (id: string) => (_plain: string, doc: JSONContent) => {
-      updateSection(id, doc)
-      setHasContent(true)
-    },
-    [updateSection]
-  )
+  const handleTextChange = useCallback((id: string, value: string) => {
+    updateSection(id, value)
+  }, [updateSection])
 
-  const handleGenerate = () => {
-    generate()
-    setActiveTab("plain")
-  }
-
+  const handleGenerate = () => { generate(); setActiveTab("plain") }
   const handleCopy = () => {
     if (!output) return
     navigator.clipboard.writeText(output[activeTab])
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+    setCopied(true); setTimeout(() => setCopied(false), 1500)
   }
-
-  const handleReset = () => {
-    reset()
-    setHasContent(false)
-  }
+  const handleReset = () => { reset() }
 
   const handleSave = async () => {
     const id = await useQuicksStore.getState().save()
@@ -121,33 +124,45 @@ export function HomeView() {
         [outputId, output.plain, output.json, output.xml, now, now]
       )
       useNotifications.getState().notify("Output saved")
-    } catch (e) {
-      useNotifications.getState().notify("Failed to save output", true)
-    }
+    } catch { useNotifications.getState().notify("Failed to save output", true) }
   }
 
   return (
     <div className="relative h-full w-full flex flex-col">
       <div className="w-full flex flex-col h-full min-h-0 relative">
-
-        {/* Rectify bar — pushes content down when open */}
         {showRectify && !output && (
-          <div className="shrink-0">
-            <RectifyBar editorRef={homeEditorRef} clickOff onClose={() => setShowRectify(false)} />
+          <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-surface border-b border-border">
+            <Search className="h-3 w-3 text-muted shrink-0" />
+            <input id="rectify-find" placeholder="Find"
+              className="w-24 bg-background border border-border rounded px-2 py-1 text-xs outline-none text-foreground placeholder:text-muted/50"
+            />
+            <Replace className="h-3 w-3 text-muted shrink-0" />
+            <input id="rectify-replace" placeholder="Replace"
+              className="w-24 bg-background border border-border rounded px-2 py-1 text-xs outline-none text-foreground placeholder:text-muted/50"
+            />
+            <button
+              onClick={() => {
+                const find = (document.getElementById("rectify-find") as HTMLInputElement)?.value || ""
+                const replace = (document.getElementById("rectify-replace") as HTMLInputElement)?.value || ""
+                if (!find) return
+                const { sections } = useQuicksStore.getState()
+                const updated = sections.map((s) => {
+                  if (typeof s.doc !== "string") return s
+                  return { ...s, doc: s.doc.split(find).join(replace) }
+                })
+                useQuicksStore.setState({ sections: updated })
+                setRectifyKey((k) => k + 1)
+              }}
+              className="rounded px-2 py-1 text-[10px] font-medium bg-foreground/10 text-foreground hover:bg-foreground/20 transition-colors"
+            >Replace all</button>
+            <button onClick={() => setShowRectify(false)} className="rounded p-1 text-muted hover:text-foreground transition-colors ml-auto"><X className="h-3 w-3" /></button>
           </div>
         )}
-
-        {/* Stats bar — on top */}
         {allText.length > 0 && !output && (
           <div className="flex items-center gap-3 px-6 py-1.5 text-[10px] font-mono text-muted shrink-0 ml-auto justify-end">
-            <span>{charCount} chars</span>
-            <span>·</span>
-            <span>{wordCount} words</span>
-            <span>·</span>
-            <span>~{tokenEstimate} tokens</span>
+            <span>{charCount} chars</span><span>·</span><span>{wordCount} words</span><span>·</span><span>~{tokenEstimate} tokens</span>
           </div>
         )}
-
         <div className="flex-1 min-h-0">
           <AnimatePresence mode="wait">
           {!output ? (
@@ -158,36 +173,10 @@ export function HomeView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-              className="h-full overflow-y-auto px-6 space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent"
+              className="h-full overflow-y-auto px-6 w-full"
             >
-              {sections.map((section) => (
-                <div key={section.id}>
-                  {section.title && (
-                    <input
-                      value={section.title}
-                      onChange={(e) => updateSectionTitle(section.id, e.target.value)}
-                      placeholder="Section title"
-                      style={{
-                        fontFamily: "'IBM Plex Mono', monospace",
-                        fontSize: 11,
-                        color: "var(--color-muted, #555)",
-                        background: "transparent",
-                        border: "none",
-                        outline: "none",
-                        marginBottom: 4,
-                        letterSpacing: "0.02em",
-                        width: "100%",
-                      }}
-                    />
-                  )}
-                  <SmartEditor
-                    initialContent={section.doc}
-                    onChange={handleSectionChange(section.id)}
-                    placeholder={section.title || "Type your prompt… use @ to inject context"}
-                    minHeight={28}
-                    onEditorReady={(e) => { homeEditorRef.current = e }}
-                  />
-                </div>
+              {Array.isArray(sections) && sections.map((section, _i) => (
+                <SectionEditor key={section.id} section={section} onSave={handleTextChange} />
               ))}
             </motion.div>
           ) : (
@@ -197,202 +186,55 @@ export function HomeView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-              className="h-full overflow-y-auto"
+              className="h-full overflow-y-auto px-6"
             >
-              {/* Tabs */}
-              <div style={{ display: "flex", marginBottom: 16, gap: 2 }}>
+              <div className="flex gap-2 mb-4 pt-4">
                 {(["plain", "json", "xml"] as OutputTab[]).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    style={{
-                      position: "relative",
-                      fontFamily: "'IBM Plex Mono', monospace",
-                      fontSize: 11,
-                      padding: "5px 12px",
-                      background: "transparent",
-                      border: "none",
-                      color: activeTab === tab ? "#c8f135" : "var(--color-muted, #555)",
-                      cursor: "pointer",
-                      transition: "color 0.15s",
-                    }}
-                  >
-                    {tab}
-                    {activeTab === tab && (
-                      <motion.div
-                        layoutId="tab-indicator"
-                        style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 1.5, background: "#c8f135", borderRadius: 2 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 36 }}
-                      />
-                    )}
-                  </button>
+                  <button key={tab} onClick={() => setActiveTab(tab)}
+                    className={`text-xs font-mono px-3 py-1 rounded transition-colors ${activeTab === tab ? "bg-foreground/10 text-foreground" : "text-muted hover:text-foreground"}`}
+                  >{tab}</button>
                 ))}
               </div>
-
-              <AnimatePresence mode="wait">
-                <motion.pre
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.14 }}
-                  style={{
-                    margin: 0,
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: 13,
-                    color: "var(--color-foreground, #e8e8e8)",
-                    lineHeight: 1.75,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {output[activeTab]}
-                </motion.pre>
-              </AnimatePresence>
+              <pre className="pb-6 text-sm font-mono text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                {output ? output[activeTab] : ""}
+              </pre>
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Floating action bar — editor */}
       <AnimatePresence>
         {hasContent && !output && (
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-            style={{
-              position: "fixed",
-              bottom: 28,
-              right: 28,
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              background: "var(--color-surface, #111)",
-              border: "0.5px solid var(--color-border, #2a2a2a)",
-              borderRadius: 12,
-              padding: "6px 8px",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset",
-            }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+            className="fixed bottom-6 right-6 flex gap-2 items-center bg-surface border border-border rounded-xl px-3 py-2 shadow-lg z-50"
           >
-            <motion.button
-              onClick={handleSave}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 11,
-                color: "var(--color-muted, #555)",
-                background: "transparent",
-                border: "0.5px solid var(--color-border, #2a2a2a)",
-                borderRadius: 7,
-                padding: "4px 12px",
-                cursor: "pointer",
-                letterSpacing: "0.02em",
-              }}
-            >
-              save
-            </motion.button>
-
-            <motion.button
-              onClick={handleGenerate}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: "#c8f135",
-                border: "none", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 15, color: "#0a0a0a", flexShrink: 0,
-              }}
-            >
-              ↗
-            </motion.button>
+            <button onClick={handleSave} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">Save</button>
+            {showOutline && (
+              <div className="absolute bottom-12 right-0 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto">
+                <OutlinePanel doc={allText} sectionTitles={sectionTitles.length > 0 ? sectionTitles : undefined} />
+              </div>
+            )}
+            <button onClick={() => setShowOutline((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><ListTree size={12} /></button>
+            <button onClick={() => setShowRectify((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><Search size={12} /></button>
+            <button onClick={handleGenerate} className="w-8 h-8 rounded-lg bg-accent text-accent-foreground flex items-center justify-center text-sm hover:opacity-90 transition-opacity"><ArrowUpRight size={14} /></button>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      {/* Floating action bar — output */}
-      <AnimatePresence>
         {output && (
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 420, damping: 28, mass: 0.7 }}
-            style={{
-              position: "fixed",
-              bottom: 28,
-              right: 28,
-              display: "flex",
-              gap: 8,
-              alignItems: "center",
-              background: "var(--color-surface, #111)",
-              border: "0.5px solid var(--color-border, #2a2a2a)",
-              borderRadius: 12,
-              padding: "6px 8px",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.04) inset",
-            }}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
+            className="fixed bottom-6 right-6 flex gap-2 items-center bg-surface border border-border rounded-xl px-3 py-2 shadow-lg z-50"
           >
-            <motion.button
-              onClick={handleCopy}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 11,
-                color: copied ? "#c8f135" : "var(--color-muted, #555)",
-                background: "transparent",
-                border: "0.5px solid var(--color-border, #2a2a2a)",
-                borderRadius: 7,
-                padding: "4px 12px",
-                cursor: "pointer",
-                letterSpacing: "0.02em",
-                transition: "color 0.18s",
-              }}
-            >
-              {copied ? "copied ✓" : "copy"}
-            </motion.button>
-
-            <motion.button
-              onClick={handleSaveOutput}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 11,
-                color: "var(--color-muted, #555)",
-                background: "transparent",
-                border: "0.5px solid var(--color-border, #2a2a2a)",
-                borderRadius: 7,
-                padding: "4px 12px",
-                cursor: "pointer",
-                letterSpacing: "0.02em",
-              }}
-            >
-              save
-            </motion.button>
-
-            <motion.button
-              onClick={handleReset}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: "var(--color-border, #2a2a2a)",
-                border: "none", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 15, color: "var(--color-muted, #555)", flexShrink: 0,
-              }}
-            >
-              ↺
-            </motion.button>
+            <button onClick={handleCopy} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">
+              {copied ? <><Check size={11} className="inline" /> copied</> : "copy"}
+            </button>
+            <button onClick={handleSaveOutput} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">save</button>
+            <button onClick={handleReset} className="w-8 h-8 rounded-lg bg-border text-muted flex items-center justify-center hover:text-foreground transition-colors"><Undo2 size={12} /></button>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  </div>
   )
 }
 

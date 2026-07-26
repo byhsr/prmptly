@@ -43,7 +43,7 @@ function SectionBlock({ section, value }: SectionBlockProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="group border isolate space-y-2 ">
+    <div ref={setNodeRef} style={style} className="space-y-2">
       <div className="flex items-center gap-2">
         <button
           {...attributes}
@@ -57,16 +57,12 @@ function SectionBlock({ section, value }: SectionBlockProps) {
           {section.title}
         </label>
       </div>
-      <div className="border relative z-0">
-       <SmartEditor
+      <SmartEditor
         initialContent={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
         placeholder={section.content_json ? JSON.parse(section.content_json).placeholder : `Enter ${section.title.toLowerCase()}...`}
         onEditorReady={(e) => { activeEditorRef.current = e }}
       />
-      </div>
-     
-
     </div>
   )
 }
@@ -105,15 +101,13 @@ export function BuilderPanel() {
 
   return (
     <div className="flex h-full flex-col">
-  
-
-      {/* Sections or Freeform */}
-      <div className="flex-1 overflow-y-auto p-6 ">
+      <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto w-full">
         {!sections.length ? (
           <SmartEditor
             initialContent={filledSections["__freeform__"] || ""}
             onChange={(plain, doc) => updateSection("__freeform__", plain, doc)}
             minHeight={300}
+            onEditorReady={(e) => { activeEditorRef.current = e }}
           />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

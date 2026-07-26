@@ -330,7 +330,9 @@ export function SmartEditor({
                 },
             }),
         ],
-        content: initialContent || "",
+        content: typeof initialContent === "string" && initialContent.length > 15000
+          ? initialContent.slice(0, 15000)
+          : initialContent || "",
         editorProps: {
             attributes: {
                 class: "smart-editor-content focus:outline-none",

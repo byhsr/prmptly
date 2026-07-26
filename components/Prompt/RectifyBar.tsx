@@ -57,7 +57,25 @@ export function RectifyBar({ editorRef: externalRef, onClose, floating = false, 
 
   const doReplaceAll = useCallback(() => {
     const e = externalRef.current
-    if (!e || !find) return
+    // If no editor is focused, try replacing across all quick sections in the store
+    if (!e) {
+      const store = (window as any).__quicksStore
+      if (store) {
+        const { sections, updateSection } = store.getState()
+        if (!sections.length || !find) return
+        let flags = "g"
+        if (!caseSensitive) flags += "i"
+        const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        const pattern = wholeWord ? `\\b${escapedFind}\\b` : escapedFind
+        const regex = new RegExp(pattern, flags)
+        for (const s of sections) {
+          if (typeof s.doc === "string") {
+            updateSection(s.id, s.doc.replace(regex, replace))
+          }
+        }
+      }
+      return
+    }
 
     const { state, view } = e
     let flags = "g"

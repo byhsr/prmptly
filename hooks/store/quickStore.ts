@@ -3,6 +3,9 @@ import { JSONContent } from "@tiptap/core"
 import { nodeToPlain, docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
 import {parseMarkdownSections} from "@/lib/editor/parseMarkdown"
 
+// Expose store globally for RectifyBar to use when no Tiptap editor is focused
+;(window as any).__quicksStore = null
+
 export interface QuickSection {
   id: string
   title: string
@@ -25,7 +28,7 @@ interface QuicksStore {
   hasContent: boolean
 
   setSections: (sections: QuickSection[]) => void
-  updateSection: (id: string, doc: JSONContent) => void
+  updateSection: (id: string, doc: JSONContent | string) => void
   updateSectionTitle: (id: string, title: string) => void
   loadFromPaste: (raw: string) => void
   generate: () => void
@@ -94,7 +97,7 @@ export const useQuicksStore = create<QuicksStore>((set, get) => ({
       title: s.title,
       order: i,
       value: typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc),
-      doc: typeof s.doc === "string" ? { type: "doc", content: [{ type: "paragraph" }] } as any : s.doc,
+      doc: typeof s.doc === "string" ? s.doc : s.doc,
     }))
 
     try {

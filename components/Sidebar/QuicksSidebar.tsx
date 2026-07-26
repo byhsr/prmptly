@@ -5,6 +5,7 @@ import type { Document } from "@/lib/types/Document"
 import { ContextMenu } from "../ui/ContextMenu"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { documentNameOverrides } from "@/lib/state"
+import { useQuicksStore } from "@/hooks/store/quickStore"
 
 function excerpt(doc: Document): string {
   if (doc.name && doc.name !== "Untitled Quick") return doc.name
@@ -35,8 +36,17 @@ export function QuicksSidebarPanel() {
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-end px-3 py-1.5 shrink-0">
         <div className="relative group">
-          <button
-            onClick={() => {}}
+            <button
+            onClick={() => {
+              useQuicksStore.setState({
+                sections: [{ id: crypto.randomUUID(), title: "", doc: "" }],
+                output: null,
+                name: "Untitled Quick",
+                savedDocId: null,
+                hasContent: true,
+              })
+              useTabViewStore.getState().setActiveView("home")
+            }}
             className="rounded p-0.5 transition-colors hover:bg-background"
             style={{ color: "var(--color-muted, #666)" }}
           >

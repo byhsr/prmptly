@@ -47,7 +47,8 @@ export function PromptFile({ prompt, depth = 0, isActive, isSelected, onSelect, 
   }
 
   const handleDelete = async () => {
-    if (!window.confirm(`Delete "${prompt.name}"?`)) return
+    const ok = window.confirm(`Delete "${prompt.name}"?`)
+    if (!ok) return
     const { useTabViewStore } = await import("@/hooks/store/TabStore")
     useTabViewStore.getState().closeTab(prompt.id)
     const { deleteDocument } = await import("@/lib/db/document")

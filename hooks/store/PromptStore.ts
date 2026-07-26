@@ -38,6 +38,8 @@ function compile(
   if (!sections.length) {
     const freeDoc = filledDocs["__freeform__"]
     if (freeDoc) {
+      // doc could be an HTML string or JSONContent — serialize safely
+      if (typeof freeDoc === "string") return freeDoc
       if (format === "xml") return `<prompt>\n${nodeToXml(freeDoc, 1)}\n</prompt>`
       return serializeDoc(freeDoc, format)
     }
@@ -48,7 +50,9 @@ function compile(
   const pairs = ordered.map((s) => ({
     title: s.title,
     key: s.title.toLowerCase().replace(/\s+/g, "_"),
-    value: filledDocs[s.id] ? serializeDoc(filledDocs[s.id], format) : filled[s.id] || "",
+    value: filledDocs[s.id] && typeof filledDocs[s.id] !== "string"
+      ? serializeDoc(filledDocs[s.id], format)
+      : filled[s.id] || "",
   }))
 
   if (format === "plain") {
@@ -161,7 +165,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     }
 
     // Update template_id on the document
-    await updateDocument(activeDocument.id, { meta: { ...activeDocument.meta, template_id: templateId } })
+    await updateDocument(activeDocument.id, { meta: { ...(activeDocument.meta || {}), template_id: templateId } })
     const newSections = await templateService.getSections(templateId)
     const outputFormat = get().outputFormat
     const compiled = compile(newSections, {}, {}, outputFormat)
@@ -171,7 +175,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       filledSections: {},
       filledSectionDocs: {},
       compiledOutput: compiled,
-      activeDocument: { ...activeDocument, templateId, meta: { ...activeDocument.meta, template_id: templateId } },
+      activeDocument: { ...activeDocument, templateId, meta: { ...(activeDocument.meta || {}), template_id: templateId } },
     })
   },
 
@@ -192,13 +196,13 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       get().updateScratchpad(newScratchpad)
     }
 
-    await updateDocument(activeDocument.id, { meta: { ...activeDocument.meta, template_id: null } })
+    await updateDocument(activeDocument.id, { meta: { ...(activeDocument.meta || {}), template_id: null } })
     set({
       sections: [],
       filledSections: {},
       filledSectionDocs: {},
       compiledOutput: "",
-      activeDocument: { ...activeDocument, templateId: null, meta: { ...activeDocument.meta, template_id: null } },
+      activeDocument: { ...activeDocument, templateId: null, meta: { ...(activeDocument.meta || {}), template_id: null } },
     })
   },
 
@@ -206,20 +210,33 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
     const { activeDocument, filledSections, filledSectionDocs, sections } = get()
     if (!activeDocument) return
 
-    const builder_content = sections
-      .sort((a, b) => a.order_index - b.order_index)
-      .map((s, i) => ({
-        sectionId: s.id,
+    try {
+      const builder_content = sections
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((s, i) => ({
+          sectionId: s.id,
+          order: i,
+          value: filledSections[s.id] || "",
+          doc: typeof filledSectionDocs[s.id] === "string" ? null : filledSectionDocs[s.id] ?? null,
+        }))
+
+      await updatePromptContent({
+        promptId: activeDocument.id,
+        builder_content,
+        scratchpad: get().scratchpadText,
+      })
+
+      const sectionsData = sections.map((s, i) => ({
+        id: s.id,
+        title: s.title,
         order: i,
         value: filledSections[s.id] || "",
-        doc: filledSectionDocs[s.id] ?? null,
+        doc: typeof filledSectionDocs[s.id] === "string" ? null : filledSectionDocs[s.id] ?? null,
       }))
-
-    await updatePromptContent({
-      promptId: activeDocument.id,
-      builder_content,
-      scratchpad: get().scratchpadText,
-    })
+      await updateDocument(activeDocument.id, { sections: sectionsData })
+    } catch (err) {
+      console.error("persist failed:", err)
+    }
   },
 
   updateScratchpad: (text: string) => {
