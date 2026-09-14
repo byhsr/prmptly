@@ -158,6 +158,25 @@ Re-verified all 10 "Known Issues (Next Session)" against the code — all 10 are
 * Replaced the native `<select>` elements (graph scope, skill group, template, and "from library") with a reusable `components/ui/Select.tsx` that matches the existing custom dropdown (`TemplateSelector`) — portal panel, `bg-surface` / `border-border` / `shadow-lg` / `rounded-xl`, motion fade + chevron rotation, and dismiss on mousedown-outside or Escape.
 * Skills now use the `Blocks` lucide icon instead of `Sparkles` (which reads as "generate").
 
+### Graph view — Obsidian-style node graph
+
+* Replaced the hierarchical tree layout with a real node graph: **nodes = skills**, **edges = skills sharing a group** plus **skills sharing a template**.
+* Positions come from a deterministic spring-electric layout (`lib/graph/force.ts`) — seeded on a circle by index, no RNG, so the graph is stable across renders. Nodes are drag-to-reposition; double-click a node to open that skill.
+* Nodes render as dots (`SkillGraphNode`), sized by degree and tinted per group, with the label beneath. Both handles sit at the node centre so edges run dot-to-dot.
+* Scoping to a group now filters the node set and recomputes the graph; `fitView` re-runs on every scope change.
+* Deleted the superseded `lib/graph/layout.ts`.
+
+### Ungrouped skills are visible
+
+* `SkillGroupTree` now renders skills as leaves under each group and adds an **Ungrouped** section for skills with no group — previously only groups were listed, so ungrouped skills were invisible.
+* Groups auto-expand on first load, and deleting a group now keeps its contents (they fall back to Ungrouped) instead of cascading.
+
+### Snippets moved into the Template tabs
+
+* The Library is now `Skills | Graph` only.
+* Snippets moved to the Template view as a tab — `Templates | Snippets` — kept in sync with the Template sidebar through `templateTab` in `useTemplateStore`.
+* Extracted `components/library/SnippetList.tsx` and `SnippetsPanel.tsx`; `LibrarySidebarPanel` is now just the skill group tree. The `LibraryTab` type was replaced by `SnippetMode` in `SidebarStore`.
+
 ### Feature: Agent Skills in the Library
 
 Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Library, can be grouped, and can be viewed as a graph.
@@ -183,8 +202,8 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 
 **Files**
 
-* New: `lib/types/skill.ts`, `lib/db/skills.ts` (`skillService` + `skillGroupService`), `services/service.skill.ts`, `lib/skillExport.ts`, `lib/graph/layout.ts`, `hooks/store/skillStore.ts`, `components/library/{SkillsPanel,SkillModal,SkillGroupTree}.tsx`, `components/graph/{SkillGraph,SkillGraphNode}.tsx`, `components/ui/Select.tsx`.
-* Modified: `lib/db/index.ts` (migration 4), `lib/fs/fsHelpers.ts` + `lib/fs/fs.ts` (`skills/` workspace dir), `components/library/LibraryView.tsx` (`Snippets | Skills | Graph` sub-tabs), `components/Sidebar/LibSidebar.tsx` (snippets/skills mode), `hooks/store/PromptStore.ts` (canvas flow + `replaceAll`), `components/Prompt/{fileTab,RectifyBar,OutlinePanel}.tsx`, `components/Home/HomeView.tsx`, `hooks/store/quickStore.ts`, `src/App.tsx`, `src/styles/TextEditor.css`.
+* New: `lib/types/skill.ts`, `lib/db/skills.ts` (`skillService` + `skillGroupService`), `services/service.skill.ts`, `lib/skillExport.ts`, `lib/graph/force.ts`, `hooks/store/skillStore.ts`, `components/library/{SkillsPanel,SkillModal,SkillGroupTree,SnippetList,SnippetsPanel}.tsx`, `components/graph/{SkillGraph,SkillGraphNode}.tsx`, `components/ui/Select.tsx`.
+* Modified: `lib/db/index.ts` (migration 4), `lib/fs/fsHelpers.ts` + `lib/fs/fs.ts` (`skills/` workspace dir), `components/library/LibraryView.tsx` (`Skills | Graph` sub-tabs), `components/Sidebar/LibSidebar.tsx` (skill tree), `components/template/{TemplateView,TemplateSidebar}.tsx` (`Templates | Snippets` tabs), `components/library/SnippetModal.tsx`, `hooks/store/{templateStore,SidebarStore,skillStore}.ts`, `hooks/store/PromptStore.ts` (canvas flow + `replaceAll`), `components/Prompt/{fileTab,RectifyBar,OutlinePanel}.tsx`, `components/Home/HomeView.tsx`, `hooks/store/quickStore.ts`, `src/App.tsx`, `src/styles/TextEditor.css`.
 
 **Behavior**
 

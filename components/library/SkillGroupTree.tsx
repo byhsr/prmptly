@@ -20,6 +20,7 @@ export const SkillGroupTree = () => {
   const selectedSkillId = useSkillStore((s) => s.selectedSkillId)
   const selectGroup = useSkillStore((s) => s.selectGroup)
   const selectSkill = useSkillStore((s) => s.selectSkill)
+  const setLibraryTab = useSkillStore((s) => s.setLibraryTab)
   const createGroup = useSkillStore((s) => s.createGroup)
   const renameGroup = useSkillStore((s) => s.renameGroup)
   const deleteGroup = useSkillStore((s) => s.deleteGroup)
@@ -119,7 +120,7 @@ export const SkillGroupTree = () => {
     return (
       <div
         key={skill.id}
-        onClick={() => selectSkill(skill.id)}
+        onClick={() => { selectSkill(skill.id); setLibraryTab("skills") }}
         className={cn(
           "flex items-center gap-1.5 rounded-sm px-2 py-1 cursor-pointer transition-colors duration-100",
           isActive ? "bg-background text-primary" : "text-secondary hover:bg-background/60"
