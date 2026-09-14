@@ -140,3 +140,61 @@ SQLite manages metadata and querying, while the filesystem stores document conte
 9. **`__global__` namespace still shows in snippet mention dropdown for existing DB entries** — filtered in `getNamespaces()` but old rows still exist in the `namespaces` table.
 
 10. **Delete prompt doesn't remove the open tab** — `PromptElements.handleDelete` calls `closeTab` but if the tab doesn't exist in the store it silently fails.
+
+---
+
+## Session Log — 14/09
+
+### Known Issues Audit
+
+Re-verified all 10 "Known Issues (Next Session)" against the code — all 10 are now resolved:
+
+* **Fixed this session:** #1 (RectifyBar now falls back to a store-level `replaceAll()` on `usePromptStore` instead of the never-assigned `window.__quicksStore`; the dead global was removed), #4 (`canvasFlow` moved out of `FileTab` local state into `usePromptStore`, loaded from and debounced-written to `scratchpad_flow_path`, with the `<Canvas>` keyed per tab so it re-seeds), #5 (`OutlinePanel` now parses Tiptap heading nodes and `#`/`##` lines instead of using section titles as a proxy), #7 (`App.tsx` applies the font + heading-size settings as `--font-*` / `--heading-h*` CSS variables; headings consume `--font-heading`).
+* **Already fixed:** #2, #3, #6, #8, #9, #10.
+* No actionable `TODO` / `FIXME` / `HACK` markers exist anywhere in the source tree.
+
+### Skills UI polish
+
+* Replaced the native `<select>` elements (graph scope, skill group, template, and "from library") with a reusable `components/ui/Select.tsx` that matches the existing custom dropdown (`TemplateSelector`) — portal panel, `bg-surface` / `border-border` / `shadow-lg` / `rounded-xl`, motion fade + chevron rotation, and dismiss on mousedown-outside or Escape.
+* Skills now use the `Blocks` lucide icon instead of `Sparkles` (which reads as "generate").
+
+### Feature: Agent Skills in the Library
+
+Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Library, can be grouped, and can be viewed as a graph.
+
+**Goal**
+
+* The Library holds agent skills as markdown files — shareable and portable.
+* A skill combines a template + library key/value pairs.
+* Skills group into nested parent groups.
+* Graph view renders globally, or scoped to a parent group.
+
+**Data model (migration 4)**
+
+* `skill_groups(id, name, parent_id → skill_groups, order_index, meta_json, created_at, updated_at)` — nested, mirrors `collections`.
+* `skills(id, name, description, group_id → skill_groups, template_id → templates, values_json, meta_json, created_at, updated_at)`.
+* No path columns — the content path is deterministic: `skills/<id>/SKILL.md` (local-first principle).
+
+**Decision — why not `documents.type = 'skill'`**
+
+* `documents.type` has `CHECK(type IN ('quick','prompt'))`; SQLite cannot `ALTER` a CHECK, only rebuild the table.
+* A rebuild needs `PRAGMA foreign_keys=OFF` outside a transaction, but `runMigrations()` wraps each migration in `BEGIN … COMMIT` where that pragma is a no-op — and `document_assets` / `comments` / `conversations` reference `document_id`.
+* Skills are a distinct artifact anyway (portable `SKILL.md`, group-scoped, shareable), so they get dedicated tables. `collections` was the direct template.
+
+**Files**
+
+* New: `lib/types/skill.ts`, `lib/db/skills.ts` (`skillService` + `skillGroupService`), `services/service.skill.ts`, `lib/skillExport.ts`, `lib/graph/layout.ts`, `hooks/store/skillStore.ts`, `components/library/{SkillsPanel,SkillModal,SkillGroupTree}.tsx`, `components/graph/{SkillGraph,SkillGraphNode}.tsx`, `components/ui/Select.tsx`.
+* Modified: `lib/db/index.ts` (migration 4), `lib/fs/fsHelpers.ts` + `lib/fs/fs.ts` (`skills/` workspace dir), `components/library/LibraryView.tsx` (`Snippets | Skills | Graph` sub-tabs), `components/Sidebar/LibSidebar.tsx` (snippets/skills mode), `hooks/store/PromptStore.ts` (canvas flow + `replaceAll`), `components/Prompt/{fileTab,RectifyBar,OutlinePanel}.tsx`, `components/Home/HomeView.tsx`, `hooks/store/quickStore.ts`, `src/App.tsx`, `src/styles/TextEditor.css`.
+
+**Behavior**
+
+* `compileSkill()` resolves `{{key}}` tokens from the skill's own values, then from library snippets — this is the template + key/value "combine".
+* `templateToMarkdown()` seeds a skill body from a template's sections.
+* Import/export round-trips a `SKILL.md` (YAML frontmatter `name`/`description` + body) through Tauri dialogs.
+* Graph scope is `graphScopeId` — `null` for global, or a group id. Edges are group→subgroup, group→skill, and skill→template. Layout is deterministic (`layoutHierarchy`), so no positions are persisted. Read-only React Flow, inherits the app theme.
+
+**Verification**
+
+* `npx tsc --noEmit` clean.
+* The 4 open known issues are untouched by this change.
+

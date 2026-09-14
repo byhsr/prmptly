@@ -1,36 +1,81 @@
 import { useMemo } from "react"
+import type { JSONContent } from "@tiptap/react"
+
+export interface OutlineSection {
+  title: string
+  doc?: JSONContent | string | null
+  value?: string
+}
 
 interface OutlinePanelProps {
   doc?: string | null
-  sectionTitles?: string[]
+  sections?: OutlineSection[]
 }
 
-export function OutlinePanel({ doc, sectionTitles }: OutlinePanelProps) {
-  const headings = useMemo(() => {
-    const entries: { id: string; level: 1 | 2; text: string }[] = []
+interface OutlineEntry {
+  id: string
+  level: 1 | 2
+  text: string
+}
+
+// Scans flat markdown text for `#` / `##` heading lines
+function headingsFromString(text: string): { level: 1 | 2; text: string }[] {
+  const out: { level: 1 | 2; text: string }[] = []
+  for (const line of text.split("\n")) {
+    const match = line.match(/^(#{1,2})\s+(.+)$/)
+    if (!match) continue
+    out.push({ level: match[1].length === 1 ? 1 : 2, text: match[2].trim() })
+  }
+  return out
+}
+
+// Walks a Tiptap JSONContent tree for heading nodes
+function headingsFromDoc(doc: JSONContent): { level: 1 | 2; text: string }[] {
+  const out: { level: 1 | 2; text: string }[] = []
+
+  const walk = (node: JSONContent) => {
+    if (node.type === "heading") {
+      const level = Number(node.attrs?.level ?? 1)
+      const text = (node.content ?? [])
+        .map((child) => (typeof child.text === "string" ? child.text : ""))
+        .join("")
+        .trim()
+      if (text) out.push({ level: level === 1 ? 1 : 2, text })
+      return
+    }
+    if (Array.isArray(node.content)) node.content.forEach(walk)
+  }
+
+  walk(doc)
+  return out
+}
+
+export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
+  const headings = useMemo<OutlineEntry[]>(() => {
+    const entries: OutlineEntry[] = []
     let index = 0
 
-    if (sectionTitles && sectionTitles.length > 0) {
-      for (const title of sectionTitles) {
-        if (title) {
-          entries.push({ id: `s-${index}`, level: 2, text: title })
-          index++
+    if (sections && sections.length > 0) {
+      for (const section of sections) {
+        if (section.title) {
+          entries.push({ id: `s-${index++}`, level: 2, text: section.title })
+        }
+        if (section.doc && typeof section.doc !== "string") {
+          for (const h of headingsFromDoc(section.doc)) {
+            entries.push({ id: `h-${index++}`, level: h.level, text: h.text })
+          }
+        } else if (typeof section.value === "string" && section.value) {
+          for (const h of headingsFromString(section.value)) {
+            entries.push({ id: `h-${index++}`, level: h.level, text: h.text })
+          }
         }
       }
       return entries
     }
 
     if (!doc || typeof doc !== "string") return []
-
-    for (const line of doc.split("\n")) {
-      const m1 = line.match(/^# (.+)/)
-      if (m1) { entries.push({ id: `h-${index}`, level: 1, text: m1[1].trim() }); index++; continue }
-      const m2 = line.match(/^## (.+)/)
-      if (m2) { entries.push({ id: `h-${index}`, level: 2, text: m2[1].trim() }); index++; continue }
-    }
-
-    return entries
-  }, [doc, sectionTitles])
+    return headingsFromString(doc).map((h, i) => ({ id: `h-${i}`, level: h.level, text: h.text }))
+  }, [doc, sections])
 
   return (
     <div className="flex flex-col h-full p-3 space-y-1">

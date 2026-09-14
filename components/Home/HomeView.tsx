@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord } from "lucide-react"
+import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord, Brain } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { parseMarkdownSections } from "@/lib/editor/parseMarkdown"
 import { useNotifications } from "@/hooks/store/SidebarStore"
@@ -9,6 +9,7 @@ import { Tab } from "../core-components/Tabbar"
 import { FileTab } from "../Prompt/fileTab"
 import { SmartEditor } from "../ui/SmartTextEditor"
 import { OutlinePanel } from "../Prompt/OutlinePanel"
+import { AIAssistant } from "../ai/AIAssistant"
 
 const homeEditorRef = { current: null as any }
 type OutputTab = "plain" | "json" | "xml"
@@ -56,12 +57,17 @@ export function HomeView() {
   const [copied, setCopied] = useState(false)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
+  const [showAI, setShowAI] = useState(false)
   const [rectifyKey, setRectifyKey] = useState(0)
   const [rectifyCase, setRectifyCase] = useState(false)
   const [rectifyWord, setRectifyWord] = useState(false)
 
   const allText = sections.map((s) => flattenDoc(s.doc)).join("\n")
-  const sectionTitles = sections.map((s) => s.title || "").filter(Boolean)
+  const outlineSections = sections.map((s) => ({
+    title: s.title || "",
+    doc: typeof s.doc === "string" ? null : s.doc,
+    value: typeof s.doc === "string" ? s.doc : "",
+  }))
   const charCount = allText.length
   const wordCount = allText ? allText.trim().split(/\s+/).length : 0
   const tokenEstimate = Math.round(charCount / 4)
@@ -228,11 +234,12 @@ export function HomeView() {
             <button onClick={handleSave} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">Save</button>
             {showOutline && (
               <div className="absolute bottom-12 right-0 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto">
-                <OutlinePanel doc={allText} sectionTitles={sectionTitles.length > 0 ? sectionTitles : undefined} />
+                <OutlinePanel doc={allText} sections={outlineSections.length > 0 ? outlineSections : undefined} />
               </div>
             )}
             <button onClick={() => setShowOutline((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><ListTree size={12} /></button>
             <button onClick={() => setShowRectify((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><Search size={12} /></button>
+            <button onClick={() => setShowAI((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><Brain size={12} /></button>
             <button onClick={handleGenerate} className="w-8 h-8 rounded-lg bg-accent text-accent-foreground flex items-center justify-center text-sm hover:opacity-90 transition-opacity"><ArrowUpRight size={14} /></button>
           </motion.div>
         )}
@@ -249,6 +256,15 @@ export function HomeView() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showAI && (
+        <AIAssistant
+          onClose={() => setShowAI(false)}
+          editorContent={allText}
+          documentTitle="Quick Editor"
+          documentType="quick"
+        />
+      )}
     </div>
   )
 }

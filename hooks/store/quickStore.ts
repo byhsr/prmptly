@@ -3,9 +3,6 @@ import { JSONContent } from "@tiptap/core"
 import { nodeToPlain, docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
 import {parseMarkdownSections} from "@/lib/editor/parseMarkdown"
 
-// Expose store globally for RectifyBar to use when no Tiptap editor is focused
-;(window as any).__quicksStore = null
-
 export interface QuickSection {
   id: string
   title: string

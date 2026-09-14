@@ -104,3 +104,59 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* ── ReactFlow / Canvas theme overrides ────────────────────────── */
+
+.react-flow__background {
+  background: var(--background) !important;
+}
+
+.react-flow__background pattern circle {
+  fill: var(--border) !important;
+}
+
+.react-flow__controls {
+  box-shadow: none !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+.react-flow__controls-button {
+  background: var(--surface) !important;
+  border-bottom: 1px solid var(--border) !important;
+  fill: var(--foreground) !important;
+  color: var(--foreground) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--background) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: var(--foreground) !important;
+}
+
+.react-flow__minimap {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__edge-path {
+  stroke: var(--border) !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path,
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke: var(--accent) !important;
+}
+
+.react-flow__handle {
+  background: var(--muted) !important;
+}

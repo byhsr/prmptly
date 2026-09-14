@@ -158,6 +158,54 @@ CREATE INDEX IF NOT EXISTS idx_deterministic_assets_namespace
     id: 2,
     sql: `ALTER TABLE namespaces ADD COLUMN source TEXT NOT NULL DEFAULT 'deterministic';`
   },
+  // migration 3: conversations for AI assistant
+  {
+    id: 3,
+    sql: `
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  document_id TEXT,
+  title TEXT NOT NULL,
+  messages_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_document_id ON conversations(document_id);
+`
+  },
+  // migration 4: agent skills + nested skill groups for the Library
+  {
+    id: 4,
+    sql: `
+CREATE TABLE IF NOT EXISTS skill_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  parent_id TEXT REFERENCES skill_groups(id) ON DELETE CASCADE,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_skill_groups_parent_id ON skill_groups(parent_id);
+
+CREATE TABLE IF NOT EXISTS skills (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  group_id TEXT REFERENCES skill_groups(id) ON DELETE SET NULL,
+  template_id TEXT REFERENCES templates(id) ON DELETE SET NULL,
+  values_json TEXT NOT NULL DEFAULT '[]',
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_skills_group_id ON skills(group_id);
+CREATE INDEX IF NOT EXISTS idx_skills_template_id ON skills(template_id);
+`
+  },
 ];
 
 async function runMigrations(db: Database) {

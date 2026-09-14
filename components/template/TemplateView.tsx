@@ -15,8 +15,11 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Layout, SquareAsterisk } from "lucide-react";
 import { useTemplateStore } from "@/hooks/store/templateStore";
 import { TemplateSection } from "@/lib/db/template";
+import { TabButton } from "../ui/TabButton";
+import { SnippetsPanel } from "../library/SnippetsPanel";
 
 // ── Sortable Section Row ──────────────────────────────────────────────────────
 
@@ -258,41 +261,51 @@ function TemplateForm() {
 // ── Template View ─────────────────────────────────────────────────────────────
 
 export function TemplateView() {
-  const { selectedTemplateId } = useTemplateStore();
+  const { selectedTemplateId, templateTab, setTemplateTab } = useTemplateStore();
 
   return (
-    <div className="flex  flex-col h-full max-w-full">
-      {/* navbar */}
-      {/* <div
-        className="flex items-center relative justify-end px-6 pt-2 shrink-0" >
-
-        <button
-          onClick={() => selectTemplate(null)}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors"
-          style={{
-            background: "var(--surface)",
-            color: "var(--foreground)",
-            border: "1px solid var(--border)",
-          }}
+    <div className="flex flex-col h-full w-full">
+      <div className="flex bg-surface px-4 items-end shrink-0">
+        <TabButton
+          isActive={templateTab === "templates"}
+          onClick={() => setTemplateTab("templates")}
+          width={140}
+          collapsedWidth={140}
+          className="flex items-center justify-center gap-2 px-4"
         >
-          <span>+</span> New
-        </button>
-      </div> */}
+          <Layout style={{ width: 13, height: 13, flexShrink: 0 }} />
+          <span>Templates</span>
+        </TabButton>
+        <TabButton
+          isActive={templateTab === "snippets"}
+          onClick={() => setTemplateTab("snippets")}
+          width={140}
+          collapsedWidth={140}
+          className="flex items-center justify-center gap-2 px-4"
+        >
+          <SquareAsterisk style={{ width: 13, height: 13, flexShrink: 0 }} />
+          <span>Snippets</span>
+        </TabButton>
+      </div>
 
       {/* content */}
-      <div className="flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedTemplateId ?? "new"}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="h-full flex justify-start px-20"
-          >
-            <TemplateForm />
-          </motion.div>
-        </AnimatePresence>
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {templateTab === "snippets" ? (
+          <SnippetsPanel />
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedTemplateId ?? "new"}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15 }}
+              className="h-full flex justify-start px-20"
+            >
+              <TemplateForm />
+            </motion.div>
+          </AnimatePresence>
+        )}
       </div>
     </div>
   );

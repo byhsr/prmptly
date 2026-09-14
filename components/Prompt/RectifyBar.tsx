@@ -1,12 +1,25 @@
-import { useState, useCallback, useEffect, useRef, MutableRefObject } from "react"
+import { useState, useCallback, useEffect, useMemo, useRef, MutableRefObject } from "react"
 import { Search, X, Replace, CaseSensitive, WholeWord } from "lucide-react"
 import type { Editor } from "@tiptap/core"
+import type { JSONContent } from "@tiptap/react"
+import { usePromptStore } from "@/hooks/store/PromptStore"
 
 interface RectifyBarProps {
   editorRef: MutableRefObject<Editor | null>
   onClose: () => void
   floating?: boolean
   clickOff?: boolean
+}
+
+function plainFromDoc(doc: JSONContent | undefined): string {
+  if (!doc) return ""
+  let out = ""
+  const walk = (node: JSONContent) => {
+    if (typeof node.text === "string") out += node.text + " "
+    if (Array.isArray(node.content)) node.content.forEach(walk)
+  }
+  walk(doc)
+  return out
 }
 
 export function RectifyBar({ editorRef: externalRef, onClose, floating = false, clickOff = false }: RectifyBarProps) {
@@ -17,6 +30,20 @@ export function RectifyBar({ editorRef: externalRef, onClose, floating = false, 
   const [matchCount, setMatchCount] = useState(0)
   const findRef = useRef<HTMLInputElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
+
+  const filledSections = usePromptStore((s) => s.filledSections)
+  const filledSectionDocs = usePromptStore((s) => s.filledSectionDocs)
+
+  // Searchable text for when no Tiptap editor is focused (e.g. Builder not mounted)
+  const fallbackText = useMemo(() => {
+    const parts: string[] = []
+    const ids = new Set([...Object.keys(filledSections), ...Object.keys(filledSectionDocs)])
+    for (const id of ids) {
+      const doc = filledSectionDocs[id]
+      parts.push(doc && typeof doc !== "string" ? plainFromDoc(doc) : filledSections[id] ?? "")
+    }
+    return parts.join("\n")
+  }, [filledSections, filledSectionDocs])
 
   useEffect(() => {
     findRef.current?.focus()
@@ -50,30 +77,17 @@ export function RectifyBar({ editorRef: externalRef, onClose, floating = false, 
   }, [find, caseSensitive, wholeWord])
 
   useEffect(() => {
-    if (!externalRef.current) return
-    const text = externalRef.current.state.doc.textContent
-    countMatches(text)
-  }, [find, caseSensitive, wholeWord, countMatches])
+    const editor = externalRef.current
+    countMatches(editor ? editor.state.doc.textContent : fallbackText)
+  }, [find, caseSensitive, wholeWord, countMatches, fallbackText])
 
   const doReplaceAll = useCallback(() => {
     const e = externalRef.current
-    // If no editor is focused, try replacing across all quick sections in the store
+    // No Tiptap editor focused — fall back to the store's sections
     if (!e) {
-      const store = (window as any).__quicksStore
-      if (store) {
-        const { sections, updateSection } = store.getState()
-        if (!sections.length || !find) return
-        let flags = "g"
-        if (!caseSensitive) flags += "i"
-        const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-        const pattern = wholeWord ? `\\b${escapedFind}\\b` : escapedFind
-        const regex = new RegExp(pattern, flags)
-        for (const s of sections) {
-          if (typeof s.doc === "string") {
-            updateSection(s.id, s.doc.replace(regex, replace))
-          }
-        }
-      }
+      if (!find) return
+      usePromptStore.getState().replaceAll(find, replace, caseSensitive, wholeWord)
+      setMatchCount(0)
       return
     }
 

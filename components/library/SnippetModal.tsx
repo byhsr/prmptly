@@ -3,10 +3,9 @@ import { useState } from "react"
 import { Button } from "../ui/Button"
 import { Snippet } from "@/lib/types/library"
 import { cn } from "@/lib/utils"
-import { snippetId, useLibraryStore, useNotifications } from "@/hooks/store/SidebarStore"
+import { snippetId, useLibraryStore, useNotifications, type SnippetMode } from "@/hooks/store/SidebarStore"
 import { libraryService } from "@/lib/db/library"
 import { useEffect } from "react"
-import { LibraryTab } from "./LibraryView"
 // type SnippetModalProps = {
 //   onClose: () => void
 //   onSave: (data: { scope?: string; key: string; value: string }) => void
@@ -143,7 +142,7 @@ import { LibraryTab } from "./LibraryView"
 type SnippetModalProps = {
   onClose: () => void
   snippet?: Snippet
-  isCreating: LibraryTab | null
+  isCreating: SnippetMode | null
 }
 
 export const SnippetModal = ({ onClose, snippet, isCreating }: SnippetModalProps) => {

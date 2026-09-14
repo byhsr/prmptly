@@ -14,6 +14,7 @@ import { initDB } from "@/lib/db";
 import { readConfig, setupWorkspace, writeConfig } from "@/lib/fs/fs";
 import { initWorkspace } from "@/lib/fs/fsHelpers";
 import { useSettingsStore } from "@/hooks/store/settingsStore";
+import { FONTS } from "@/lib/config/settings";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 
 function App() {
@@ -35,8 +36,24 @@ export const AppFlow = () => {
   const [dbReady, setDbReady] = useState(false);
   const [workspacePath, setWorkspacePath] = useState("");
   const { isSettingsOpen, setIsSettingsOpen } = useTabViewStore();
+  const settings = useSettingsStore((s) => s.settings);
 
   useEffect(() => { bootstrap(); }, []);
+
+  // Apply font + heading-size settings as CSS custom properties on <html>.
+  // Inline styles on :root win over the @theme defaults, so font-sans / font-mono
+  // utilities and the .smart-editor-content headings follow the settings.
+  useEffect(() => {
+    const root = document.documentElement.style;
+    const family = (key: string) => FONTS[key]?.family ?? "";
+    root.setProperty("--font-heading", family(settings.fonts.heading));
+    root.setProperty("--font-body", family(settings.fonts.body));
+    root.setProperty("--font-sans", family(settings.fonts.body));
+    root.setProperty("--font-mono", family(settings.fonts.mono));
+    root.setProperty("--heading-h1", `${settings.headingSizes.h1}rem`);
+    root.setProperty("--heading-h2", `${settings.headingSizes.h2}rem`);
+    root.setProperty("--heading-h3", `${settings.headingSizes.h3}rem`);
+  }, [settings]);
 
   async function bootstrap() {
     try {

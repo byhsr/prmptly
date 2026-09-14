@@ -19,6 +19,7 @@ export const WORKSPACE_DIRS = [
   "outputs",
   "assets",
   "library",
+  "skills",
 ] as const;
 
 async function getConfigPath() {

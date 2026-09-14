@@ -6,6 +6,7 @@ export const dirs = {
   templates: "templates",
   assets: "assets",
   library: "library",
+  skills: "skills",
 } as const;
 
 let WORKSPACE: string | null = null;
@@ -53,3 +54,11 @@ export const getTemplateDir = (id: string) =>
 
 export const getAssetDir = (id: string) =>
   buildPath("assets", id);
+
+// ── Skills ────────────────────────────────────────
+
+export const getSkillDir = (id: string) =>
+  buildPath("skills", id);
+
+export const getSkillFile = (id: string) =>
+  buildPath("skills", id, "SKILL.md");

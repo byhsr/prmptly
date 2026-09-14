@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Workflow, Search, ListTree } from "lucide-react"
+import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Workflow, Search, ListTree, Brain } from "lucide-react"
 import { BuilderPanel} from "./BuilderPanel"
 import { ScratchpadPanel } from "./scratchpadPanel"
 import { PromptPanel } from "./GeneratedPromptPanel"
 import { Canvas } from "../canvas/Canvas"
 import { OutlinePanel } from "./OutlinePanel"
 import { RectifyBar } from "./RectifyBar"
+import { AIAssistant } from "../ai/AIAssistant"
 import { Tab } from "../core-components/Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
@@ -32,16 +33,27 @@ export function FileTab({ tab }: { tab: Tab }) {
   const { loadDocument, reset, activeDocument, updateTemplate, clearTemplate, persist } = usePromptStore()
   const compiledOutput = usePromptStore((s) => s.compiledOutput)
   const sections = usePromptStore((s) => s.sections)
-  const templateSectionTitles = Array.isArray(sections) ? sections.map((sec) => sec?.title || "").filter(Boolean) : []
-  const [canvasFlow, setCanvasFlow] = useState<CanvasFlow>({ nodes: [], edges: [] })
+  const filledSections = usePromptStore((s) => s.filledSections)
+  const filledSectionDocs = usePromptStore((s) => s.filledSectionDocs)
+  const canvasFlow = usePromptStore((s) => s.canvasFlow)
+  const updateCanvas = usePromptStore((s) => s.updateCanvas)
   const [docName, setDocName] = useState(tab.label)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
+  const [showAI, setShowAI] = useState(false)
+
+  const outlineSections = Array.isArray(sections) && sections.length > 0
+    ? sections.map((s) => ({
+        title: s?.title || "",
+        doc: filledSectionDocs[s.id] ?? null,
+        value: filledSections[s.id] ?? "",
+      }))
+    : undefined
 
   useEffect(() => {
     loadDocument(tab.id)
     setDocName(tab.label)
-    return () => reset()
+    return () => { activeEditorRef.current = null; reset() }
   }, [tab.id])
 
   const handleNameChange = useCallback(async (newName: string) => {
@@ -111,8 +123,9 @@ export function FileTab({ tab }: { tab: Tab }) {
       case "canvas":
         return (
           <Canvas
+            key={tab.id}
             initialFlow={canvasFlow}
-            onChange={setCanvasFlow}
+            onChange={updateCanvas}
           />
         )
       case "prompt":
@@ -213,6 +226,18 @@ export function FileTab({ tab }: { tab: Tab }) {
 
               <div className="relative group">
                 <motion.button
+                  onClick={() => setShowAI((v) => !v)}
+                  whileTap={{ scale: 0.88 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className={`rounded-lg p-2 transition-colors ${showAI ? "bg-accent text-accent-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
+                >
+                  <Brain className="h-3.5 w-3.5" />
+                </motion.button>
+                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">AI Assistant</span>
+              </div>
+
+              <div className="relative group">
+                <motion.button
                   onClick={cycleSplitMode}
                   whileTap={{ scale: 0.88 }}
                   transition={{ type: "spring", stiffness: 500, damping: 20 }}
@@ -252,11 +277,44 @@ export function FileTab({ tab }: { tab: Tab }) {
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto shrink-0">
-              <OutlinePanel doc={compiledOutput} sectionTitles={templateSectionTitles.length > 0 ? templateSectionTitles : undefined} />
+              <OutlinePanel doc={compiledOutput} sections={outlineSections} />
             </div>
           )}
         </div>
       </div>
+
+      {showAI && (
+        <AIAssistant
+          onClose={() => setShowAI(false)}
+          editorContent={compiledOutput || sections?.map((s: any) => typeof s === "string" ? s : "").join("\n") || ""}
+          documentTitle={docName}
+          documentType={tab.type}
+          canvasContext={canvasFlow.nodes.length > 0 ? formatCanvasForAgent(canvasFlow) : undefined}
+          scratchpad={usePromptStore.getState().scratchpadText || undefined}
+          templateSections={sections?.length > 0 ? sections.map((s: any) => ({ title: s.title || "", content: (typeof s === "object" && s?.content_json) || "" })) : undefined}
+        />
+      )}
     </div>
   )
+}
+
+/** Format a CanvasFlow into a textual description for the AI */
+function formatCanvasForAgent(flow: CanvasFlow): string {
+  const parts: string[] = []
+  parts.push(`Nodes (${flow.nodes.length}):`)
+  for (const n of flow.nodes) {
+    let desc = `  [${n.type.toUpperCase()}] "${n.label}"`
+    if (n.detail) desc += ` — ${n.detail.slice(0, 150)}`
+    if (n.config) {
+      if ("model" in (n.config as any) && (n.config as any).model) desc += ` | model: ${(n.config as any).model}`
+      if ("actionType" in (n.config as any) && (n.config as any).actionType) desc += ` | action: ${(n.config as any).actionType}`
+      if ("operator" in (n.config as any) && (n.config as any).operator) desc += ` | ${(n.config as any).operator} ${(n.config as any).field || ""}`
+    }
+    parts.push(desc)
+  }
+  parts.push(`Edges (${flow.edges.length}):`)
+  for (const e of flow.edges) {
+    parts.push(`  ${e.source} → ${e.target}${e.label ? ` [${e.label}]` : ""}`)
+  }
+  return parts.join("\n")
 }

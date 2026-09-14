@@ -1,12 +1,16 @@
 import { create } from "zustand";
 import {templateService, Template, TemplateSection} from '@/lib/db/template'
 
+export type TemplateTab = "templates" | "snippets";
+
 interface TemplateStore {
   templates: Template[];
   selectedTemplateId: string | null;
   sections: TemplateSection[];
   loading: boolean;
+  templateTab: TemplateTab;
 
+  setTemplateTab: (tab: TemplateTab) => void;
   loadTemplates: () => Promise<void>;
   selectTemplate: (id: string | null) => Promise<void>;
   createTemplate: (name: string, description?: string) => Promise<string>;
@@ -23,6 +27,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   selectedTemplateId: null,
   sections: [],
   loading: false,
+  templateTab: "templates",
+
+  setTemplateTab: (templateTab) => set({ templateTab }),
 
   loadTemplates: async () => {
     const templates = await templateService.getAll();

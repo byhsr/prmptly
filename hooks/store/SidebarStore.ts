@@ -1,8 +1,9 @@
 // store/libraryStore.ts
 import { create } from "zustand"
 import { Snippet } from "@/lib/types/library"
-import { LibraryTab } from "@/components/library/LibraryView"
 import { Scope } from "@/components/library/AddContextPanel"
+
+export type SnippetMode = "snippet"
 
 export const snippetId = (snippet: Snippet) =>
   snippet.scope
@@ -16,9 +17,9 @@ type LibraryStore = {
   clearSelection: () => void
   selectedSnippet: () => Snippet | null
 
-  // creation mode / active tab
-  activeMode: LibraryTab | null
-  setActiveMode: (type: LibraryTab | null) => void
+  // creation mode
+  activeMode: SnippetMode | null
+  setActiveMode: (type: SnippetMode | null) => void
 
   // snippet cache
   snippets: Snippet[]
