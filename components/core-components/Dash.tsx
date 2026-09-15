@@ -127,7 +127,23 @@ export default function Promptly({ dbReady }: { dbReady: boolean }) {
           defaultLayout={defaultLayout}
           onLayoutChanged={onLayoutChanged}
           orientation="horizontal">
-          <Panel id="sidebar" panelRef={sidebarRef} collapsible collapsedSize="0px" className="cursor-resize" minSize="220px" maxSize="500px">
+          <Panel
+            id="sidebar"
+            panelRef={sidebarRef}
+            collapsible
+            collapsedSize="0px"
+            className="cursor-resize"
+            minSize="220px"
+            maxSize="500px"
+            onResize={(size) => {
+              // Sync the store when the panel is collapsed by the drag handle or arrow,
+              // otherwise the tabbar toggle keeps showing the stale state.
+              const open = size.inPixels > 0
+              if (open !== useTabViewStore.getState().sidebarOpen) {
+                useTabViewStore.setState({ sidebarOpen: open })
+              }
+            }}
+          >
             <Sidebar
               activeTab={activeTab}
               isOpen={sidebarOpen}

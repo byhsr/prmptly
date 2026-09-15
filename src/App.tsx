@@ -41,15 +41,18 @@ export const AppFlow = () => {
   useEffect(() => { bootstrap(); }, []);
 
   // Apply font + heading-size settings as CSS custom properties on <html>.
-  // Inline styles on :root win over the @theme defaults, so font-sans / font-mono
-  // utilities and the .smart-editor-content headings follow the settings.
+  // App.css maps font-sans -> var(--font-body) and font-mono -> var(--font-code) inside
+  // `@theme inline`, so setting those two is what actually changes the rendered fonts.
   useEffect(() => {
     const root = document.documentElement.style;
-    const family = (key: string) => FONTS[key]?.family ?? "";
-    root.setProperty("--font-heading", family(settings.fonts.heading));
-    root.setProperty("--font-body", family(settings.fonts.body));
-    root.setProperty("--font-sans", family(settings.fonts.body));
-    root.setProperty("--font-mono", family(settings.fonts.mono));
+    const setFont = (name: string, key: string) => {
+      const family = FONTS[key]?.family;
+      // Keep the :root default rather than writing an empty family
+      if (family) root.setProperty(name, family);
+    };
+    setFont("--font-heading", settings.fonts.heading);
+    setFont("--font-body", settings.fonts.body);
+    setFont("--font-code", settings.fonts.mono);
     root.setProperty("--heading-h1", `${settings.headingSizes.h1}rem`);
     root.setProperty("--heading-h2", `${settings.headingSizes.h2}rem`);
     root.setProperty("--heading-h3", `${settings.headingSizes.h3}rem`);

@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, type ReactNode } from "react"
+import { useState, useCallback, useEffect, useRef, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord, Brain } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
@@ -72,7 +73,7 @@ function FloatingBar({ children }: { children: ReactNode }) {
           : { duration: 0.14, ease: [0.2, 0, 0, 1] }
       }
       style={{ transformOrigin: "bottom right" }}
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg ${
+      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg ${
         revealed ? "" : "pointer-events-none"
       }`}
       onMouseEnter={() => setOverBar(true)}
@@ -103,6 +104,19 @@ function BarAction({
   children?: ReactNode
 }) {
   const reduced = usePrefersReducedMotion()
+  const [tip, setTip] = useState<{ top: number; left: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  // The bar sits inside the Workspaces scroll container, so an absolutely positioned
+  // tooltip gets clipped by that ancestor. Portalling it to <body> with fixed coords
+  // takes it out of every clipping context.
+  const showTip = () => {
+    const el = btnRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    setTip({ top: r.top - 8, left: r.right })
+  }
+  const hideTip = () => setTip(null)
 
   const tone = primary
     ? "bg-accent text-accent-foreground hover:opacity-90"
@@ -111,29 +125,46 @@ function BarAction({
       : "text-muted hover:text-foreground hover:bg-background"
 
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      aria-label={text ? undefined : label}
-      aria-pressed={active}
-      whileHover={reduced ? undefined : { scale: text ? 1.05 : 1.16 }}
-      whileTap={reduced ? undefined : { scale: 0.88 }}
-      transition={{ type: "spring", stiffness: 500, damping: 20 }}
-      className={`focus-ring group relative inline-flex h-10 items-center justify-center rounded-lg transition-colors ${
-        text ? "gap-1.5 border border-border px-3 font-mono text-[11px]" : "w-10"
-      } ${tone}`}
-    >
-      {children}
-      {text && <span>{text}</span>}
-      {!text && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-full right-0 mb-1.5 whitespace-nowrap rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-        >
-          {label}
-        </span>
-      )}
-    </motion.button>
+    <>
+      <motion.button
+        ref={btnRef}
+        type="button"
+        onClick={onClick}
+        aria-label={text ? undefined : label}
+        aria-pressed={active}
+        onMouseEnter={showTip}
+        onMouseLeave={hideTip}
+        onFocus={showTip}
+        onBlur={hideTip}
+        whileHover={reduced ? undefined : { scale: text ? 1.05 : 1.16 }}
+        whileTap={reduced ? undefined : { scale: 0.88 }}
+        transition={{ type: "spring", stiffness: 500, damping: 20 }}
+        className={`focus-ring group relative inline-flex h-10 items-center justify-center rounded-lg transition-colors ${
+          text ? "gap-1.5 border border-border px-3 font-mono text-[11px]" : "w-10"
+        } ${tone}`}
+      >
+        {children}
+        {text && <span>{text}</span>}
+      </motion.button>
+      {!text &&
+        tip &&
+        createPortal(
+          <span
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              top: tip.top,
+              left: tip.left,
+              transform: "translate(-100%, -100%)",
+              zIndex: 9999,
+            }}
+            className="pointer-events-none whitespace-nowrap rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] text-muted"
+          >
+            {label}
+          </span>,
+          document.body
+        )}
+    </>
   )
 }
 
