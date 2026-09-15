@@ -213,8 +213,9 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       get().updateScratchpad(newScratchpad)
     }
 
-    // Update template_id on the document
-    await updateDocument(activeDocument.id, { meta: { ...(activeDocument.meta || {}), template_id: templateId } })
+    // Write the real template_id column — loadDocument reads it back from there, so
+    // stashing it in meta_json lost the association on reopen.
+    await updateDocument(activeDocument.id, { templateId })
     const newSections = await templateService.getSections(templateId)
     const outputFormat = get().outputFormat
     const compiled = compile(newSections, {}, {}, outputFormat)
@@ -224,7 +225,7 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       filledSections: {},
       filledSectionDocs: {},
       compiledOutput: compiled,
-      activeDocument: { ...activeDocument, templateId, meta: { ...(activeDocument.meta || {}), template_id: templateId } },
+      activeDocument: { ...activeDocument, templateId },
     })
   },
 
@@ -245,13 +246,13 @@ export const usePromptStore = create<PromptStore>((set, get) => ({
       get().updateScratchpad(newScratchpad)
     }
 
-    await updateDocument(activeDocument.id, { meta: { ...(activeDocument.meta || {}), template_id: null } })
+    await updateDocument(activeDocument.id, { templateId: null })
     set({
       sections: [],
       filledSections: {},
       filledSectionDocs: {},
       compiledOutput: "",
-      activeDocument: { ...activeDocument, templateId: null, meta: { ...(activeDocument.meta || {}), template_id: null } },
+      activeDocument: { ...activeDocument, templateId: null },
     })
   },
 

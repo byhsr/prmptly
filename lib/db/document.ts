@@ -115,6 +115,10 @@ export async function updateDocument(
     sets.push("name = ?");
     params.push(input.name);
   }
+  if (input.templateId !== undefined) {
+    sets.push("template_id = ?");
+    params.push(input.templateId);
+  }
   if (input.collectionId !== undefined) {
     sets.push("collection_id = ?");
     params.push(input.collectionId);

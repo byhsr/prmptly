@@ -26,6 +26,19 @@ export const activeEditorRef = { current: null as any }
 
 // ── SectionBlock ───────────────────────────────────────────────────────────────
 
+// `content_json` is a free-text field, so in practice it often holds plain text rather
+// than JSON. Parsing it unguarded threw during render and took the builder down with it.
+function placeholderFor(section: TemplateSection): string {
+  const fallback = `Enter ${section.title.toLowerCase()}...`
+  if (!section.content_json) return fallback
+  try {
+    const parsed = JSON.parse(section.content_json)
+    return typeof parsed?.placeholder === "string" ? parsed.placeholder : fallback
+  } catch {
+    return fallback
+  }
+}
+
 interface SectionBlockProps {
   section: TemplateSection
   value: string
@@ -60,7 +73,7 @@ function SectionBlock({ section, value }: SectionBlockProps) {
       <SmartEditor
         initialContent={value}
         onChange={(plain, doc) => updateSection(section.id, plain, doc)}
-        placeholder={section.content_json ? JSON.parse(section.content_json).placeholder : `Enter ${section.title.toLowerCase()}...`}
+        placeholder={placeholderFor(section)}
         onEditorReady={(e) => { activeEditorRef.current = e }}
       />
     </div>
@@ -101,7 +114,7 @@ export function BuilderPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-6 w-full">
         {!sections.length ? (
           <SmartEditor
             initialContent={filledSections["__freeform__"] || ""}

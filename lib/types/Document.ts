@@ -77,6 +77,7 @@ export interface CreateDocumentInput {
 
 export interface UpdateDocumentInput {
   name?: string;
+  templateId?: string | null;
   collectionId?: string | null;
   sections?: unknown;
   scratchpadTextPath?: string | null;

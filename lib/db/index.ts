@@ -206,6 +206,36 @@ CREATE INDEX IF NOT EXISTS idx_skills_group_id ON skills(group_id);
 CREATE INDEX IF NOT EXISTS idx_skills_template_id ON skills(template_id);
 `
   },
+  // migration 5: templates + template_sections only ever existed inside migration 1, which
+  // is skipped once applied — so workspaces created before those tables were added there
+  // never got them and every template call failed with "no such table: templates".
+  {
+    id: 5,
+    sql: `
+CREATE TABLE IF NOT EXISTS templates (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  is_system INTEGER DEFAULT 0,
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS template_sections (
+  id TEXT PRIMARY KEY,
+  template_id TEXT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content_json TEXT NOT NULL,
+  order_index INTEGER NOT NULL,
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_template_sections_template_id
+  ON template_sections(template_id);
+`
+  },
 ];
 
 async function runMigrations(db: Database) {
