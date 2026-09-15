@@ -1,15 +1,8 @@
-export interface SkillValue {
-  key: string
-  value: string
-}
-
 export interface Skill {
   id: string
   name: string
   description: string | null
   groupId: string | null
-  templateId: string | null
-  values: SkillValue[]
   meta: Record<string, unknown>
   createdAt: string
   updatedAt: string
@@ -34,8 +27,6 @@ export interface CreateSkillInput {
   name: string
   description?: string | null
   groupId?: string | null
-  templateId?: string | null
-  values?: SkillValue[]
   meta?: Record<string, unknown>
 }
 
@@ -43,8 +34,6 @@ export interface UpdateSkillInput {
   name?: string
   description?: string | null
   groupId?: string | null
-  templateId?: string | null
-  values?: SkillValue[]
   meta?: Record<string, unknown>
 }
 

@@ -1,6 +1,4 @@
 import { skillService } from "@/lib/db/skills";
-import { libraryService } from "@/lib/db/library";
-import { templateService } from "@/lib/db/template";
 import { CreateSkillInput, Skill, SkillMarkdown } from "@/lib/types/skill";
 import {
   deleteFolder,
@@ -44,32 +42,6 @@ export function parseSkillMarkdown(text: string, fallbackName = "Untitled Skill"
   }
 
   return { name, description, body };
-}
-
-// ── Compile: template + library key/value pairs ────
-
-// Seeds a skill body from a template's sections (blueprint → markdown skeleton)
-export async function templateToMarkdown(templateId: string): Promise<string> {
-  const sections = await templateService.getSections(templateId);
-  return sections
-    .map((s) => `## ${s.title}`)
-    .join("\n\n");
-}
-
-// Resolves {{key}} tokens from the skill's own values, then from library snippets
-export async function compileSkill(skill: Skill, body: string): Promise<string> {
-  const map = new Map<string, string>();
-
-  for (const snippet of await libraryService.getAll()) {
-    map.set(snippet.key, snippet.value);
-  }
-  for (const { key, value } of skill.values) {
-    if (key) map.set(key, value);
-  }
-
-  return body.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, key: string) =>
-    map.has(key) ? map.get(key)! : whole
-  );
 }
 
 // ── Persistence ────────────────────────────────────
@@ -130,11 +102,10 @@ export const skillServiceWithFiles = {
   async export(id: string): Promise<string> {
     const found = await this.read(id);
     if (!found) throw new Error(`Skill "${id}" not found`);
-    const compiled = await compileSkill(found.skill, found.body);
     return serializeSkillMarkdown({
       name: found.skill.name,
       description: found.skill.description ?? "",
-      body: compiled,
+      body: found.body,
     });
   },
 

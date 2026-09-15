@@ -89,7 +89,7 @@ export const SkillGroupTree = () => {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this group? Its skills move to Ungrouped.")) return
+    if (!window.confirm("Delete this group? Its skills stay in the library.")) return
     try {
       await deleteGroup(id, true)
       notify("group deleted")
@@ -208,34 +208,23 @@ export const SkillGroupTree = () => {
 
   return (
     <div className="flex flex-col h-full w-full">
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted">Groups</span>
+      <div className="flex items-center justify-end px-2 py-1.5 border-b border-border shrink-0">
         <button
           onClick={() => startCreate(null)}
           className="text-muted hover:text-foreground transition-colors"
-          title="new group"
+          aria-label="New group"
         >
           <Plus size={12} />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-1 flex flex-col gap-0.5">
-        <div
-          onClick={() => selectGroup(null)}
-          className={cn(
-            "flex items-center gap-1.5 rounded-sm px-2 py-1 cursor-pointer transition-colors duration-100",
-            selectedGroupId === null ? "bg-background text-primary" : "text-secondary hover:bg-background/60"
-          )}
-        >
-          <span className="text-[11px] font-mono truncate">All skills</span>
-        </div>
-
         {tree.map((node) => renderGroup(node, 0))}
         {creatingParent === null && createInput(0)}
 
         {ungrouped.length > 0 && (
-          <div className="mt-2">
-            <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted">Ungrouped</div>
+          // Unlabelled on purpose — a divider keeps these visible without a heading.
+          <div className={tree.length > 0 ? "mt-2 pt-2 border-t border-border" : ""}>
             {ungrouped.map((skill) => skillLeaf(skill, 0))}
           </div>
         )}

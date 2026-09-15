@@ -5,7 +5,6 @@ import {
   Skill,
   SkillGroup,
   SkillGroupNode,
-  SkillValue,
   UpdateSkillGroupInput,
   UpdateSkillInput,
 } from "../types/skill";
@@ -17,8 +16,6 @@ interface SkillRow {
   name: string;
   description: string | null;
   group_id: string | null;
-  template_id: string | null;
-  values_json: string;
   meta_json: string;
   created_at: string;
   updated_at: string;
@@ -46,14 +43,11 @@ function parseJson<T>(raw: string | null, fallback: T): T {
 }
 
 function mapSkillRow(row: SkillRow): Skill {
-  const values = parseJson<unknown>(row.values_json, []);
   return {
     id: row.id,
     name: row.name,
     description: row.description,
     groupId: row.group_id,
-    templateId: row.template_id,
-    values: Array.isArray(values) ? (values as SkillValue[]) : [],
     meta: parseJson<Record<string, unknown>>(row.meta_json, {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -70,10 +64,6 @@ function mapGroupRow(row: SkillGroupRow): SkillGroup {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function serializeValues(values: SkillValue[] | undefined): string {
-  return JSON.stringify(values ?? []);
 }
 
 // ── Skills ─────────────────────────────────────────
@@ -117,16 +107,15 @@ export const skillService = {
       if (!group) throw new Error("Skill group not found");
     }
 
+    // template_id / values_json still exist on the table with defaults; skills no longer use them.
     await db.execute(
-      `INSERT INTO skills (id, name, description, group_id, template_id, values_json, meta_json, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO skills (id, name, description, group_id, meta_json, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.name,
         input.description ?? null,
         input.groupId ?? null,
-        input.templateId ?? null,
-        serializeValues(input.values),
         JSON.stringify(input.meta ?? {}),
         now,
         now,
@@ -160,14 +149,6 @@ export const skillService = {
     if (input.groupId !== undefined) {
       sets.push("group_id = ?");
       params.push(input.groupId);
-    }
-    if (input.templateId !== undefined) {
-      sets.push("template_id = ?");
-      params.push(input.templateId);
-    }
-    if (input.values !== undefined) {
-      sets.push("values_json = ?");
-      params.push(serializeValues(input.values));
     }
     if (input.meta !== undefined) {
       sets.push("meta_json = ?");

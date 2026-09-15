@@ -42,7 +42,7 @@ function findGroup(tree: SkillGroupNode[], id: string): SkillGroupNode | null {
   return null
 }
 
-// Links: skills sharing a group, plus skills sharing a template
+// Links: skills sharing a group
 function buildEdges(skills: Skill[]): Edge[] {
   const edges = new Map<string, Edge>()
 
@@ -63,19 +63,14 @@ function buildEdges(skills: Skill[]): Edge[] {
   }
 
   const byGroup = new Map<string, Skill[]>()
-  const byTemplate = new Map<string, Skill[]>()
 
   for (const skill of skills) {
     if (skill.groupId) {
       byGroup.set(skill.groupId, [...(byGroup.get(skill.groupId) ?? []), skill])
     }
-    if (skill.templateId) {
-      byTemplate.set(skill.templateId, [...(byTemplate.get(skill.templateId) ?? []), skill])
-    }
   }
 
   link(byGroup)
-  link(byTemplate)
 
   return [...edges.values()]
 }

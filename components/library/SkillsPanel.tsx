@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { Blocks, Plus, Upload } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
-import { SkillGroupTree } from "./SkillGroupTree"
 import { SkillModal } from "./SkillModal"
 import { Button } from "../ui/Button"
 import { ContextMenu } from "../ui/ContextMenu"
@@ -56,10 +55,6 @@ export const SkillsPanel = () => {
 
   return (
     <div className="w-full h-full flex">
-      <div className="w-56 border-r border-border shrink-0">
-        <SkillGroupTree />
-      </div>
-
       <div className="flex-1 min-w-0 flex flex-col">
         {isCreatingSkill || selectedSkill ? (
           <SkillModal
@@ -171,7 +166,6 @@ const SkillRow = ({
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-mono truncate">{skill.name}</span>
           {groupName && <span className="text-[10px] text-muted shrink-0">· {groupName}</span>}
-          {skill.templateId && <span className="text-[10px] text-muted shrink-0">· template</span>}
         </div>
         {skill.description && (
           <span className="text-[11px] text-muted truncate">{skill.description}</span>

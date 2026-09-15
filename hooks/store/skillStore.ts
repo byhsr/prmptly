@@ -6,7 +6,6 @@ import {
   Skill,
   SkillGroup,
   SkillGroupNode,
-  SkillValue,
 } from "@/lib/types/skill"
 
 export type LibraryPanelTab = "skills" | "graph"
@@ -46,8 +45,6 @@ type SkillStore = {
       name: string
       description: string | null
       groupId: string | null
-      templateId: string | null
-      values: SkillValue[]
     }>,
     body?: string
   ) => Promise<Skill>
