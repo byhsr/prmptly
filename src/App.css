@@ -160,3 +160,10 @@ body {
 .react-flow__handle {
   background: var(--muted) !important;
 }
+
+/* ── Keyboard focus ring (native ring, given breathing room) ───── */
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

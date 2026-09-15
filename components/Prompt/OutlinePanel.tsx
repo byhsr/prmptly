@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import type { JSONContent } from "@tiptap/react"
 
 export interface OutlineSection {
@@ -17,6 +17,11 @@ interface OutlineEntry {
   level: 1 | 2
   text: string
 }
+
+const FLASH_MS = 1000
+const FLASH_DELAY_MS = 160
+const FADE_MS = 220
+const ACCENT_FALLBACK = "200, 241, 53"
 
 // Scans flat markdown text for `#` / `##` heading lines
 function headingsFromString(text: string): { level: 1 | 2; text: string }[] {
@@ -50,7 +55,80 @@ function headingsFromDoc(doc: JSONContent): { level: 1 | 2; text: string }[] {
   return out
 }
 
+// Locates the rendered heading (or section-title input) matching an outline entry
+function findHeadingElement(text: string): HTMLElement | null {
+  for (const editorEl of Array.from(document.querySelectorAll<HTMLElement>(".smart-editor-content"))) {
+    for (const el of Array.from(editorEl.querySelectorAll<HTMLElement>("h1, h2, h3"))) {
+      const content = el.textContent?.trim() ?? ""
+      if (content && (content === text || content.includes(text))) return el
+    }
+  }
+
+  for (const inp of Array.from(document.querySelectorAll<HTMLInputElement>("input"))) {
+    if (inp.value === text) return inp
+  }
+
+  return null
+}
+
+// Resolves the theme accent to rgba() without relying on color-mix()
+function accentTint(el: HTMLElement, alpha: number): string {
+  const raw = getComputedStyle(el).getPropertyValue("--accent").trim()
+  const hex = raw.match(/^#([0-9a-f]{6})$/i)
+  if (hex) {
+    const n = parseInt(hex[1], 16)
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+  }
+  return `rgba(${ACCENT_FALLBACK}, ${alpha})`
+}
+
+function clearHighlight(el: HTMLElement) {
+  el.style.removeProperty("background-color")
+  el.style.removeProperty("box-shadow")
+  el.style.removeProperty("border-radius")
+  el.style.removeProperty("transition")
+}
+
 export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
+  const flashRef = useRef<{ el: HTMLElement | null; timers: ReturnType<typeof setTimeout>[] }>({
+    el: null,
+    timers: [],
+  })
+
+  const clearFlash = () => {
+    flashRef.current.timers.forEach(clearTimeout)
+    flashRef.current.timers = []
+    if (flashRef.current.el) clearHighlight(flashRef.current.el)
+    flashRef.current.el = null
+  }
+
+  useEffect(() => () => clearFlash(), [])
+
+  const goTo = (entry: OutlineEntry) => {
+    const target = findHeadingElement(entry.text)
+    if (!target) return
+
+    clearFlash()
+    target.scrollIntoView({ behavior: "smooth", block: "start" })
+
+    const state = flashRef.current
+    state.el = target
+    state.timers.push(
+      // light up once the smooth scroll has settled, so it is actually seen
+      setTimeout(() => {
+        target.style.transition = `background-color ${FADE_MS}ms ease-out, box-shadow ${FADE_MS}ms ease-out`
+        target.style.borderRadius = "6px"
+        target.style.backgroundColor = accentTint(target, 0.4)
+        target.style.boxShadow = `0 0 0 4px ${accentTint(target, 0.26)}`
+      }, FLASH_DELAY_MS),
+      setTimeout(() => {
+        target.style.backgroundColor = accentTint(target, 0)
+        target.style.boxShadow = `0 0 0 4px ${accentTint(target, 0)}`
+      }, FLASH_DELAY_MS + FLASH_MS),
+      setTimeout(() => clearHighlight(target), FLASH_DELAY_MS + FLASH_MS + FADE_MS)
+    )
+  }
+
   const headings = useMemo<OutlineEntry[]>(() => {
     const entries: OutlineEntry[] = []
     let index = 0
@@ -87,35 +165,7 @@ export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
           headings.map((h) => (
             <button
               key={h.id}
-              onClick={() => {
-                // Try to find the heading or section in the DOM
-                const allEditors = document.querySelectorAll('[contenteditable]')
-                for (const ed of allEditors) {
-                  if (ed.textContent?.trim() === h.text) {
-                    ed.scrollIntoView({ behavior: "smooth", block: "start" })
-                    return
-                  }
-                }
-                // Fallback: try smart editor heading elements
-                const editorEl = document.querySelector(".smart-editor-content")
-                if (editorEl) {
-                  const lines = editorEl.querySelectorAll("h1, h2")
-                  for (const el of lines) {
-                    if (el.textContent?.includes(h.text)) {
-                      el.scrollIntoView({ behavior: "smooth", block: "start" })
-                      return
-                    }
-                  }
-                }
-                // Last fallback: scroll to the input showing the section title
-                const inputs = document.querySelectorAll('input')
-                for (const inp of inputs) {
-                  if (inp.value === h.text) {
-                    inp.scrollIntoView({ behavior: "smooth", block: "start" })
-                    return
-                  }
-                }
-              }}
+              onClick={() => goTo(h)}
               title={h.text}
               className="w-full text-left px-2 py-1.5 rounded text-xs font-mono text-muted hover:text-foreground hover:bg-background transition-colors truncate"
               style={{ paddingLeft: h.level === 2 ? 20 : 8 }}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord, Brain } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
@@ -11,6 +11,131 @@ import { OutlinePanel } from "../Prompt/OutlinePanel"
 import { AIAssistant } from "../ai/AIAssistant"
 
 type OutputTab = "markdown" | "json" | "xml"
+
+// How far from the bottom-right corner the pointer must be for the bar to surface.
+const CORNER_ZONE = 200
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReduced(mq.matches)
+    const onChange = () => setReduced(mq.matches)
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+
+  return reduced
+}
+
+// Floating bar that stays out of the way until the pointer reaches the bottom-right
+// corner, or focus lands inside it. Focus counts so hover is never the only way in.
+function FloatingBar({ children }: { children: ReactNode }) {
+  const [nearCorner, setNearCorner] = useState(false)
+  const [overBar, setOverBar] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const reduced = usePrefersReducedMotion()
+
+  const revealed = nearCorner || overBar || focused
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const near = e.clientX >= window.innerWidth - CORNER_ZONE && e.clientY >= window.innerHeight - CORNER_ZONE
+      setNearCorner((prev) => (prev === near ? prev : near))
+    }
+    const onLeave = () => setNearCorner(false)
+    window.addEventListener("mousemove", onMove, { passive: true })
+    document.addEventListener("mouseleave", onLeave)
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      document.removeEventListener("mouseleave", onLeave)
+    }
+  }, [])
+
+  return (
+    <motion.div
+      initial={false}
+      animate={
+        revealed
+          ? { opacity: 1, scale: 1, y: 0, rotate: 0 }
+          : {
+              opacity: 0,
+              scale: reduced ? 1 : 0.9,
+              y: reduced ? 0 : 28,
+              rotate: reduced ? 0 : -12,
+            }
+      }
+      transition={
+        revealed
+          ? { type: "spring", stiffness: 420, damping: 30 }
+          : { duration: 0.14, ease: [0.2, 0, 0, 1] }
+      }
+      style={{ transformOrigin: "bottom right" }}
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg ${
+        revealed ? "" : "pointer-events-none"
+      }`}
+      onMouseEnter={() => setOverBar(true)}
+      onMouseLeave={() => setOverBar(false)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false)
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+function BarAction({
+  label,
+  onClick,
+  active,
+  primary,
+  text,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  active?: boolean
+  primary?: boolean
+  text?: string
+  children?: ReactNode
+}) {
+  const reduced = usePrefersReducedMotion()
+
+  const tone = primary
+    ? "bg-accent text-accent-foreground hover:opacity-90"
+    : active
+      ? "bg-accent/20 text-foreground"
+      : "text-muted hover:text-foreground hover:bg-background"
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      aria-label={text ? undefined : label}
+      aria-pressed={active}
+      whileHover={reduced ? undefined : { scale: text ? 1.05 : 1.16 }}
+      whileTap={reduced ? undefined : { scale: 0.88 }}
+      transition={{ type: "spring", stiffness: 500, damping: 20 }}
+      className={`focus-ring group relative inline-flex h-10 items-center justify-center rounded-lg transition-colors ${
+        text ? "gap-1.5 border border-border px-3 font-mono text-[11px]" : "w-10"
+      } ${tone}`}
+    >
+      {children}
+      {text && <span>{text}</span>}
+      {!text && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-full right-0 mb-1.5 whitespace-nowrap rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          {label}
+        </span>
+      )}
+    </motion.button>
+  )
+}
 
 export function HomeView() {
   const { body, output, setBody, generate, reset, loadKey } = useQuicksStore()
@@ -164,37 +289,39 @@ export function HomeView() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {body.length > 0 && !output && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-            className="fixed bottom-6 right-6 flex gap-2 items-center bg-surface border border-border rounded-xl px-3 py-2 shadow-lg z-50"
-          >
-            <button onClick={handleSave} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">Save</button>
-            {showOutline && (
-              <div className="absolute bottom-12 right-0 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto">
-                <OutlinePanel doc={body} />
-              </div>
-            )}
-            <button onClick={() => setShowOutline((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><ListTree size={12} /></button>
-            <button onClick={() => setShowRectify((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><Search size={12} /></button>
-            <button onClick={() => setShowAI((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><Brain size={12} /></button>
-            <button onClick={handleGenerate} className="w-8 h-8 rounded-lg bg-accent text-accent-foreground flex items-center justify-center text-sm hover:opacity-90 transition-opacity"><ArrowUpRight size={14} /></button>
-          </motion.div>
-        )}
-        {output && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-            className="fixed bottom-6 right-6 flex gap-2 items-center bg-surface border border-border rounded-xl px-3 py-2 shadow-lg z-50"
-          >
-            <button onClick={handleCopy} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">
-              {copied ? <><Check size={11} className="inline" /> copied</> : "copy"}
-            </button>
-            <button onClick={handleSaveOutput} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">save</button>
-            <button onClick={handleReset} className="w-8 h-8 rounded-lg bg-border text-muted flex items-center justify-center hover:text-foreground transition-colors"><Undo2 size={12} /></button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {body.length > 0 && !output && (
+        <FloatingBar>
+          <BarAction label="Save" text="Save" onClick={handleSave} />
+          <BarAction label="Outline" active={showOutline} onClick={() => setShowOutline((v) => !v)}>
+            <ListTree size={14} aria-hidden="true" />
+          </BarAction>
+          <BarAction label="Find and replace" active={showRectify} onClick={() => setShowRectify((v) => !v)}>
+            <Search size={14} aria-hidden="true" />
+          </BarAction>
+          <BarAction label="AI assistant" active={showAI} onClick={() => setShowAI((v) => !v)}>
+            <Brain size={14} aria-hidden="true" />
+          </BarAction>
+          <BarAction label="Generate output" primary onClick={handleGenerate}>
+            <ArrowUpRight size={16} aria-hidden="true" />
+          </BarAction>
+          {showOutline && (
+            <div className="absolute bottom-full right-0 mb-2 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto">
+              <OutlinePanel doc={body} />
+            </div>
+          )}
+        </FloatingBar>
+      )}
+      {output && (
+        <FloatingBar>
+          <BarAction label="Copy output" text={copied ? "copied" : "copy"} onClick={handleCopy}>
+            {copied && <Check size={11} aria-hidden="true" />}
+          </BarAction>
+          <BarAction label="Save output" text="save" onClick={handleSaveOutput} />
+          <BarAction label="Discard output" onClick={handleReset}>
+            <Undo2 size={14} aria-hidden="true" />
+          </BarAction>
+        </FloatingBar>
+      )}
 
       {showAI && (
         <AIAssistant
