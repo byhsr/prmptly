@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord, Brain } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
-import { parseMarkdownSections } from "@/lib/editor/parseMarkdown"
 import { useNotifications } from "@/hooks/store/SidebarStore"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { Tab } from "../core-components/Tabbar"
@@ -11,49 +10,11 @@ import { SmartEditor } from "../ui/SmartTextEditor"
 import { OutlinePanel } from "../Prompt/OutlinePanel"
 import { AIAssistant } from "../ai/AIAssistant"
 
-const homeEditorRef = { current: null as any }
-type OutputTab = "plain" | "json" | "xml"
-
-function SectionEditor({ section, onSave }: { section: { id: string; doc: string | any; title?: string }, onSave: (id: string, text: string) => void }) {
-  const getContent = () => {
-    if (typeof section.doc === "string") return section.doc.slice(0, 15000)
-    return section.doc
-  }
-
-  return (
-    <div className="py-2">
-      {section.title && (
-        <input
-          value={section.title}
-          onChange={(e) => useQuicksStore.getState().updateSectionTitle(section.id, e.target.value)}
-          placeholder="Section title"
-          className="w-full bg-transparent outline-none text-xs font-mono text-muted mb-2"
-        />
-      )}
-      <SmartEditor
-        initialContent={getContent()}
-        onChange={(plain, _doc) => onSave(section.id, plain)}
-        placeholder="Type here…"
-        minHeight={60}
-        onEditorReady={(e) => { homeEditorRef.current = e }}
-      />
-    </div>
-  )
-}
-
-function flattenDoc(doc: string | any): string {
-  if (typeof doc === "string") return doc
-  if (!doc?.content) return ""
-  return doc.content.map((n: any) => {
-    if (n.content) return n.content.map((c: any) => c.text || "").join("")
-    return n.text || ""
-  }).filter(Boolean).join("\n")
-}
+type OutputTab = "markdown" | "json" | "xml"
 
 export function HomeView() {
-  const { sections, output, setSections, updateSection, generate, reset, hasContent } =
-    useQuicksStore()
-  const [activeTab, setActiveTab] = useState<OutputTab>("plain")
+  const { body, output, setBody, generate, reset, loadKey } = useQuicksStore()
+  const [activeTab, setActiveTab] = useState<OutputTab>("markdown")
   const [copied, setCopied] = useState(false)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
@@ -62,14 +23,8 @@ export function HomeView() {
   const [rectifyCase, setRectifyCase] = useState(false)
   const [rectifyWord, setRectifyWord] = useState(false)
 
-  const allText = sections.map((s) => flattenDoc(s.doc)).join("\n")
-  const outlineSections = sections.map((s) => ({
-    title: s.title || "",
-    doc: typeof s.doc === "string" ? null : s.doc,
-    value: typeof s.doc === "string" ? s.doc : "",
-  }))
-  const charCount = allText.length
-  const wordCount = allText ? allText.trim().split(/\s+/).length : 0
+  const charCount = body.length
+  const wordCount = body ? body.trim().split(/\s+/).length : 0
   const tokenEstimate = Math.round(charCount / 4)
 
   useEffect(() => {
@@ -80,29 +35,13 @@ export function HomeView() {
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [sections, output])
+  }, [body, output])
 
-  useEffect(() => {
-    if (sections.length === 0) {
-      setSections([{ id: crypto.randomUUID(), title: "", doc: "" }])
-    }
-  }, [sections.length, setSections])
+  const handleBodyChange = useCallback((markdown: string) => {
+    setBody(markdown)
+  }, [setBody])
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const nativeEvent = e.nativeEvent as ClipboardEvent
-    const text = nativeEvent.clipboardData?.getData("text/plain") || ""
-    e.stopPropagation()
-    if (!text.includes("## ")) return
-    e.preventDefault()
-    const result = parseMarkdownSections(text)
-    useQuicksStore.setState({ sections: result, output: null, hasContent: true })
-  }
-
-  const handleTextChange = useCallback((id: string, value: string) => {
-    updateSection(id, value)
-  }, [updateSection])
-
-  const handleGenerate = () => { generate(); setActiveTab("plain") }
+  const handleGenerate = () => { generate(); setActiveTab("markdown") }
   const handleCopy = () => {
     if (!output) return
     navigator.clipboard.writeText(output[activeTab])
@@ -129,7 +68,7 @@ export function HomeView() {
       const now = new Date().toISOString()
       await db.execute(
         `INSERT INTO outputs (id, text, json, xml, meta_json, created_at, updated_at) VALUES (?, ?, ?, ?, '{}', ?, ?)`,
-        [outputId, output.plain, output.json, output.xml, now, now]
+        [outputId, output.markdown, output.json, output.xml, now, now]
       )
       useNotifications.getState().notify("Output saved")
     } catch { useNotifications.getState().notify("Failed to save output", true) }
@@ -166,12 +105,8 @@ export function HomeView() {
                 const escaped = find.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
                 const pattern = rectifyWord ? `\\b${escaped}\\b` : escaped
                 const regex = new RegExp(pattern, flags)
-                const { sections } = useQuicksStore.getState()
-                const updated = sections.map((s) => {
-                  if (typeof s.doc !== "string") return s
-                  return { ...s, doc: s.doc.replace(regex, replace) }
-                })
-                useQuicksStore.setState({ sections: updated })
+                const store = useQuicksStore.getState()
+                store.setBody(store.body.replace(regex, replace))
                 setRectifyKey((k) => k + 1)
               }}
               className="rounded px-2 py-1 text-[10px] font-medium bg-foreground/10 text-foreground hover:bg-foreground/20 transition-colors"
@@ -179,7 +114,7 @@ export function HomeView() {
             <button onClick={() => setShowRectify(false)} className="rounded p-1 text-muted hover:text-foreground transition-colors ml-auto"><X className="h-3 w-3" /></button>
           </div>
         )}
-        {allText.length > 0 && !output && (
+        {charCount > 0 && !output && (
           <div className="flex items-center gap-3 px-6 py-1.5 text-[10px] font-mono text-muted shrink-0 ml-auto justify-end">
             <span>{charCount} chars</span><span>·</span><span>{wordCount} words</span><span>·</span><span>~{tokenEstimate} tokens</span>
           </div>
@@ -189,16 +124,20 @@ export function HomeView() {
           {!output ? (
             <motion.div
               key="editor"
-              onPaste={handlePaste}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
               className="h-full overflow-y-auto px-6 w-full"
             >
-              {Array.isArray(sections) && sections.map((section, _i) => (
-                <SectionEditor key={section.id + '-' + rectifyKey} section={section} onSave={handleTextChange} />
-              ))}
+              <SmartEditor
+                key={`${loadKey}-${rectifyKey}`}
+                initialContent={body}
+                contentType="markdown"
+                onChange={(_plain, _doc, markdown) => handleBodyChange(markdown)}
+                placeholder="Paste markdown, or start typing…"
+                minHeight={60}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -210,7 +149,7 @@ export function HomeView() {
               className="h-full overflow-y-auto px-6"
             >
               <div className="flex gap-2 mb-4 pt-4">
-                {(["plain", "json", "xml"] as OutputTab[]).map((tab) => (
+                {(["markdown", "json", "xml"] as OutputTab[]).map((tab) => (
                   <button key={tab} onClick={() => setActiveTab(tab)}
                     className={`text-xs font-mono px-3 py-1 rounded transition-colors ${activeTab === tab ? "bg-foreground/10 text-foreground" : "text-muted hover:text-foreground"}`}
                   >{tab}</button>
@@ -226,7 +165,7 @@ export function HomeView() {
       </div>
 
       <AnimatePresence>
-        {hasContent && !output && (
+        {body.length > 0 && !output && (
           <motion.div
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
             className="fixed bottom-6 right-6 flex gap-2 items-center bg-surface border border-border rounded-xl px-3 py-2 shadow-lg z-50"
@@ -234,7 +173,7 @@ export function HomeView() {
             <button onClick={handleSave} className="text-[11px] font-mono text-muted px-3 py-1 rounded-lg border border-border hover:text-foreground transition-colors">Save</button>
             {showOutline && (
               <div className="absolute bottom-12 right-0 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto">
-                <OutlinePanel doc={allText} sections={outlineSections.length > 0 ? outlineSections : undefined} />
+                <OutlinePanel doc={body} />
               </div>
             )}
             <button onClick={() => setShowOutline((v) => !v)} className="text-[11px] font-mono text-muted px-2 py-1 rounded-lg hover:text-foreground transition-colors"><ListTree size={12} /></button>
@@ -260,7 +199,7 @@ export function HomeView() {
       {showAI && (
         <AIAssistant
           onClose={() => setShowAI(false)}
-          editorContent={allText}
+          editorContent={body}
           documentTitle="Quick Editor"
           documentType="quick"
         />

@@ -1,32 +1,31 @@
 import { create } from "zustand"
-import { JSONContent } from "@tiptap/core"
-import { nodeToPlain, docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
-import {parseMarkdownSections} from "@/lib/editor/parseMarkdown"
+import type { JSONContent } from "@tiptap/react"
+import { docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
+import { deriveSections, parseMarkdown } from "@/lib/editor/markdown"
 
-export interface QuickSection {
-  id: string
-  title: string
-  doc: JSONContent | string
+export interface QuickOutput {
+  markdown: string
+  json: string
+  xml: string
 }
 
 export interface QuickEntry {
   id: string
   name: string
-  sections: QuickSection[]
-  output: { plain: string; json: string; xml: string } | null
+  body: string
+  output: QuickOutput | null
   createdAt: number
 }
 
 interface QuicksStore {
-  sections: QuickSection[]
-  output: { plain: string; json: string; xml: string } | null
+  body: string
+  output: QuickOutput | null
   name: string
   savedDocId: string | null
   hasContent: boolean
+  loadKey: number
 
-  setSections: (sections: QuickSection[]) => void
-  updateSection: (id: string, doc: JSONContent | string) => void
-  updateSectionTitle: (id: string, title: string) => void
+  setBody: (body: string) => void
   loadFromPaste: (raw: string) => void
   generate: () => void
   loadEntry: (entry: QuickEntry) => void
@@ -34,79 +33,77 @@ interface QuicksStore {
   reset: () => void
 }
 
-function generateName(plainText: string): string {
-  return (
-    plainText.replace(/@\w+/g, "").trim().split(/\s+/).slice(0, 5).join(" ") ||
-    "Untitled Quick"
-  )
+function generateName(markdown: string): string {
+  const cleaned = markdown.replace(/^#{1,6}\s+/gm, "").replace(/@\w+/g, "").trim()
+  return cleaned.split(/\s+/).slice(0, 5).join(" ") || "Untitled Quick"
+}
+
+function asDoc(nodes: JSONContent[]): JSONContent {
+  return { type: "doc", content: nodes }
 }
 
 export const useQuicksStore = create<QuicksStore>((set, get) => ({
-  sections: [],
+  body: "",
   output: null,
   name: "",
   savedDocId: null,
   hasContent: false,
+  loadKey: 0,
 
-  setSections: (sections) => set({ sections }),
+  setBody: (body) => set({ body, hasContent: true }),
 
-  updateSection: (id, doc) =>
+  loadFromPaste: (raw) =>
+    set((s) => ({ body: raw, output: null, hasContent: true, loadKey: s.loadKey + 1 })),
+
+  loadEntry: (entry) =>
     set((s) => ({
-      sections: s.sections.map((sec) => (sec.id === id ? { ...sec, doc } : sec)),
+      body: entry.body,
+      output: entry.output,
+      name: entry.name,
+      savedDocId: entry.id,
       hasContent: true,
+      loadKey: s.loadKey + 1,
     })),
-  updateSectionTitle: (id, title) =>
-    set((s) => ({
-      sections: s.sections.map((sec) => (sec.id === id ? { ...sec, title } : sec)),
-      hasContent: true,
-    })),
-
-  loadFromPaste: (raw) => set({ sections: parseMarkdownSections(raw), output: null, hasContent: true }),
 
   generate: () => {
-    const { sections, save } = get()
-    if (!sections.length) return
+    const { body, save } = get()
+    if (!body.trim()) return
 
-    const plain = sections
-      .map((s) => (s.title ? `${s.title}:\n${typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc)}` : typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc)))
-      .join("\n\n")
+    const sections = deriveSections(parseMarkdown(body))
 
     const json = JSON.stringify(
-      sections.map((s) => ({ title: s.title || null, content: typeof s.doc === "string" ? s.doc : docToCleanJson(s.doc) })),
+      sections.map((s) => ({
+        title: s.title || null,
+        content: docToCleanJson(asDoc(s.nodes)),
+      })),
       null,
       2
     )
 
     const xml = sections
-      .map((s) => (s.title ? `<${s.title}>\n${typeof s.doc === "string" ? s.doc : nodeToXml(s.doc, 1)}\n</${s.title}>` : typeof s.doc === "string" ? s.doc : nodeToXml(s.doc, 0)))
+      .map((s) => {
+        const inner = nodeToXml(asDoc(s.nodes), s.title ? 1 : 0)
+        return s.title ? `<${s.title}>\n${inner}\n</${s.title}>` : inner
+      })
       .join("\n")
 
-    set({ output: { plain, json, xml }, name: generateName(plain), hasContent: true })
+    set({ output: { markdown: body, json, xml }, name: generateName(body), hasContent: true })
     save()
   },
 
   save: async () => {
-    const { sections, savedDocId, name } = get()
+    const { body, savedDocId, name } = get()
     const { createDocument, updateDocument } = await import("@/lib/db/document")
-    const docName = name || sections[0]?.title || "Untitled Quick"
-    const sectionsData = sections.map((s, i) => ({
-      id: s.id,
-      title: s.title,
-      order: i,
-      value: typeof s.doc === "string" ? s.doc : nodeToPlain(s.doc),
-      doc: typeof s.doc === "string" ? s.doc : s.doc,
-    }))
+    const docName = name || generateName(body)
+    const sections = [{ id: "body", title: "", order: 0, value: body }]
 
     try {
       if (savedDocId) {
-        await updateDocument(savedDocId, { name: docName, sections: sectionsData })
+        await updateDocument(savedDocId, { name: docName, sections })
         return savedDocId
       }
-      const doc = await createDocument({ type: "quick", name: docName, sections: sectionsData, meta: {} })
+      const doc = await createDocument({ type: "quick", name: docName, sections, meta: {} })
       set({ savedDocId: doc.id, name: docName })
-      const { useTabViewStore } = await import("@/hooks/store/TabStore")
-      useTabViewStore.getState().addTab({ id: doc.id, label: docName, type: "prompt" })
-      // Signal sidebar to refresh
       window.dispatchEvent(new CustomEvent("quick-saved"))
       return doc.id
     } catch {
@@ -114,9 +111,8 @@ export const useQuicksStore = create<QuicksStore>((set, get) => ({
     }
   },
 
-  loadEntry: (entry) => set({ sections: entry.sections, output: entry.output, name: entry.name }),
-
-  reset: () => set({ sections: [], output: null, name: "", savedDocId: null }),
+  reset: () =>
+    set((s) => ({ body: "", output: null, name: "", savedDocId: null, loadKey: s.loadKey + 1 })),
 }))
 
 // ── Store-level debounced autosave ────────────────────────────────────────────
@@ -125,10 +121,10 @@ let quickPersistTimer: ReturnType<typeof setTimeout> | null = null
 
 useQuicksStore.subscribe((state) => {
   if (quickPersistTimer) clearTimeout(quickPersistTimer)
-  if (!state.hasContent || !state.sections.length) return
+  if (!state.hasContent || !state.body) return
   quickPersistTimer = setTimeout(() => {
     const s = useQuicksStore.getState()
-    if (s.hasContent && s.sections.length > 0) {
+    if (s.hasContent && s.body) {
       s.save()
     }
   }, 2000)

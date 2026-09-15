@@ -217,3 +217,44 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 * `npx tsc --noEmit` clean.
 * The 4 open known issues are untouched by this change.
 
+---
+
+## Session Log — 15/09
+
+### Decision: quicks drop the section model, markdown becomes canonical
+
+**Why**
+
+* Sections in quicks only ever bought reordering, and reordering per-section editors (each with its own title input and remount `key`) is more tedious than moving text. Nothing section-scoped was actually used on the quick side — no per-section comments, no template mapping, no `templateSectionId`.
+* The `##` paste-splitting silently fragmented pasted markdown into titled boxes that were never asked for — the same class of surprise as the earlier `.trim()` / char-count drift.
+* Sections stay for prompts/templates, where they are load-bearing: templates are blueprints, output wraps per section, `templateSectionId` links back, `ReadAndCompile` consumes them. There they become a *derived* view (parsed from `##` on demand) rather than an editing concept.
+
+**Pipeline**
+
+* A quick is now one markdown body. `plain` output became `markdown` (the body verbatim — what you paste into an LLM); `json`/`xml` are derived by splitting the parsed doc on level-2 headings (`deriveSections`), so the LLM-facing formats keep their structure.
+* Added `@tiptap/markdown@3.23.4` (version-matched to the installed Tiptap; peer-depends on `@tiptap/core@3.23.4`, backed by `marked`) as the real parser + writer: `contentType: 'markdown'` on create, `editor.getMarkdown()` on update. Verified headlessly that md → doc → md is byte-identical for headings, bold, lists, fenced code and blockquote.
+* `hooks/store/quickStore.ts` — `sections: QuickSection[]` → `body: string` + `loadKey` (remount trigger when a different quick is loaded). `QuickSection` and the `JSONContent | string` union are gone.
+* `components/ui/SmartTextEditor.tsx` — gained `contentType`, a third `onChange(plain, doc, markdown)` arg, and a `handlePaste` that parses pasted markdown into rich text in markdown mode. Prompt-side callers are unaffected (2-arg handlers ignore the third).
+* Quicks persistence is unchanged at the DB level: `documents.sections_json` holds a single body-only section (`id: "body"`, `title: ""`, `value: markdown`). No migration, no CHECK rebuild, `documents.type='quick'` intact — which is what keeps quick → prompt promotion cheap later.
+
+**Files**
+
+* New: `lib/editor/markdown.ts` (`parseMarkdown`, `toMarkdown`, `deriveSections`).
+* Deleted: `lib/editor/parseMarkdown.ts` (hand-rolled `mdToHtml` + regex `##` split — superseded; recoverable via git).
+* Modified: `hooks/store/quickStore.ts`, `components/Home/HomeView.tsx`, `components/ui/SmartTextEditor.tsx`, `components/Sidebar/QuicksSidebar.tsx`, `package.json`.
+
+**Fixed along the way**
+
+* Find/replace now works in quicks — it was a literal no-op before, because it only touched sections whose `doc` was still a raw string, and every keystroke had already flattened those to plain text.
+* Removed the silent 15 000-char truncation of editor content (contradicted the no-silent-data-loss principle). Worth watching whether the single-editor path needs a *visible* cap for very large pastes.
+* `quickStore.save()` no longer adds a tab — `HomeView.handleSave` already did, so an explicit save created two.
+
+**Open trade-off**
+
+* Markdown is now the storage format, so a real parser + writer normalizes on write (`*` → `-`, list renumbering, blank-line collapsing). Byte-for-byte fidelity of the pasted text is therefore only guaranteed until the first edit. Accepted as the cost of structural correctness.
+
+**Verification**
+
+* `tsc --noEmit` clean.
+* Headless round-trip check: parse → serialize is identity; section derivation returns the expected sections for a two-`##` document.
+

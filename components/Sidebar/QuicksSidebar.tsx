@@ -38,13 +38,8 @@ export function QuicksSidebarPanel() {
         <div className="relative group">
             <button
             onClick={() => {
-              useQuicksStore.setState({
-                sections: [{ id: crypto.randomUUID(), title: "", doc: "" }],
-                output: null,
-                name: "Untitled Quick",
-                savedDocId: null,
-                hasContent: true,
-              })
+              useQuicksStore.getState().reset()
+              useQuicksStore.setState({ name: "Untitled Quick", hasContent: true })
               useTabViewStore.getState().setActiveView("home")
             }}
             className="rounded p-0.5 transition-colors hover:bg-background"
@@ -112,15 +107,10 @@ function QuickRow({ doc, onRefresh }: { doc: Document; onRefresh: () => void }) 
     useQuicksStore.getState().loadEntry({
       id: full.id,
       name: full.name,
-      sections: full.sections.map((s) => ({
-        id: s.id,
-        title: s.title,
-        doc: s.doc ?? { type: "doc", content: [{ type: "paragraph" }] },
-      })),
+      body: full.sections?.[0]?.value ?? "",
       output: null,
       createdAt: Date.now(),
     })
-    useQuicksStore.setState({ savedDocId: full.id, hasContent: true })
     useTabViewStore.getState().setActiveView("home")
   }
 

@@ -4,10 +4,13 @@ import { Node, mergeAttributes } from "@tiptap/core"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
+import { Markdown } from "@tiptap/markdown"
+import { Fragment } from "@tiptap/pm/model"
 import { createPortal } from "react-dom"
 import type { JSONContent } from "@tiptap/react"
 import { cn } from "@/lib/utils"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
+import { parseMarkdown } from "@/lib/editor/markdown"
 import { getNamespaces, type Namespace } from "@/services/contextInjection"
 import "@/src/styles/TextEditor.css"
 
@@ -21,7 +24,8 @@ export interface SmartEditorProps {
     initialContent?: string | JSONContent
     placeholder?: string
     outputFormat?: OutputFormat
-    onChange?: (plain: string, structured: JSONContent) => void
+    contentType?: "markdown" | "html" | "json"
+    onChange?: (plain: string, structured: JSONContent, markdown: string) => void
     onResolvedContext?: (key: string, value: string) => void
     onEditorReady?: (editor: any) => void
     className?: string
@@ -241,6 +245,7 @@ function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChang
 export function SmartEditor({
     initialContent,
     placeholder = "Write here… use - for bullets, Tab to nest, @ to reference",
+    contentType,
     onChange,
     onResolvedContext,
     onEditorReady,
@@ -252,6 +257,7 @@ export function SmartEditor({
     const [mentionState, setMentionState] = useState<MentionStateType & { ragQuery: string }>(
         { ...RESET_MENTION, ragQuery: "" }
     )
+    const markdownMode = contentType === "markdown" && typeof initialContent === "string"
 
     useEffect(() => {
         getNamespaces().then((ns) => { namespacesRef.current = ns })
@@ -329,19 +335,47 @@ export function SmartEditor({
                     }),
                 },
             }),
+            Markdown,
         ],
-        content: typeof initialContent === "string" && initialContent.length > 15000
-          ? initialContent.slice(0, 15000)
-          : initialContent || "",
+        content: initialContent || "",
+        contentType: markdownMode ? "markdown" : undefined,
         editorProps: {
             attributes: {
                 class: "smart-editor-content focus:outline-none",
                 style: `min-height: ${minHeight}px`,
             },
+            handlePaste: (view, event) => {
+                if (contentType !== "markdown") return false
+                const text = event.clipboardData?.getData("text/plain")
+                if (!text) return false
+                const nodes = parseMarkdown(text).content
+                if (!nodes?.length) return false
+
+                const { state } = view
+                let fragment: Fragment
+                try {
+                    fragment = Fragment.fromArray(nodes.map((node) => state.schema.nodeFromJSON(node)))
+                } catch {
+                    return false
+                }
+
+                event.preventDefault()
+                const { from, to } = state.selection
+                const { parent } = state.doc.resolve(from)
+                const isEmptyTextBlock = parent.isTextblock && !parent.type.spec.code && !parent.childCount
+                view.dispatch(
+                    state.tr.replaceWith(
+                        isEmptyTextBlock ? Math.max(0, from - 1) : from,
+                        isEmptyTextBlock ? to + 1 : to,
+                        fragment
+                    )
+                )
+                return true
+            },
         },
         onUpdate({ editor }) {
             const doc = editor.getJSON()
-            onChange?.(nodeToPlain(doc), doc)
+            onChange?.(nodeToPlain(doc), doc, editor.getMarkdown())
         },
     })
 
