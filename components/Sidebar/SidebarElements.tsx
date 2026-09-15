@@ -27,6 +27,10 @@ interface CollectionItemProps {
   onInlineConfirm: (name: string) => void
   onInlineCancel: () => void
   onRefreshTree?: () => Promise<void>
+  // Drag a document in or out of a folder. null = move to the top level.
+  onMoveDocument: (docId: string, collectionId: string | null) => void
+  dropTarget: string | null
+  setDropTarget: (id: string | null) => void
 }
 
 
@@ -80,14 +84,33 @@ export function CollectionItem({
   onInlineConfirm,
   onInlineCancel,
   onRefreshTree,
+  onMoveDocument,
+  dropTarget,
+  setDropTarget,
 }: CollectionItemProps) {
   const isExpanded = expandedCollections.has(node.id)
   const isSelected = selectedId === node.id
+  const isDropTarget = dropTarget === node.id
 
   return (
     <div>
       {/* Collection row */}
       <div
+        onDragOver={(e) => {
+          e.preventDefault()
+          // keep the event off the root drop zone so it doesn't claim the highlight
+          e.stopPropagation()
+          e.dataTransfer.dropEffect = "move"
+          if (dropTarget !== node.id) setDropTarget(node.id)
+        }}
+        onDragLeave={() => setDropTarget(dropTarget === node.id ? null : dropTarget)}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setDropTarget(null)
+          const docId = e.dataTransfer.getData("text/plain")
+          if (docId) onMoveDocument(docId, node.id)
+        }}
         onClick={() => {
           onSelect(node.id)
           onToggleExpand(node.id)
@@ -99,8 +122,9 @@ export function CollectionItem({
           paddingBottom: 3,
           paddingRight: 6,
           fontSize: 12,
-          color: isSelected ? "var(--color-text, #eee)" : "var(--color-muted, #777)",
-          background: isSelected ? "var(--color-selection, #1e1e1e)" : "transparent",
+          color: isSelected || isDropTarget ? "var(--color-text, #eee)" : "var(--color-muted, #777)",
+          background: isSelected || isDropTarget ? "var(--color-selection, #1e1e1e)" : "transparent",
+          outline: isDropTarget ? "1px solid var(--color-accent, #c8f135)" : undefined,
           borderRadius: 4,
           transition: "background 0.1s",
         }}
@@ -157,6 +181,9 @@ export function CollectionItem({
                 onInlineConfirm={onInlineConfirm}
                 onInlineCancel={onInlineCancel}
                 onRefreshTree={onRefreshTree}
+                onMoveDocument={onMoveDocument}
+                dropTarget={dropTarget}
+                setDropTarget={setDropTarget}
               />
             ))}
 

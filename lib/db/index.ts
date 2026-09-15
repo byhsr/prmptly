@@ -236,6 +236,12 @@ CREATE INDEX IF NOT EXISTS idx_template_sections_template_id
   ON template_sections(template_id);
 `
   },
+  // migration 6: quicks get their own folders. `collections` has always been prompt-only in
+  // practice, so tag each row with the tree it belongs to — existing rows are prompt folders.
+  {
+    id: 6,
+    sql: `ALTER TABLE collections ADD COLUMN type TEXT NOT NULL DEFAULT 'prompt';`
+  },
 ];
 
 async function runMigrations(db: Database) {

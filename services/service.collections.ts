@@ -1,5 +1,9 @@
 import { getDB } from "../lib/db"
 
+// Which tree a folder belongs to. `collections` is shared by prompts and quicks, so every
+// read has to say which one it wants — otherwise the two folder sets mix.
+export type CollectionKind = "prompt" | "quick"
+
 export type CollectionRow = {
   id: string
   name: string
@@ -26,7 +30,8 @@ export type CollectionTree = {
 
 export async function createCollection(
   name: string,
-  parent_id: string | null = null
+  parent_id: string | null = null,
+  kind: CollectionKind = "prompt"
 ): Promise<{ id: string }> {
   const db = await getDB()
 
@@ -36,8 +41,8 @@ export async function createCollection(
   const now = new Date().toISOString()
 
   await db.execute(
-    `INSERT INTO collections (id, name, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-    [id, name, parent_id, now, now]
+    `INSERT INTO collections (id, name, parent_id, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, name, parent_id, kind, now, now]
   )
 
   return { id }
@@ -60,15 +65,17 @@ export async function deleteCollection(id: string): Promise<void> {
   // CASCADE handles nested children, SET NULL floats documents to root
 }
 
-export async function getCollectionsTree(): Promise<CollectionTree> {
+export async function getCollectionsTree(kind: CollectionKind = "prompt"): Promise<CollectionTree> {
   const db = await getDB()
 
   const collections = await db.select<CollectionRow[]>(
-    `SELECT id, name, parent_id FROM collections ORDER BY name ASC`
+    `SELECT id, name, parent_id FROM collections WHERE type = ? ORDER BY name ASC`,
+    [kind]
   )
 
   const documents = await db.select<DocumentRow[]>(
-    `SELECT id, name, collection_id FROM documents WHERE type = 'prompt' ORDER BY name ASC`
+    `SELECT id, name, collection_id FROM documents WHERE type = ? ORDER BY name ASC`,
+    [kind]
   )
 
   const collectionMap = new Map<string | null, CollectionRow[]>()

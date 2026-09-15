@@ -62,6 +62,11 @@ export function PromptFile({ prompt, depth = 0, isActive, isSelected, onSelect, 
 
   return (
     <div
+      draggable={!editing}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", prompt.id)
+        e.dataTransfer.effectAllowed = "move"
+      }}
       onContextMenu={(e) => {
         e.preventDefault()
         onSelect()
