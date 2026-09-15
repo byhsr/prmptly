@@ -65,6 +65,54 @@ export async function deleteCollection(id: string): Promise<void> {
   // CASCADE handles nested children, SET NULL floats documents to root
 }
 
+// Every folder id in the subtree rooted at `id`, including `id` itself.
+export async function getCollectionSubtreeIds(id: string): Promise<string[]> {
+  const db = await getDB()
+
+  const rows = await db.select<{ id: string; parent_id: string | null }[]>(
+    `SELECT id, parent_id FROM collections`
+  )
+
+  const ids = new Set<string>([id])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const row of rows) {
+      if (row.parent_id && ids.has(row.parent_id) && !ids.has(row.id)) {
+        ids.add(row.id)
+        grew = true
+      }
+    }
+  }
+
+  return [...ids]
+}
+
+// Deletes a folder, every subfolder, and every document inside them. Returns the deleted
+// document ids so the caller can clean up files on disk and any open tabs.
+export async function deleteCollectionDeep(
+  id: string,
+  kind: CollectionKind = "prompt"
+): Promise<string[]> {
+  const db = await getDB()
+
+  const folderIds = await getCollectionSubtreeIds(id)
+  const placeholders = folderIds.map(() => "?").join(",")
+
+  const docs = await db.select<{ id: string }[]>(
+    `SELECT id FROM documents WHERE type = ? AND collection_id IN (${placeholders})`,
+    [kind, ...folderIds]
+  )
+
+  await db.execute(
+    `DELETE FROM documents WHERE type = ? AND collection_id IN (${placeholders})`,
+    [kind, ...folderIds]
+  )
+  await db.execute(`DELETE FROM collections WHERE id = ?`, [id])
+
+  return docs.map((d) => d.id)
+}
+
 export async function getCollectionsTree(kind: CollectionKind = "prompt"): Promise<CollectionTree> {
   const db = await getDB()
 

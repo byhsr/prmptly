@@ -1,17 +1,17 @@
-import { useEffect, useRef } from "react"
-import { ChevronRight, Folder, FolderOpen } from "lucide-react"
+import { useState } from "react"
+import { Check, ChevronRight, Folder, FolderOpen, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Tab } from "../core-components/Tabbar"
 import { PendingCreate } from "./PromptSidebar"
-import { CollectionNode} from "@/services/service.collections"
+import {
+  CollectionNode,
+  deleteCollectionDeep,
+  renameCollection,
+} from "@/services/service.collections"
 import { PromptFile } from "../Prompt/PromptElements"
-
-interface InlineInputProps {
-  depth?: number
-  onConfirm: (name: string) => void
-  onCancel: () => void
-}
-
+import { ContextMenu } from "../ui/ContextMenu"
+import { InlineInput } from "../ui/InlineInput"
+import { useTabViewStore } from "@/hooks/store/TabStore"
 
 interface CollectionItemProps {
   node: CollectionNode
@@ -31,43 +31,8 @@ interface CollectionItemProps {
   onMoveDocument: (docId: string, collectionId: string | null) => void
   dropTarget: string | null
   setDropTarget: (id: string | null) => void
-}
-
-
-export function InlineInput({ depth = 0, onConfirm, onCancel }: InlineInputProps) {
-  const ref = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    ref.current?.focus()
-  }, [])
-
-  return (
-    <div style={{ paddingLeft: 8 + depth * 12 }}>
-      <input
-        ref={ref}
-        placeholder="Name..."
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.repeat) {
-            const val = ref.current?.value.trim()
-            if (val) onConfirm(val)
-            else onCancel()
-          }
-          if (e.key === "Escape") onCancel()
-        }}
-        style={{
-          background: "transparent",
-          border: "none",
-          outline: "1px solid var(--color-accent, #444)",
-          borderRadius: 4,
-          color: "var(--color-text, #eee)",
-          fontSize: 12,
-          fontFamily: "inherit",
-          padding: "1px 4px",
-          width: "100%",
-        }}
-      />
-    </div>
-  )
+  // Start an inline create inside this folder from its context menu
+  onStartCreateIn: (parentId: string, type: "prompt" | "collection") => void
 }
 
 
@@ -87,10 +52,40 @@ export function CollectionItem({
   onMoveDocument,
   dropTarget,
   setDropTarget,
+  onStartCreateIn,
 }: CollectionItemProps) {
   const isExpanded = expandedCollections.has(node.id)
   const isSelected = selectedId === node.id
   const isDropTarget = dropTarget === node.id
+
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(node.name)
+
+  const commitRename = async () => {
+    const name = editName.trim()
+    setEditing(false)
+    if (!name || name === node.name) return
+    await renameCollection(node.id, name)
+    await onRefreshTree?.()
+  }
+
+  // Matches the quicks sidebar: a folder takes everything nested under it with it.
+  const handleDelete = async () => {
+    setMenu(null)
+    if (!window.confirm(`Delete folder "${node.name}" and everything in it?\n\nSubfolders and the prompts inside are deleted. This cannot be undone.`)) return
+
+    const deleted = await deleteCollectionDeep(node.id, "prompt")
+    for (const docId of deleted) {
+      useTabViewStore.getState().closeTab(docId)
+      try {
+        const { getDocumentDir } = await import("@/lib/fs/fsHelpers")
+        const { deleteFolder } = await import("@/lib/fs/fs")
+        await deleteFolder(await getDocumentDir(docId))
+      } catch {}
+    }
+    await onRefreshTree?.()
+  }
 
   return (
     <div>
@@ -111,6 +106,11 @@ export function CollectionItem({
           const docId = e.dataTransfer.getData("text/plain")
           if (docId) onMoveDocument(docId, node.id)
         }}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setMenu({ x: e.clientX, y: e.clientY })
+        }}
         onClick={() => {
           onSelect(node.id)
           onToggleExpand(node.id)
@@ -124,7 +124,6 @@ export function CollectionItem({
           fontSize: 12,
           color: isSelected || isDropTarget ? "var(--color-text, #eee)" : "var(--color-muted, #777)",
           background: isSelected || isDropTarget ? "var(--color-selection, #1e1e1e)" : "transparent",
-          outline: isDropTarget ? "1px solid var(--color-accent, #c8f135)" : undefined,
           borderRadius: 4,
           transition: "background 0.1s",
         }}
@@ -143,17 +142,42 @@ export function CollectionItem({
         ) : (
           <Folder size={11} style={{ flexShrink: 0, opacity: 0.7 }} />
         )}
-        <span
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontWeight: 500,
-          }}
-        >
-          {node.name}
-        </span>
+        {editing ? (
+          <div className="flex items-center gap-1 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+            <input
+              autoFocus
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename()
+                if (e.key === "Escape") setEditing(false)
+              }}
+              onBlur={() => setEditing(false)}
+              className="flex-1 min-w-0 bg-background border border-border rounded px-1 py-0.5 text-[11px] font-mono outline-none"
+            />
+            <button onClick={commitRename} className="text-accent shrink-0"><Check size={10} /></button>
+            <button onClick={() => setEditing(false)} className="text-muted shrink-0"><X size={10} /></button>
+          </div>
+        ) : (
+          <span className="flex-1 min-w-0 truncate" style={{ fontWeight: 500 }}>
+            {node.name}
+          </span>
+        )}
       </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "New folder inside", onClick: () => onStartCreateIn(node.id, "collection") },
+            { label: "New prompt inside", onClick: () => onStartCreateIn(node.id, "prompt") },
+            { label: "Rename", onClick: () => { setEditName(node.name); setEditing(true); setMenu(null) } },
+            { label: "Delete", onClick: handleDelete, danger: true },
+          ]}
+        />
+      )}
 
       {/* Children (only when expanded) */}
       <AnimatePresence initial={false}>
@@ -184,6 +208,7 @@ export function CollectionItem({
                 onMoveDocument={onMoveDocument}
                 dropTarget={dropTarget}
                 setDropTarget={setDropTarget}
+                onStartCreateIn={onStartCreateIn}
               />
             ))}
 

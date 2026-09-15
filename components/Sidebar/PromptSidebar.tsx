@@ -3,11 +3,14 @@ import { CollectionTree } from "@/services/service.collections"
 import { updateDocument } from "@/lib/db/document"
 import { Tab } from "../core-components/Tabbar"
 import {
-  FolderPlus,
+  File,
   FilePlus,
+  Folder,
+  FolderPlus,
 } from "lucide-react"
 import { PromptFile } from "../Prompt/PromptElements";
-import { CollectionItem, InlineInput } from "./SidebarElements";
+import { CollectionItem } from "./SidebarElements";
+import { InlineInput } from "../ui/InlineInput";
 
 export type PendingCreate =
   | { type: "prompt"; parentCollectionId: string | null }
@@ -23,6 +26,7 @@ type PromptSidebarPanelProps = {
   onOpenTab: (tab: Tab) => void
   pendingCreate: PendingCreate | null
   onStartCreate: (type: "prompt" | "collection") => void
+  onStartCreateIn: (parentId: string, type: "prompt" | "collection") => void
   onConfirmCreate: (name: string) => void
   onCancelCreate: () => void
   onRefreshTree?: () => Promise<void>
@@ -38,6 +42,7 @@ export const PromptSidebarPanel = ({
   onOpenTab,
   pendingCreate,
   onStartCreate,
+  onStartCreateIn,
   onConfirmCreate,
   onCancelCreate,
   onRefreshTree,
@@ -76,7 +81,7 @@ export const PromptSidebarPanel = ({
       </div>
       {/* Body — also the drop zone for dragging a document out of a folder */}
       <div
-        className={`flex-1 overflow-y-auto p-2 flex flex-col gap-0.5 ${dropTarget === "root" ? "bg-accent/5" : ""}`}
+        className={`flex-1 overflow-y-auto overflow-x-hidden p-2 flex flex-col gap-0.5 ${dropTarget === "root" ? "bg-foreground/5" : ""}`}
         onDragOver={(e) => {
           e.preventDefault()
           if (dropTarget !== "root") setDropTarget("root")
@@ -111,7 +116,15 @@ export const PromptSidebarPanel = ({
             ))}
 
             {pendingCreate?.parentCollectionId === null && (
-              <InlineInput depth={0} onConfirm={onConfirmCreate} onCancel={onCancelCreate} />
+              <InlineInput
+                depth={0}
+                placeholder={pendingCreate.type === "collection" ? "folder name" : "prompt name"}
+                icon={pendingCreate.type === "collection"
+                  ? <Folder size={11} className="shrink-0 opacity-40" />
+                  : <File size={11} className="shrink-0 opacity-40" />}
+                onConfirm={onConfirmCreate}
+                onCancel={onCancelCreate}
+              />
             )}
 
             {collectionsTree.tree.map((node) => (
@@ -132,6 +145,7 @@ export const PromptSidebarPanel = ({
                 onMoveDocument={moveDocument}
                 dropTarget={dropTarget}
                 setDropTarget={setDropTarget}
+                onStartCreateIn={onStartCreateIn}
               />
             ))}
           </>

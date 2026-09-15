@@ -3,7 +3,8 @@
     "allow": [
       "Shell(npx tsc --noEmit 2 >& 1)",
       "Shell(npx tsc --noEmit)",
-      "Shell(npx vite build 2 >& 1)"
+      "Shell(npx vite build 2 >& 1)",
+      "powershell"
     ],
     "deny": [],
     "defaultMode": "default"

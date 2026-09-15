@@ -126,6 +126,12 @@ export function Sidebar({
     setPendingCreate({ type, parentCollectionId })
   }
 
+  // Create inside a specific folder (from its context menu), rather than the selected one
+  function startCreateIn(parentCollectionId: string, type: "prompt" | "collection") {
+    setExpandedCollections(new Set([...expandedCollections, parentCollectionId]))
+    setPendingCreate({ type, parentCollectionId })
+  }
+
   let creatingRef = { current: false }
 
   async function confirmCreate(name: string) {
@@ -201,7 +207,7 @@ export function Sidebar({
       {panelOpen && (
         <div
           key={activeView}
-          className="flex flex-col w-full h-full min-h-0 overflow-y-auto"
+          className="flex flex-col w-full h-full min-h-0 overflow-y-auto overflow-x-hidden"
           style={{ background: "var(--color-surface, #0d0d0d)" }}
         >
           <div className="flex flex-col h-full w-full">
@@ -219,6 +225,7 @@ export function Sidebar({
                 onOpenTab={onOpenTab}
                 pendingCreate={pendingCreate}
                 onStartCreate={startCreate}
+                onStartCreateIn={startCreateIn}
                 onConfirmCreate={confirmCreate}
                 onCancelCreate={cancelCreate}
                 onRefreshTree={onRefreshTree}

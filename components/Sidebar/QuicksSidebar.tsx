@@ -8,11 +8,13 @@ import { documentNameOverrides } from "@/lib/state"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import {
   createCollection,
-  deleteCollection,
+  deleteCollectionDeep,
   getCollectionsTree,
+  getCollectionSubtreeIds,
   renameCollection,
   type CollectionNode,
 } from "@/services/service.collections"
+import { InlineInput } from "../ui/InlineInput"
 
 function excerpt(doc: Document): string {
   if (doc.name && doc.name !== "Untitled Quick") return doc.name
@@ -35,7 +37,6 @@ export function QuicksSidebarPanel() {
   const [renameValue, setRenameValue] = useState("")
   // undefined = not creating, null = creating at the root
   const [creatingIn, setCreatingIn] = useState<string | null | undefined>(undefined)
-  const [newFolderName, setNewFolderName] = useState("")
   const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   const refresh = async () => {
@@ -115,17 +116,29 @@ export function QuicksSidebarPanel() {
   }
 
   const handleDeleteFolder = async (id: string, name: string) => {
-    if (!window.confirm(`Delete folder "${name}"? Quicks inside move back to the top level.`)) return
+    // A folder takes everything nested under it with it — subfolders and quicks alike.
+    const ids = new Set(await getCollectionSubtreeIds(id))
+    const inside = docs.filter((d) => d.collectionId && ids.has(d.collectionId))
+
+    const what = inside.length === 0
+      ? "It is empty."
+      : inside.length === 1
+        ? "This deletes the 1 quick inside it."
+        : `This deletes the ${inside.length} quicks inside it.`
+
+    const extra = ids.size > 1 ? " Subfolders are deleted too." : ""
+    if (!window.confirm(`Delete folder "${name}" and everything in it?\n\n${what}${extra} This cannot be undone.`)) return
+
     setMenu(null)
-    await deleteCollection(id)
+    const deleted = await deleteCollectionDeep(id, "quick")
+    for (const docId of deleted) {
+      useTabViewStore.getState().closeTab(docId)
+    }
     await refresh()
   }
 
-  const confirmCreateFolder = async (parentId: string | null) => {
-    const name = newFolderName.trim()
+  const confirmCreateFolder = async (parentId: string | null, name: string) => {
     setCreatingIn(undefined)
-    setNewFolderName("")
-    if (!name) return
     const { id } = await createCollection(name, parentId, "quick")
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -137,21 +150,13 @@ export function QuicksSidebarPanel() {
   }
 
   const newFolderInput = (depth: number) => (
-    <div className="flex items-center gap-1 px-2 py-1" style={{ paddingLeft: 8 + depth * 12 }}>
-      <Folder size={11} className="shrink-0 opacity-40" />
-      <input
-        autoFocus
-        value={newFolderName}
-        onChange={(e) => setNewFolderName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") confirmCreateFolder(creatingIn ?? null)
-          if (e.key === "Escape") { setCreatingIn(undefined); setNewFolderName("") }
-        }}
-        onBlur={() => { setCreatingIn(undefined); setNewFolderName("") }}
-        placeholder="Folder name"
-        className="flex-1 bg-background border border-border rounded px-1 py-0.5 text-xs outline-none"
-      />
-    </div>
+    <InlineInput
+      depth={depth}
+      placeholder="folder name"
+      icon={<Folder size={11} className="shrink-0 opacity-40" />}
+      onConfirm={(name) => confirmCreateFolder(creatingIn ?? null, name)}
+      onCancel={() => setCreatingIn(undefined)}
+    />
   )
 
   const renderQuick = (doc: Document, depth: number) => {
@@ -192,7 +197,7 @@ export function QuicksSidebarPanel() {
             <button onClick={() => setRenamingId(null)} className="text-muted shrink-0"><X size={10} /></button>
           </div>
         ) : (
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+          <span className="flex-1 min-w-0 truncate">{displayName}</span>
         )}
       </div>
     )
@@ -227,7 +232,7 @@ export function QuicksSidebarPanel() {
           }}
           onClick={() => { if (!isRenaming) toggle(node.id) }}
           className={`flex items-center gap-1.5 rounded cursor-pointer select-none px-2 py-1 text-xs transition-colors ${
-            isDropTarget ? "bg-accent/20 text-foreground" : "text-muted hover:text-foreground hover:bg-background"
+            isDropTarget ? "bg-foreground/10 text-foreground" : "text-muted hover:text-foreground hover:bg-background"
           }`}
           style={{ fontSize: 12, paddingLeft: 8 + depth * 12 }}
         >
@@ -250,7 +255,7 @@ export function QuicksSidebarPanel() {
               <button onClick={() => setRenamingId(null)} className="text-muted shrink-0"><X size={10} /></button>
             </div>
           ) : (
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
+            <span className="flex-1 min-w-0 truncate">{node.name}</span>
           )}
         </div>
         {isOpen && (
@@ -291,7 +296,7 @@ export function QuicksSidebarPanel() {
       <div className="flex items-center justify-end gap-1 px-3 py-1.5 shrink-0">
         <div className="relative group">
           <button
-            onClick={() => { setCreatingIn(null); setNewFolderName("") }}
+            onClick={() => setCreatingIn(null)}
             className="rounded p-0.5 transition-colors hover:bg-background"
             style={{ color: "var(--color-muted, #666)" }}
             aria-label="New folder"
@@ -318,7 +323,7 @@ export function QuicksSidebarPanel() {
       </div>
 
       <div
-        className={`flex-1 overflow-y-auto p-2 flex flex-col gap-0.5 ${dropTarget === "root" ? "bg-accent/5" : ""}`}
+        className={`flex-1 overflow-y-auto overflow-x-hidden p-2 flex flex-col gap-0.5 ${dropTarget === "root" ? "bg-foreground/5" : ""}`}
         onDragOver={(e) => {
           e.preventDefault()
           if (dropTarget !== "root") setDropTarget("root")

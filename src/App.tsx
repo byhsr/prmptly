@@ -34,6 +34,7 @@ export default App;
 
 export const AppFlow = () => {
   const [dbReady, setDbReady] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState("");
   const { isSettingsOpen, setIsSettingsOpen } = useTabViewStore();
   const settings = useSettingsStore((s) => s.settings);
@@ -62,7 +63,30 @@ export const AppFlow = () => {
     try {
       const config = await readConfig();
       if (!config?.workspaceRoot || !config?.activeWorkspace) { setDbReady(true); return; }
-      const wp = await join(config.workspaceRoot, config.activeWorkspace);
+
+      // `activeWorkspace` holds a vault id, so resolve the path from the vault list. Older
+      // configs only stored a folder name there — fall back to that and heal the config so
+      // the switcher can list it.
+      const vaults = config.workspaces ?? [];
+      const known =
+        vaults.find((v) => v.id === config.activeWorkspace) ??
+        vaults.find((v) => v.name === config.activeWorkspace);
+      const wp = known?.path ?? (await join(config.workspaceRoot, config.activeWorkspace));
+
+      if (!known) {
+        await writeConfig({
+          workspaces: [
+            ...vaults,
+            {
+              id: config.activeWorkspace,
+              name: config.activeWorkspace,
+              path: wp,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+
       initWorkspace(wp);
       await setupWorkspace(wp);
       await initDB(wp);
@@ -72,18 +96,58 @@ export const AppFlow = () => {
       document.documentElement.classList.toggle("dark", config?.theme !== "light");
       if (config?.theme && config.theme !== "dark" && config.theme !== "light")
         document.documentElement.dataset.theme = config.theme;
-    } catch (err) { console.error("Bootstrap failed:", err); }
+    } catch (err) {
+      // Never leave the app on the loading screen with no explanation — surface it.
+      console.error("Bootstrap failed:", err);
+      setBootError(err instanceof Error ? err.message : String(err));
+      setDbReady(true);
+    }
   }
 
   async function onDone(workspaceRoot: string, workspaceName = "default") {
     const wp = await join(workspaceRoot, workspaceName);
-    await writeConfig({ onboarded: true, workspaceRoot, activeWorkspace: workspaceName });
+    // Register the first vault properly so the topbar switcher can list it
+    const vault = {
+      id: crypto.randomUUID(),
+      name: workspaceName,
+      path: wp,
+      createdAt: new Date().toISOString(),
+    };
+    await writeConfig({
+      onboarded: true,
+      workspaceRoot,
+      activeWorkspace: vault.id,
+      workspaces: [vault],
+    });
     initWorkspace(wp); await setupWorkspace(wp); await initDB(wp);
     setWorkspacePath(wp); setDbReady(true);
     await useSettingsStore.getState().init();
   }
 
-  if (!dbReady) return <div>Loading...</div>;
+  if (!dbReady) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-accent" />
+        <span className="font-mono text-[11px] text-muted">opening vault…</span>
+      </div>
+    );
+  }
+
+  if (bootError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-sm text-foreground">Couldn't open this vault.</p>
+        <p className="max-w-md font-mono text-[11px] text-muted">{bootError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="focus-ring rounded-xl border border-border bg-surface px-3 py-1.5 font-mono text-[11px] text-muted transition-colors hover:bg-background hover:text-foreground"
+        >
+          try again
+        </button>
+      </div>
+    );
+  }
+
   if (!workspacePath) return <Onboarding onDone={onDone} />;
 
   return (

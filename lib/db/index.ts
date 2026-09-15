@@ -7,7 +7,25 @@ let currentWorkspacePath: string | null = null;
 
 // ── Migrations ────────────────────────────────────────────────────────────────
 // Add new migrations to the END of this array only. Never edit existing ones.
-const MIGRATIONS: { id: number; sql: string }[] = [
+// A migration is either a SQL string or a function, for the cases SQLite can't express
+// (it has no IF NOT EXISTS for ALTER TABLE).
+type Migration =
+  | { id: number; sql: string }
+  | { id: number; run: (db: Database) => Promise<void> };
+
+// SQLite has no ALTER TABLE ... ADD COLUMN IF NOT EXISTS, and a read query can't be used to
+// check first (it drops the migration transaction on this plugin). So the ALTER is attempted
+// and only a duplicate-column error is swallowed. That also repairs databases where the DDL
+// applied but the migration row never committed, leaving the column present but unrecorded.
+async function addColumnIfMissing(db: Database, table: string, column: string, definition: string) {
+  try {
+    await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (e) {
+    if (!String(e).includes("duplicate column name")) throw e;
+  }
+}
+
+const MIGRATIONS: Migration[] = [
   {
     id: 1,
     sql: `-- ── App Settings ───────────────────────────────────
@@ -110,9 +128,10 @@ CREATE INDEX IF NOT EXISTS idx_document_assets_asset_id
 
 -- ── Library Namespaces ─────────────────────────────
 
+-- source is added by migration 2. Do NOT add it here: on a fresh database migration 1
+-- would create it and migration 2's ALTER would then fail with "duplicate column name".
 CREATE TABLE IF NOT EXISTS namespaces (
   prefix TEXT PRIMARY KEY,
-  source TEXT NOT NULL DEFAULT 'deterministic',
   meta_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
@@ -153,10 +172,13 @@ CREATE TABLE IF NOT EXISTS deterministic_assets (
 CREATE INDEX IF NOT EXISTS idx_deterministic_assets_namespace
   ON deterministic_assets(namespace);`
   },
-  // migration 2: add source column to namespaces for existing databases
+  // migration 2: add source column to namespaces for existing databases.
+  // Databases created while migration 1 briefly included the column already have it, so the
+  // duplicate-column error is expected and swallowed. The check must not be a PRAGMA query:
+  // a read query inside the migration transaction drops that transaction on this plugin.
   {
     id: 2,
-    sql: `ALTER TABLE namespaces ADD COLUMN source TEXT NOT NULL DEFAULT 'deterministic';`
+    run: (db) => addColumnIfMissing(db, "namespaces", "source", "TEXT NOT NULL DEFAULT 'deterministic'")
   },
   // migration 3: conversations for AI assistant
   {
@@ -240,7 +262,7 @@ CREATE INDEX IF NOT EXISTS idx_template_sections_template_id
   // practice, so tag each row with the tree it belongs to — existing rows are prompt folders.
   {
     id: 6,
-    sql: `ALTER TABLE collections ADD COLUMN type TEXT NOT NULL DEFAULT 'prompt';`
+    run: (db) => addColumnIfMissing(db, "collections", "type", "TEXT NOT NULL DEFAULT 'prompt'")
   },
 ];
 
@@ -261,7 +283,8 @@ async function runMigrations(db: Database) {
     await db.execute("BEGIN");
 
     try {
-      await db.execute(migration.sql);
+      if ("run" in migration) await migration.run(db);
+      else await db.execute(migration.sql);
 
       await db.execute(
         "INSERT INTO migrations (id, applied_at) VALUES (?, ?)",

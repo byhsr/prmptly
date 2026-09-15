@@ -1,10 +1,13 @@
 
 import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
 import { Copy, Check } from "lucide-react"
 import { codeToHtml } from "shiki"
 import { usePromptStore, OutputFormat } from "@/hooks/store/PromptStore"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 
 export function PromptPanel() {
+  const reduced = usePrefersReducedMotion()
   const [copied, setCopied] = useState(false)
   const [highlighted, setHighlighted] = useState("")
   const { compiledOutput, outputFormat, setOutputFormat } = usePromptStore()
@@ -62,24 +65,27 @@ export function PromptPanel() {
           </pre>
         )}
 
-        {/* Copy Button */}
-        <button
+        {/* Copy Button — same treatment as the quicks save bar */}
+        <motion.button
           onClick={handleCopy}
           disabled={!compiledOutput}
-          className="absolute bottom-18 right-8 flex items-center gap-2 rounded-lg bg-surface border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          whileHover={reduced ? undefined : { scale: 1.05 }}
+          whileTap={reduced ? undefined : { scale: 0.88 }}
+          transition={{ type: "spring", stiffness: 500, damping: 20 }}
+          className="focus-ring absolute bottom-18 right-8 inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-mono text-[11px] text-muted shadow-lg transition-colors hover:text-foreground hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {copied ? (
             <>
-              <Check className="h-3.5 w-3.5 text-accent" />
-              Copied
+              <Check size={11} className="text-accent" aria-hidden="true" />
+              copied
             </>
           ) : (
             <>
-              <Copy className="h-3.5 w-3.5" />
-              Copy
+              <Copy size={11} aria-hidden="true" />
+              copy
             </>
           )}
-        </button>
+        </motion.button>
       </div>
     </div>
   )

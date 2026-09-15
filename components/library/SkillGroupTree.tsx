@@ -5,6 +5,7 @@ import { useNotifications } from "@/hooks/store/SidebarStore"
 import { Skill, SkillGroupNode } from "@/lib/types/skill"
 import { cn } from "@/lib/utils"
 import { ContextMenu } from "../ui/ContextMenu"
+import { InlineInput } from "../ui/InlineInput"
 
 function countSkills(node: SkillGroupNode): number {
   return (
@@ -28,7 +29,6 @@ export const SkillGroupTree = () => {
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [creatingParent, setCreatingParent] = useState<string | null | undefined>(undefined)
-  const [newName, setNewName] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
   const [menu, setMenu] = useState<{ x: number; y: number; groupId: string } | null>(null)
@@ -58,15 +58,11 @@ export const SkillGroupTree = () => {
   const startCreate = (parentId: string | null) => {
     setEditingId(null)
     setCreatingParent(parentId)
-    setNewName("")
   }
 
-  const commitCreate = async () => {
-    const name = newName.trim()
+  const commitCreate = async (name: string) => {
     const parentId = creatingParent ?? null
-    setNewName("")
     setCreatingParent(undefined)
-    if (!name) return
     try {
       await createGroup(name, parentId)
       if (parentId) setExpanded((prev) => new Set(prev).add(parentId))
@@ -99,20 +95,13 @@ export const SkillGroupTree = () => {
   }
 
   const createInput = (depth: number) => (
-    <div className="flex items-center gap-1 px-2 py-1" style={{ paddingLeft: 8 + depth * 12 }}>
-      <input
-        autoFocus
-        value={newName}
-        onChange={(e) => setNewName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commitCreate()
-          if (e.key === "Escape") { setCreatingParent(undefined); setNewName("") }
-        }}
-        onBlur={commitCreate}
-        placeholder="group name"
-        className="flex-1 min-w-0 bg-background border border-border rounded px-1 py-0.5 text-[11px] font-mono outline-none"
-      />
-    </div>
+    <InlineInput
+      depth={depth}
+      placeholder="group name"
+      icon={<Folder size={11} className="shrink-0 opacity-40" />}
+      onConfirm={commitCreate}
+      onCancel={() => setCreatingParent(undefined)}
+    />
   )
 
   const skillLeaf = (skill: Skill, depth: number) => {
@@ -130,7 +119,7 @@ export const SkillGroupTree = () => {
         <Blocks
           size={10}
           className="shrink-0"
-          style={{ color: isActive ? "var(--color-accent)" : "var(--color-muted)" }}
+          style={{ color: isActive ? "var(--color-foreground)" : "var(--color-muted)" }}
         />
         <span className="text-[11px] font-mono truncate flex-1">{skill.name}</span>
       </div>
@@ -146,7 +135,8 @@ export const SkillGroupTree = () => {
     return (
       <div key={node.id}>
         <div
-          onClick={() => selectGroup(node.id)}
+          // clicking the selected group clears the filter, so there's still a way back to all
+          onClick={() => selectGroup(isActive ? null : node.id)}
           onContextMenu={(e) => {
             e.preventDefault()
             selectGroup(node.id)
@@ -166,9 +156,9 @@ export const SkillGroupTree = () => {
             {isOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
           </button>
           {isOpen ? (
-            <FolderOpen size={11} className="shrink-0" style={{ color: isActive ? "var(--color-accent)" : "var(--color-muted)" }} />
+            <FolderOpen size={11} className="shrink-0" style={{ color: isActive ? "var(--color-foreground)" : "var(--color-muted)" }} />
           ) : (
-            <Folder size={11} className="shrink-0" style={{ color: isActive ? "var(--color-accent)" : "var(--color-muted)" }} />
+            <Folder size={11} className="shrink-0" style={{ color: isActive ? "var(--color-foreground)" : "var(--color-muted)" }} />
           )}
 
           {editingId === node.id ? (

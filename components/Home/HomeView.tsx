@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord, Brain } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useNotifications } from "@/hooks/store/SidebarStore"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { Tab } from "../core-components/Tabbar"
@@ -15,20 +16,6 @@ type OutputTab = "markdown" | "json" | "xml"
 
 // How far from the bottom-right corner the pointer must be for the bar to surface.
 const CORNER_ZONE = 200
-
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
-    setReduced(mq.matches)
-    const onChange = () => setReduced(mq.matches)
-    mq.addEventListener("change", onChange)
-    return () => mq.removeEventListener("change", onChange)
-  }, [])
-
-  return reduced
-}
 
 // Floating bar that stays out of the way until the pointer reaches the bottom-right
 // corner, or focus lands inside it. Focus counts so hover is never the only way in.
@@ -284,7 +271,7 @@ export function HomeView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-              className="h-full overflow-y-auto px-6 w-full"
+              className="h-full overflow-y-auto overflow-x-hidden px-6 w-full"
             >
               <SmartEditor
                 key={`${loadKey}-${rectifyKey}`}
@@ -302,7 +289,7 @@ export function HomeView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-              className="h-full overflow-y-auto px-6"
+              className="h-full overflow-y-auto overflow-x-hidden px-6"
             >
               <div className="flex gap-2 mb-4 pt-4">
                 {(["markdown", "json", "xml"] as OutputTab[]).map((tab) => (
@@ -336,7 +323,7 @@ export function HomeView() {
             <ArrowUpRight size={16} aria-hidden="true" />
           </BarAction>
           {showOutline && (
-            <div className="absolute bottom-full right-0 mb-2 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto">
+            <div className="absolute bottom-full right-0 mb-2 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto overflow-x-hidden">
               <OutlinePanel doc={body} />
             </div>
           )}

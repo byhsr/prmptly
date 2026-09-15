@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,8 @@ interface SelectProps {
   className?: string
   panelWidth?: number
   size?: "sm" | "md"
+  // Rendered below the options, inside the panel. Clicks here don't close it.
+  footer?: ReactNode
 }
 
 export function Select({
@@ -26,6 +28,7 @@ export function Select({
   className,
   panelWidth = 208,
   size = "md",
+  footer,
 }: SelectProps) {
   const [open, setOpen] = useState(false)
   const [rect, setRect] = useState<DOMRect | null>(null)
@@ -119,6 +122,7 @@ export function Select({
               {options.length === 0 && (
                 <p className="px-3 py-2 text-xs text-muted/50">No options</p>
               )}
+              {footer && <div className="mt-1 border-t border-border pt-1">{footer}</div>}
             </div>
           </motion.div>
         </AnimatePresence>,

@@ -1,76 +1,82 @@
 import { create } from "zustand";
 import { join } from "@tauri-apps/api/path";
 
-import {
-  readConfig,
-  writeConfig,
-  setupWorkspace,
-} from "@/lib/fs/fs";
+import { pathExists, readConfig, setupWorkspace, writeConfig } from "@/lib/fs/fs";
+import type { Workspace } from "@/lib/types/AppTypes";
 
-export type Workspace = {
-  id: string;
-  name: string;
-  path: string;
-  createdAt: string;
-};
-
-type WorkspaceState = {
-  workspaces: Workspace[];
-  activeWorkspace: string;
+type VaultState = {
+  vaults: Workspace[];
+  // Config also calls this `activeWorkspace`; it holds a vault id.
+  activeId: string;
+  loaded: boolean;
 
   hydrate: () => Promise<void>;
-
-  createWorkspace: (
-    name: string,
-    workspaceRoot: string
-  ) => Promise<void>;
-
-  switchWorkspace: (id: string) => Promise<void>;
+  createVault: (name: string) => Promise<void>;
+  switchVault: (id: string) => Promise<void>;
 };
 
-export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
-  workspaces: [],
-  activeWorkspace: "",
+// Folder-safe form of a vault name, so the directory is readable rather than a uuid.
+function slug(name: string) {
+  return (
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "vault"
+  );
+}
+
+// Switching swaps which SQLite file is open, so the window is reloaded instead of trying to
+// re-point every store at a different database mid-session.
+function reopen() {
+  window.location.reload();
+}
+
+export const useVaultStore = create<VaultState>((set, get) => ({
+  vaults: [],
+  activeId: "",
+  loaded: false,
 
   hydrate: async () => {
     const config = await readConfig();
-
     set({
-      workspaces: config?.workspaces ?? [],
-      activeWorkspace: config?.activeWorkspace ?? "",
+      vaults: config?.workspaces ?? [],
+      activeId: config?.activeWorkspace ?? "",
+      loaded: true,
     });
   },
 
-  createWorkspace: async (name, workspaceRoot) => {
-    const id = crypto.randomUUID();
+  createVault: async (name) => {
+    const config = await readConfig();
+    if (!config?.workspaceRoot) throw new Error("No workspace root configured");
 
-    const workspacePath = await join(workspaceRoot, id);
+    const base = slug(name);
+    let dir = base;
+    let n = 2;
+    while (await pathExists(await join(config.workspaceRoot, dir))) {
+      dir = `${base}-${n++}`;
+    }
 
-    await setupWorkspace(workspacePath);
+    const path = await join(config.workspaceRoot, dir);
+    await setupWorkspace(path);
 
-    const workspace: Workspace = {
-      id,
-      name,
-      path: workspacePath,
+    const vault: Workspace = {
+      id: crypto.randomUUID(),
+      name: name.trim() || dir,
+      path,
       createdAt: new Date().toISOString(),
     };
 
-    const workspaces = [...get().workspaces, workspace];
-
-    set({ workspaces });
-
-    await writeConfig({
-      workspaces,
-    });
+    const vaults = [...(config.workspaces ?? []), vault];
+    await writeConfig({ workspaces: vaults, activeWorkspace: vault.id });
+    set({ vaults, activeId: vault.id });
+    reopen();
   },
 
-  switchWorkspace: async (id) => {
-    set({
-      activeWorkspace: id,
-    });
-
-    await writeConfig({
-      activeWorkspace: id,
-    });
+  switchVault: async (id) => {
+    if (id === get().activeId) return;
+    await writeConfig({ activeWorkspace: id });
+    set({ activeId: id });
+    reopen();
   },
 }));

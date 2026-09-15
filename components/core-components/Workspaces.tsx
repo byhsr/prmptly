@@ -33,7 +33,7 @@ export function Workspace({ activeTab, activeView }: WorkspaceProps) {
   }
 
   return (
-    <div className="flex h-full flex-1 overflow-y-auto" style={{ background: "var(--color-background, #0a0a0a)" }}>
+    <div className="flex h-full flex-1 overflow-y-auto overflow-x-hidden" style={{ background: "var(--color-background, #0a0a0a)" }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={activeView}

@@ -2,6 +2,7 @@ import { PanelLeftClose, PanelLeft, Settings2Icon } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 import { ViewType } from "@/lib/types/DashTypes";
+import { VaultSwitcher } from "./VaultSwitcher";
 export interface Tab {
   id: string;
   label: string;
@@ -77,7 +78,7 @@ export function TabBar() {
           >
             <Settings2Icon className="h-3.5 w-3.5" />
           </button>
-    
+          <VaultSwitcher />
         </div>
 
         {/* Tabs */}
