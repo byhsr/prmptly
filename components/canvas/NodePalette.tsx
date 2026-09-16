@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { CanvasNodeType, TYPE_LABELS } from "@/lib/types/canvas.types";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface NodePaletteProps {
   onDragStart: (type: CanvasNodeType) => (e: globalThis.DragEvent) => void;
@@ -23,7 +24,7 @@ export function NodePalette({ onDragStart, onClickAdd }: NodePaletteProps) {
       }}
     >
       {NODE_TYPES.map((type) => (
-        <div key={type} className="relative group">
+        <Tooltip key={type} label="Click or drag to canvas">
           <div
             draggable
             onDragStart={(e) => {
@@ -59,10 +60,7 @@ export function NodePalette({ onDragStart, onClickAdd }: NodePaletteProps) {
           >
             + {TYPE_LABELS[type]}
           </div>
-          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">
-            Click or drag to canvas
-          </span>
-        </div>
+        </Tooltip>
       ))}
     </div>
   );

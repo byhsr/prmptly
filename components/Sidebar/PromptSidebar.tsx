@@ -11,6 +11,7 @@ import {
 import { PromptFile } from "../Prompt/PromptElements";
 import { CollectionItem } from "./SidebarElements";
 import { InlineInput } from "../ui/InlineInput";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 export type PendingCreate =
   | { type: "prompt"; parentCollectionId: string | null }
@@ -58,7 +59,7 @@ export const PromptSidebarPanel = ({
   return (
     <div className="flex flex-col h-full w-full">
       <div className="flex items-center justify-end px-3 py-1.5 gap-1 shrink-0">
-        <div className="relative group">
+        <Tooltip label="New Collection">
           <button
             onClick={() => onStartCreate("collection")}
             className="rounded p-0.5 transition-colors hover:bg-background"
@@ -66,9 +67,8 @@ export const PromptSidebarPanel = ({
           >
             <FolderPlus size={12} />
           </button>
-          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">New Collection</span>
-        </div>
-        <div className="relative group">
+        </Tooltip>
+        <Tooltip label="New Prompt">
           <button
             onClick={() => onStartCreate("prompt")}
             className="rounded p-0.5 transition-colors hover:bg-background"
@@ -76,8 +76,7 @@ export const PromptSidebarPanel = ({
           >
             <FilePlus size={12} />
           </button>
-          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">New Prompt</span>
-        </div>
+        </Tooltip>
       </div>
       {/* Body — also the drop zone for dragging a document out of a folder */}
       <div

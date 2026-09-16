@@ -15,6 +15,7 @@ import {
   type CollectionNode,
 } from "@/services/service.collections"
 import { InlineInput } from "../ui/InlineInput"
+import { Tooltip } from "@/components/ui/Tooltip"
 
 function excerpt(doc: Document): string {
   if (doc.name && doc.name !== "Untitled Quick") return doc.name
@@ -294,7 +295,7 @@ export function QuicksSidebarPanel() {
       )}
 
       <div className="flex items-center justify-end gap-1 px-3 py-1.5 shrink-0">
-        <div className="relative group">
+        <Tooltip label="New Folder">
           <button
             onClick={() => setCreatingIn(null)}
             className="rounded p-0.5 transition-colors hover:bg-background"
@@ -303,9 +304,8 @@ export function QuicksSidebarPanel() {
           >
             <FolderPlus size={12} />
           </button>
-          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">New Folder</span>
-        </div>
-        <div className="relative group">
+        </Tooltip>
+        <Tooltip label="New Quick">
           <button
             onClick={() => {
               useQuicksStore.getState().reset()
@@ -318,8 +318,7 @@ export function QuicksSidebarPanel() {
           >
             <FilePlus size={12} />
           </button>
-          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">New Quick</span>
-        </div>
+        </Tooltip>
       </div>
 
       <div

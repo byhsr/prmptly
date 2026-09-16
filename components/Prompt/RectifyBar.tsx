@@ -3,6 +3,7 @@ import { Search, X, Replace, CaseSensitive, WholeWord } from "lucide-react"
 import type { Editor } from "@tiptap/core"
 import type { JSONContent } from "@tiptap/react"
 import { usePromptStore } from "@/hooks/store/PromptStore"
+import { Tooltip } from "@/components/ui/Tooltip"
 
 interface RectifyBarProps {
   editorRef: MutableRefObject<Editor | null>
@@ -145,18 +146,16 @@ export function RectifyBar({ editorRef: externalRef, onClose, floating = false, 
         className="w-24 bg-background border border-border rounded px-2 py-1 text-xs outline-none text-foreground placeholder:text-muted/50"
       />
 
-      <div className="relative group">
+      <Tooltip label="Case sensitive">
         <button onClick={() => setCaseSensitive((v) => !v)} className={`rounded p-1 transition-colors ${caseSensitive ? "bg-accent/20 text-accent" : "text-muted hover:text-foreground"}`}>
           <CaseSensitive className="h-3 w-3" />
         </button>
-        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[60]">Case sensitive</span>
-      </div>
-      <div className="relative group">
+      </Tooltip>
+      <Tooltip label="Whole word">
         <button onClick={() => setWholeWord((v) => !v)} className={`rounded p-1 transition-colors ${wholeWord ? "bg-accent/20 text-accent" : "text-muted hover:text-foreground"}`}>
           <WholeWord className="h-3 w-3" />
         </button>
-        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[60]">Whole word</span>
-      </div>
+      </Tooltip>
 
       <button onClick={doReplaceAll} disabled={!find || matchCount === 0} className="rounded px-2 py-1 text-[10px] font-medium bg-foreground/10 text-foreground hover:bg-foreground/20 transition-colors disabled:opacity-30">
         Replace all

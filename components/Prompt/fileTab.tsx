@@ -15,6 +15,7 @@ import { TemplateSelector } from "./TemplateSelector"
 import { CanvasFlow } from "@/lib/types/canvas.types"
 import { activeEditorRef } from "./BuilderPanel"
 import { documentNameOverrides } from "@/lib/state"
+import { Tooltip } from "@/components/ui/Tooltip"
 
 
 type SubTab = "builder" | "scratchpad" | "prompt" | "canvas"
@@ -182,7 +183,7 @@ export function FileTab({ tab }: { tab: Tab }) {
             </div>
 
             <div className="flex items-center justify-end gap-1 px-4 pt-2">
-              <div className="relative group">
+              <Tooltip label="Outline">
                 <motion.button
                   onClick={() => setShowOutline((v) => !v)}
                   whileTap={{ scale: 0.88 }}
@@ -191,10 +192,9 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   <ListTree className="h-3.5 w-3.5" />
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">Outline</span>
-              </div>
+              </Tooltip>
 
-              <div className="relative group">
+              <Tooltip label="Find & Replace">
                 <motion.button
                   onClick={() => setShowRectify((v) => !v)}
                   whileTap={{ scale: 0.88 }}
@@ -203,12 +203,11 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   <Search className="h-3.5 w-3.5" />
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">Find & Replace</span>
-              </div>
+              </Tooltip>
 
               <div className="flex items-center gap-1">
                 {SUB_TABS.map(({ id, icon: Icon, label }) => (
-                  <div key={id} className="relative group">
+                  <Tooltip key={id} label={label}>
                     <motion.button
                       onClick={() => setActiveSubTab(id)}
                       whileTap={{ scale: 0.88 }}
@@ -217,14 +216,11 @@ export function FileTab({ tab }: { tab: Tab }) {
                     >
                       <Icon className="h-3.5 w-3.5" />
                     </motion.button>
-                    <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">
-                      {label}
-                    </span>
-                  </div>
+                  </Tooltip>
                 ))}
               </div>
 
-              <div className="relative group">
+              <Tooltip label="AI Assistant">
                 <motion.button
                   onClick={() => setShowAI((v) => !v)}
                   whileTap={{ scale: 0.88 }}
@@ -233,10 +229,13 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   <Brain className="h-3.5 w-3.5" />
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">AI Assistant</span>
-              </div>
+              </Tooltip>
 
-              <div className="relative group">
+              <Tooltip
+                label={
+                  splitMode === "none" ? "Split view" : splitMode === "two" ? "Builder + Prompt" : splitMode === "two-prompt" ? "Builder + Scratchpad" : "Show all three"
+                }
+              >
                 <motion.button
                   onClick={cycleSplitMode}
                   whileTap={{ scale: 0.88 }}
@@ -245,10 +244,7 @@ export function FileTab({ tab }: { tab: Tab }) {
                 >
                   {getSplitIcon()}
                 </motion.button>
-                <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">
-                  {splitMode === "none" ? "Split view" : splitMode === "two" ? "Builder + Prompt" : splitMode === "two-prompt" ? "Builder + Scratchpad" : "Show all three"}
-                </span>
-              </div>
+              </Tooltip>
             </div>
           </div>
         </div>

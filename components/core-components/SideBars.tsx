@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Home, FileText, Layout, BookOpen } from "lucide-react"
+import { Tooltip } from "@/components/ui/Tooltip"
 import { Tab } from "./Tabbar"
 import { CollectionTree, CollectionNode } from "@/services/service.collections"
 import {PromptSidebarPanel} from "../Sidebar/PromptSidebar"
@@ -23,20 +24,21 @@ function RailButton({
   onClick: () => void
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center justify-center rounded-xl transition-all relative group"
-      style={{
-        width: 40,
-        height: 40,
-        background: isActive ? "var(--color-surface)" : "transparent",
-        color: isActive ? "var(--color-foreground)" : "var(--color-muted, #666)",
-        fontFamily: "'Syne', sans-serif",
-      }}
-    >
-      <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
-      <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded bg-surface border border-border text-muted whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[999]">{label}</span>
-    </button>
+    <Tooltip label={label}>
+      <button
+        onClick={onClick}
+        className="flex flex-col items-center justify-center rounded-xl transition-all"
+        style={{
+          width: 40,
+          height: 40,
+          background: isActive ? "var(--color-surface)" : "transparent",
+          color: isActive ? "var(--color-foreground)" : "var(--color-muted, #666)",
+          fontFamily: "'Syne', sans-serif",
+        }}
+      >
+        <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
+      </button>
+    </Tooltip>
   )
 }
 

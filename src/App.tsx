@@ -18,6 +18,7 @@ import { useSettingsStore } from "@/hooks/store/settingsStore";
 import { FONTS } from "@/lib/config/settings";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 import { useUpdateStore } from "@/hooks/store/updateStore";
+import { useVaultStore } from "@/hooks/store/VaultStore";
 
 function App() {
   // Kicked off from the shell rather than AppFlow so an available update still
