@@ -61,3 +61,118 @@
           font-size: 0.8em;
           cursor: default;
         }
+
+        /* Tailwind's preflight strips list markers and heading margins, so every
+           block element markdown can produce has to be restated here. */
+        .smart-editor-content ol {
+          padding-left: 1.5rem;
+          list-style: decimal;
+          margin: 0.25rem 0;
+        }
+        .smart-editor-content ol li {
+          margin: 0.125rem 0;
+        }
+        .smart-editor-content ol li::marker {
+          color: var(--color-muted, #666);
+        }
+        .smart-editor-content li > p {
+          margin: 0;
+        }
+
+        .smart-editor-content blockquote {
+          border-left: 3px solid var(--color-border, #2e2e2e);
+          padding-left: 0.9rem;
+          margin: 0.5rem 0;
+          color: var(--color-muted, #8a8a8a);
+          font-style: italic;
+        }
+
+        .smart-editor-content code {
+          font-family: var(--font-code, monospace);
+          font-size: 0.85em;
+          background: var(--color-surface, #222);
+          border: 1px solid var(--color-border, #2e2e2e);
+          border-radius: 4px;
+          padding: 0.1em 0.35em;
+        }
+        .smart-editor-content pre {
+          font-family: var(--font-code, monospace);
+          font-size: 0.85em;
+          line-height: 1.55;
+          background: var(--color-surface, #222);
+          border: 1px solid var(--color-border, #2e2e2e);
+          border-radius: 6px;
+          padding: 0.7rem 0.85rem;
+          margin: 0.5rem 0;
+          overflow-x: auto;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .smart-editor-content pre code {
+          background: none;
+          border: 0;
+          padding: 0;
+          font-size: inherit;
+        }
+
+        .smart-editor-content hr {
+          border: 0;
+          border-top: 1px solid var(--color-border, #2e2e2e);
+          margin: 1rem 0;
+        }
+
+        .smart-editor-content a {
+          color: var(--color-accent, #c8f135);
+          text-decoration: underline;
+          text-underline-offset: 2px;
+          cursor: pointer;
+        }
+
+        /* ── Tables ─────────────────────────────────────────────────── */
+        .smart-editor-content .tableWrapper {
+          overflow-x: auto;
+        }
+        .smart-editor-content table {
+          border-collapse: collapse;
+          table-layout: fixed;
+          width: 100%;
+          margin: 0.75rem 0;
+          font-size: 0.9em;
+        }
+        .smart-editor-content th,
+        .smart-editor-content td {
+          position: relative;
+          border: 1px solid var(--color-border, #2e2e2e);
+          padding: 0.4rem 0.6rem;
+          vertical-align: top;
+        }
+        .smart-editor-content th {
+          background: var(--color-surface, #222);
+          font-weight: 600;
+          text-align: left;
+        }
+        .smart-editor-content th p,
+        .smart-editor-content td p {
+          margin: 0;
+        }
+        /* Tiptap marks selected cells with a class rather than a background */
+        .smart-editor-content .selectedCell::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: var(--color-accent, #c8f135);
+          opacity: 0.12;
+          pointer-events: none;
+        }
+        .smart-editor-content .column-resize-handle {
+          position: absolute;
+          right: -2px;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: var(--color-accent, #c8f135);
+          pointer-events: none;
+        }
+        .smart-editor-content.resize-cursor {
+          cursor: col-resize;
+        }

@@ -5,6 +5,7 @@ import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
 import { Markdown } from "@tiptap/markdown"
+import { TableKit } from "@tiptap/extension-table"
 import { Fragment } from "@tiptap/pm/model"
 import { createPortal } from "react-dom"
 import type { JSONContent } from "@tiptap/react"
@@ -286,6 +287,7 @@ export function SmartEditor({
             StarterKit.configure({
                 bulletList: { keepMarks: true, keepAttributes: false },
             }),
+            TableKit,
             Placeholder.configure({
                 placeholder,
                 emptyEditorClass: "is-editor-empty",

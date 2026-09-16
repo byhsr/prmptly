@@ -1,9 +1,10 @@
 import { Markdown, MarkdownManager } from "@tiptap/markdown"
 import StarterKit from "@tiptap/starter-kit"
+import { TableKit } from "@tiptap/extension-table"
 import type { JSONContent } from "@tiptap/react"
 
 const manager = new MarkdownManager({
-  extensions: [StarterKit, Markdown],
+  extensions: [StarterKit, TableKit, Markdown],
 })
 
 export function parseMarkdown(markdown: string): JSONContent {
