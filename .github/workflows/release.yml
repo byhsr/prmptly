@@ -1,0 +1,62 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS is intentionally absent: an unsigned .app cannot be launched
+          # by end users (Gatekeeper) and the updater requires a signed bundle.
+          # Add a macos-latest entry once an Apple Developer certificate is set up.
+          - platform: windows-latest
+            args: ""
+          - platform: ubuntu-22.04
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "prmptly ${{ github.ref_name }}"
+          releaseBody: "Install the build for your platform below. Existing installs are offered this version in-app on next launch."
+          # Must stay false: the updater endpoint is /releases/latest/download/latest.json
+          # and GitHub's "latest" excludes drafts, so a draft release silently
+          # never reaches users.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

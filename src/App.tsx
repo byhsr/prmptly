@@ -6,6 +6,7 @@ import Dash from "../components/core-components/Dash";
 import Onboarding from "@/components/core-components/Onboard";
 import { TabBar } from "@/components/core-components/Tabbar";
 import { SidebarNotifications } from "@/components/ui/Notifier";
+import { UpdateNotice } from "@/components/ui/UpdateNotice";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 
 import { ErrorBoundary } from "../components/core-components/ErrorBoundary";
@@ -16,8 +17,15 @@ import { initWorkspace } from "@/lib/fs/fsHelpers";
 import { useSettingsStore } from "@/hooks/store/settingsStore";
 import { FONTS } from "@/lib/config/settings";
 import { useTabViewStore } from "@/hooks/store/TabStore";
+import { useUpdateStore } from "@/hooks/store/updateStore";
 
 function App() {
+  // Kicked off from the shell rather than AppFlow so an available update still
+  // surfaces while the user is sitting on onboarding.
+  useEffect(() => {
+    useUpdateStore.getState().check();
+  }, []);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <nav style={{ flexShrink: 0 }}>
@@ -26,6 +34,7 @@ function App() {
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
         <ErrorBoundary><AppFlow /></ErrorBoundary>
       </div>
+      <UpdateNotice />
     </div>
   );
 }
