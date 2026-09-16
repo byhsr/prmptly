@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Home, FileText, Layout, BookOpen } from "lucide-react"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { Tab } from "./Tabbar"
-import { CollectionTree, CollectionNode } from "@/services/service.collections"
+import { CollectionTree } from "@/services/service.collections"
 import {PromptSidebarPanel} from "../Sidebar/PromptSidebar"
 import {QuicksSidebarPanel} from "../Sidebar/QuicksSidebar"
 import {LibrarySidebarPanel} from "../Sidebar/LibSidebar"
@@ -90,42 +90,11 @@ export function Sidebar({
     setExpandedCollections(next)
   }
 
-  function resolveParentCollectionId(): string | null {
-    if (!selectedId || !collectionsTree) return null
-
-    const allCollectionIds = new Set<string>()
-    const collectIds = (nodes: CollectionNode[]) => {
-      nodes.forEach((n) => {
-        allCollectionIds.add(n.id)
-        collectIds(n.children)
-      })
-    }
-    collectIds(collectionsTree.tree)
-
-    if (allCollectionIds.has(selectedId)) {
-      return selectedId
-    }
-
-    const findPromptParent = (nodes: CollectionNode[]): string | null => {
-      for (const node of nodes) {
-        if (node.documents.some((p) => p.id === selectedId)) return node.id
-        const found = findPromptParent(node.children)
-        if (found) return found
-      }
-      return null
-    }
-
-    return findPromptParent(collectionsTree.tree)
-  }
-
+  // Always creates at the base level. Creating inside a folder is that folder's own
+  // right-click menu ("New folder inside" / "New prompt inside"), so a folder that
+  // happens to be selected can never trap new items inside it.
   function startCreate(type: "prompt" | "collection") {
-    const parentCollectionId = resolveParentCollectionId()
-
-    if (parentCollectionId) {
-      setExpandedCollections(new Set([...expandedCollections, parentCollectionId]))
-    }
-
-    setPendingCreate({ type, parentCollectionId })
+    setPendingCreate({ type, parentCollectionId: null })
   }
 
   // Create inside a specific folder (from its context menu), rather than the selected one

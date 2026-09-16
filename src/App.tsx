@@ -129,6 +129,9 @@ export const AppFlow = () => {
       activeWorkspace: vault.id,
       workspaces: [vault],
     });
+    // The vault switcher hydrates on mount, which already happened by now, so it
+    // would stay hidden until a restart without this.
+    await useVaultStore.getState().hydrate();
     initWorkspace(wp); await setupWorkspace(wp); await initDB(wp);
     setWorkspacePath(wp); setDbReady(true);
     await useSettingsStore.getState().init();

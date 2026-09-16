@@ -16,6 +16,7 @@ import { CanvasFlow } from "@/lib/types/canvas.types"
 import { activeEditorRef } from "./BuilderPanel"
 import { documentNameOverrides } from "@/lib/state"
 import { Tooltip } from "@/components/ui/Tooltip"
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
 
 
 type SubTab = "builder" | "scratchpad" | "prompt" | "canvas"
@@ -42,6 +43,12 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
   const [showAI, setShowAI] = useState(false)
+  // Each split mode keeps its own pane proportions, the same mechanism the
+  // sidebar/workspace layout uses.
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    groupId: `filetab-split-${splitMode}`,
+    storage: localStorage,
+  })
 
   const outlineSections = Array.isArray(sections) && sections.length > 0
     ? sections.map((s) => ({
@@ -257,19 +264,30 @@ export function FileTab({ tab }: { tab: Tab }) {
       <div className="flex-1 w-full overflow-hidden">
         <div className="flex h-full w-full">
           <div className={`flex h-full ${showOutline ? "flex-1 min-w-0" : "w-full"}`}>
-            <motion.div className={`flex h-full w-full ${panelsToShow.length > 1 ? "flex-row" : ""}`} layout>
-              {panelsToShow.map((panel, index) => (
-                <motion.div
-                  key={panel}
-                  layout
-                  initial={false}
-                  animate={{ opacity: 1 }}
-                  className={`h-full overflow-hidden ${index > 0 ? "border-l border-border" : ""} ${panelsToShow.length > 1 ? "flex-1 min-w-0" : "min-w-full"}`}
-                >
-                  <div className="h-full overflow-y-auto">{renderPanel(panel)}</div>
-                </motion.div>
-              ))}
-            </motion.div>
+            {panelsToShow.length > 1 ? (
+              <Group
+                defaultLayout={defaultLayout}
+                onLayoutChanged={onLayoutChanged}
+                orientation="horizontal"
+              >
+                {panelsToShow.flatMap((panel, index) => [
+                  index > 0 ? (
+                    <Separator
+                      key={`sep-${panel}`}
+                      className="bg-border transition-colors hover:bg-foreground/40"
+                      style={{ cursor: "col-resize" }}
+                    />
+                  ) : null,
+                  <Panel key={panel} id={panel} minSize={15}>
+                    <div className="h-full overflow-y-auto overflow-x-hidden">{renderPanel(panel)}</div>
+                  </Panel>,
+                ])}
+              </Group>
+            ) : (
+              <div className="h-full w-full overflow-y-auto overflow-x-hidden">
+                {panelsToShow.map((panel) => renderPanel(panel))}
+              </div>
+            )}
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto shrink-0">
