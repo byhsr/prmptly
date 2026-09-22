@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { BookOpen, File, FilePlus, FileText, Settings2 } from "lucide-react"
+import { BookOpen, File, FilePlus, FileText, Settings2, Shapes } from "lucide-react"
 import { listDocuments, getDocument } from "@/lib/db/document"
 import type { Document } from "@/lib/types/Document"
+import { canvasService } from "@/services/service.canvas"
 import { useQuicksStore } from "@/hooks/store/quickStore"
+import { useCanvasStore } from "@/hooks/store/canvasStore"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { createPrompt } from "@/services/service.prompt"
 
 const MAX_RECENTS = 8
+
+type RecentKind = "quick" | "prompt" | "canvas"
+
+interface RecentItem {
+  id: string
+  kind: RecentKind
+  label: string
+  updatedAt: string
+}
 
 function displayName(doc: Document): string {
   if (doc.name && doc.name !== "Untitled Quick") return doc.name
@@ -78,12 +89,30 @@ const ACTIONS = [
 ]
 
 export function HomeMenu() {
-  const [recents, setRecents] = useState<Document[]>([])
+  const [recents, setRecents] = useState<RecentItem[]>([])
 
   const refresh = useCallback(async () => {
     try {
-      const docs = await listDocuments()
-      setRecents(docs.slice(0, MAX_RECENTS))
+      // Canvases live in their own table, so they have to be merged in by hand.
+      const [docs, canvases] = await Promise.all([listDocuments(), canvasService.list()])
+
+      const items: RecentItem[] = [
+        ...docs.map((doc) => ({
+          id: doc.id,
+          kind: doc.type as RecentKind,
+          label: displayName(doc),
+          updatedAt: doc.updatedAt,
+        })),
+        ...canvases.map((canvas) => ({
+          id: canvas.id,
+          kind: "canvas" as const,
+          label: canvas.name,
+          updatedAt: canvas.updatedAt,
+        })),
+      ]
+
+      items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      setRecents(items.slice(0, MAX_RECENTS))
     } catch (err) {
       console.error("Failed to load recents:", err)
     }
@@ -96,13 +125,22 @@ export function HomeMenu() {
     return () => window.removeEventListener("quick-saved", handler)
   }, [refresh])
 
-  const openRecent = (doc: Document) => {
-    if (doc.type === "quick") openQuick(doc.id)
-    else {
-      const store = useTabViewStore.getState()
-      store.addTab({ id: doc.id, label: doc.name, type: "prompt" })
-      store.setActiveView("prompt")
+  const openRecent = (item: RecentItem) => {
+    const store = useTabViewStore.getState()
+
+    if (item.kind === "quick") {
+      openQuick(item.id)
+      return
     }
+
+    if (item.kind === "canvas") {
+      useCanvasStore.getState().selectCanvas(item.id)
+      store.setActiveView("canvas")
+      return
+    }
+
+    store.addTab({ id: item.id, label: item.label, type: "prompt" })
+    store.setActiveView("prompt")
   }
 
   return (
@@ -120,7 +158,7 @@ export function HomeMenu() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 500, damping: 24 }}
-                className="focus-ring group flex flex-col items-start gap-1 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-background"
+                className="focus-ring group flex flex-col items-start gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-background"
               >
                 <span className="flex flex-row items-center gap-2">
                   <Icon size={14} className="shrink-0 text-muted transition-colors group-hover:text-foreground" aria-hidden="true" />
@@ -140,22 +178,26 @@ export function HomeMenu() {
             <p className="text-xs text-muted">Nothing yet — create a quick to get going.</p>
           ) : (
             <div className="flex flex-col">
-              {recents.map((doc) => (
+              {recents.map((item) => (
                 <motion.button
-                  key={doc.id}
-                  onClick={() => openRecent(doc)}
+                  key={`${item.kind}:${item.id}`}
+                  onClick={() => openRecent(item)}
                   whileTap={{ scale: 0.99 }}
                   className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-surface"
                 >
-                  <File size={13} className="shrink-0 opacity-50" aria-hidden="true" />
+                  {item.kind === "canvas" ? (
+                    <Shapes size={13} className="shrink-0 opacity-50" aria-hidden="true" />
+                  ) : (
+                    <File size={13} className="shrink-0 opacity-50" aria-hidden="true" />
+                  )}
                   <span className="flex-1 min-w-0 truncate text-xs text-foreground">
-                    {displayName(doc)}
+                    {item.label}
                   </span>
                   <span className="shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[9px] text-muted">
-                    {doc.type}
+                    {item.kind}
                   </span>
                   <span className="shrink-0 font-mono text-[10px] text-muted w-16 text-right">
-                    {relativeTime(doc.updatedAt)}
+                    {relativeTime(item.updatedAt)}
                   </span>
                 </motion.button>
               ))}

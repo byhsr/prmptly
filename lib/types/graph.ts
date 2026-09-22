@@ -1,7 +1,7 @@
 // The vault graph: entities are always derived from the live tables, so a node id is
 // "<kind>:<id>" — prefixed so ids can't collide across tables.
 
-export type GraphEntityKind = "quick" | "prompt" | "template" | "skill" | "snippet"
+export type GraphEntityKind = "quick" | "prompt" | "template" | "skill" | "snippet" | "canvas"
 
 export interface GraphEntity {
   nodeId: string
