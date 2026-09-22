@@ -9,6 +9,7 @@ import { SidebarNotifications } from "@/components/ui/Notifier";
 import { UpdateNotice } from "@/components/ui/UpdateNotice";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { GraphView } from "@/components/graph/GraphView";
+import { VaultTransition } from "@/components/core-components/VaultTransition";
 
 import { ErrorBoundary } from "../components/core-components/ErrorBoundary";
 
@@ -50,6 +51,7 @@ export const AppFlow = () => {
   const { isSettingsOpen, setIsSettingsOpen } = useTabViewStore();
   const isGraphOpen = useTabViewStore((s) => s.isGraphOpen);
   const setIsGraphOpen = useTabViewStore((s) => s.setIsGraphOpen);
+  const vaultSwitching = useVaultStore((s) => s.switching);
   const settings = useSettingsStore((s) => s.settings);
 
   useEffect(() => { bootstrap(); }, []);
@@ -141,12 +143,7 @@ export const AppFlow = () => {
   }
 
   if (!dbReady) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-accent" />
-        <span className="font-mono text-[11px] text-muted">opening vault…</span>
-      </div>
-    );
+    return <VaultTransition label="opening vault…" />;
   }
 
   if (bootError) {
@@ -170,6 +167,7 @@ export const AppFlow = () => {
     <>
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
       {isGraphOpen && <GraphView onClose={() => setIsGraphOpen(false)} />}
+      {vaultSwitching && <VaultTransition label="switching vault…" overlay />}
       <SidebarNotifications />
       <Dash dbReady={dbReady} />
     </>

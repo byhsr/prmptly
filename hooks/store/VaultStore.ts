@@ -9,6 +9,8 @@ type VaultState = {
   // Config also calls this `activeWorkspace`; it holds a vault id.
   activeId: string;
   loaded: boolean;
+  /** true from the moment a swap starts until the reload takes over */
+  switching: boolean;
 
   hydrate: () => Promise<void>;
   createVault: (name: string) => Promise<void>;
@@ -27,15 +29,17 @@ function slug(name: string) {
 }
 
 // Switching swaps which SQLite file is open, so the window is reloaded instead of trying to
-// re-point every store at a different database mid-session.
+// re-point every store at a different database mid-session. Wait for two frames first so the
+// transition screen is actually painted before the webview navigates away.
 function reopen() {
-  window.location.reload();
+  requestAnimationFrame(() => requestAnimationFrame(() => window.location.reload()));
 }
 
 export const useVaultStore = create<VaultState>((set, get) => ({
   vaults: [],
   activeId: "",
   loaded: false,
+  switching: false,
 
   hydrate: async () => {
     const config = await readConfig();
@@ -69,14 +73,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
     const vaults = [...(config.workspaces ?? []), vault];
     await writeConfig({ workspaces: vaults, activeWorkspace: vault.id });
-    set({ vaults, activeId: vault.id });
+    set({ vaults, activeId: vault.id, switching: true });
     reopen();
   },
 
   switchVault: async (id) => {
     if (id === get().activeId) return;
     await writeConfig({ activeWorkspace: id });
-    set({ activeId: id });
+    set({ activeId: id, switching: true });
     reopen();
   },
 }));
