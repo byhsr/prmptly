@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Shapes } from "lucide-react"
 import { useCanvasStore } from "@/hooks/store/canvasStore"
 import { canvasService } from "@/services/service.canvas"
+import { applyArkSkin } from "@/lib/canvas/arkSkin"
 import type { CanvasDocument } from "@/lib/types/canvasDoc"
 
 const WRITE_DEBOUNCE_MS = 800
@@ -43,6 +44,23 @@ export function CanvasView() {
     iframeRef.current?.contentWindow?.postMessage({ source: "prmptly", ...msg }, "*")
   }, [])
 
+  // Ark's palette is its own; re-skin it from the host tokens and keep its light/dark flag
+  // in step, so switching theme or font in Settings carries into the canvas live.
+  const syncArkTheme = useCallback(() => {
+    applyArkSkin(iframeRef.current)
+    postToArk({ type: "ark:theme", theme: arkTheme() })
+  }, [postToArk])
+
+  useEffect(() => {
+    syncArkTheme()
+    const observer = new MutationObserver(syncArkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "style", "data-theme"],
+    })
+    return () => observer.disconnect()
+  }, [syncArkTheme])
+
   const loadCanvas = useCallback(async () => {
     if (!arkReady.current) return
     const id = useCanvasStore.getState().selectedCanvasId
@@ -61,7 +79,7 @@ export function CanvasView() {
 
       if (data.type === "ark:ready") {
         arkReady.current = true
-        postToArk({ type: "ark:theme", theme: arkTheme() })
+        syncArkTheme()
         loadCanvas()
         return
       }
@@ -86,7 +104,7 @@ export function CanvasView() {
       window.removeEventListener("message", onMessage)
       if (writeTimer.current) clearTimeout(writeTimer.current)
     }
-  }, [postToArk, loadCanvas])
+  }, [syncArkTheme, loadCanvas])
 
   useEffect(() => {
     loadCanvas()
@@ -107,6 +125,7 @@ export function CanvasView() {
         ref={iframeRef}
         src="/ark/index.html"
         title="Canvas"
+        onLoad={syncArkTheme}
         className="h-full w-full border-0 transition-opacity duration-150"
         style={{ opacity: hydrated ? 1 : 0 }}
       />

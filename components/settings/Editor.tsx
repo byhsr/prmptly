@@ -1,4 +1,5 @@
 import { useSettingsStore } from "@/hooks/store/settingsStore"
+import { Slider } from "@/components/ui/Slider"
 
 export function Editor() {
   const { settings, updateSetting, updateModuleVariant } = useSettingsStore()
@@ -19,14 +20,13 @@ export function Editor() {
         <h3 className="text-sm font-medium mb-3">Autosave</h3>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted w-20">Delay (ms)</span>
-          <input
-            type="range"
+          <Slider
             min={500}
             max={10000}
             step={500}
             value={settings.autosaveDelay}
-            onChange={(e) => updateSetting("autosaveDelay", parseInt(e.target.value))}
-            className="flex-1 accent-accent"
+            onChange={(value) => updateSetting("autosaveDelay", value)}
+            className="flex-1"
           />
           <span className="w-12 text-xs font-mono text-right text-muted">{settings.autosaveDelay}ms</span>
         </div>

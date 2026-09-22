@@ -1,5 +1,6 @@
 import { useSettingsStore } from "@/hooks/store/settingsStore"
 import { THEMES, FONTS, type FontKey } from "@/lib/config/settings"
+import { Slider } from "@/components/ui/Slider"
 
 export function Appearance() {
   const { settings, updateFonts, updateHeadingSize } = useSettingsStore()
@@ -75,14 +76,13 @@ export function Appearance() {
           return (
             <div key={level} className="flex items-center gap-3 mb-2">
               <span className="w-8 text-xs font-mono text-muted">{label}</span>
-              <input
-                type="range"
+              <Slider
                 min={0.8}
                 max={2.5}
                 step={0.05}
                 value={current}
-                onChange={(e) => updateHeadingSize(level, parseFloat(e.target.value))}
-                className="flex-1 accent-accent"
+                onChange={(value) => updateHeadingSize(level, value)}
+                className="flex-1"
               />
               <span className="w-10 text-xs font-mono text-right text-muted">{current.toFixed(2)}rem</span>
             </div>
