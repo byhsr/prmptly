@@ -70,11 +70,14 @@ function arkSkinCss(): string {
   --grid-dot: transparent;
   --vignette: none;
 
-  --glass: color-mix(in srgb, ${surface} 58%, transparent);
-  --glass-panel: color-mix(in srgb, ${surface} 66%, transparent);
-  --glass-raise: color-mix(in srgb, ${surface} 85%, transparent);
+  --glass: ${surface};
+  --glass-panel: ${surface};
+  --glass-raise: ${surface};
   --glass-edge: color-mix(in srgb, ${fg} 10%, transparent);
   --glass-edge-soft: color-mix(in srgb, ${fg} 6%, transparent);
+  /* opaque bars mean the backdrop blur has nothing left to do */
+  --glass-blur: 0px;
+  --glass-blur-lg: 0px;
 
   --node-bg: ${surface};
   --node-bg-plain: ${surface};
@@ -107,6 +110,61 @@ function arkSkinCss(): string {
 }
 .node[data-kind="group"] .node-text {
   box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ compact chrome
+   Ark's bars were built at a roomier scale than the app's: 30px icon buttons, 34px
+   dock tools, 14px radii. Brought down to the app's scale (26px controls, 8-12px
+   radii) so the canvas chrome reads at the same weight as the rest of the UI. */
+
+:root {
+  --topbar-h: 52px;
+}
+
+/* a little air above the floating bar so it doesn't sit flush against the app's tab strip */
+.topbar { padding: 12px 10px 6px; gap: 8px; }
+
+.tb-group { gap: 2px; padding: 3px; border-radius: 12px; }
+
+.icon-btn { width: 26px; height: 26px; }
+.icon-btn.sm { width: 22px; height: 22px; }
+
+.btn { height: 26px; padding: 0 9px; font-size: 12px; }
+.btn.sm { height: 23px; padding: 0 7px; font-size: 11.5px; }
+
+.canvas-pill { height: 26px; padding: 0 9px 0 10px; font-size: 12px; }
+.zoom-label { height: 26px; min-width: 46px; }
+
+.tb-sep,
+.dock-sep { height: 18px; margin: 0 3px; }
+
+.dock-row { padding: 4px; border-radius: 12px; }
+.dock-options { padding: 3px; border-radius: 10px; }
+.dock-tool { width: 28px; height: 28px; border-radius: 8px; }
+.shape-pick,
+.emoji-pick { width: 30px; height: 30px; border-radius: 8px; }
+.dock-restore { width: 32px; height: 32px; border-radius: 10px; }
+
+.crumbs { padding: 4px 10px; }
+.statusbar { padding: 4px 10px; gap: 10px; }
+.status-controls { gap: 1px; margin-left: 8px; padding-left: 8px; }
+.status-sep { margin: 0 4px; }
+
+.minimap { width: 176px; height: 112px; }
+
+/* ------------------------------------------------------------------ no light mode
+   The theme belongs to the host app: ark's own toggle would fight the app's setting.
+   Dropped from the ⋯ menu (the only item using the sun/moon icon, plus the divider that
+   follows it) and from the settings panel, where the whole Theme row goes. */
+
+#menu .ctx-item:has(use[href="#i-sun"]),
+#menu .ctx-item:has(use[href="#i-moon"]),
+#menu .ctx-item:has(use[href="#i-sun"]) + .ctx-sep,
+#menu .ctx-item:has(use[href="#i-moon"]) + .ctx-sep {
+  display: none;
+}
+#settings-panel .setting-row:has(#theme-light) {
+  display: none;
 }
 `
 }
