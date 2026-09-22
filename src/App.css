@@ -37,7 +37,7 @@ body {
   --background: #191919;
   --foreground: #f0efed;
   --surface: #202020;
-  --border: #232323;
+  --border: #2a2a2a;
   --muted: #8a8a8a;
   --accent: #c8f135;
   --accent-foreground: #111111;
@@ -77,6 +77,14 @@ body {
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  /* Used by components but never defined, so `text-primary`, `border-primary`,
+     `text-secondary`, `text-muted-foreground` and `text-danger` compiled to nothing.
+     Primary/secondary are kept neutral on purpose — accent is reserved for the inline
+     confirm affordances, not for selection surfaces. */
+  --color-primary: var(--foreground);
+  --color-secondary: var(--muted);
+  --color-muted-foreground: var(--muted);
+  --color-danger: #ef4444;
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }

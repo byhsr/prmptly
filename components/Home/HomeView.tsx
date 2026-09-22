@@ -1,19 +1,18 @@
 import { useState, useCallback, useEffect, useRef, type ReactNode } from "react"
 import { createPortal } from "react-dom"
-import { AnimatePresence, motion } from "framer-motion"
-import { Search, ArrowUpRight, ListTree, Undo2, Check, X, Replace, CaseSensitive, WholeWord, Brain } from "lucide-react"
+import { motion } from "framer-motion"
+import { Search, ListTree, Check, Copy, X, Replace, CaseSensitive, WholeWord, Download } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useNotifications } from "@/hooks/store/SidebarStore"
-import { useTabViewStore } from "@/hooks/store/TabStore"
+import { buildOutput } from "@/lib/editor/outputs"
+import { exportMarkdownToFile } from "@/lib/exportMarkdown"
+import { OverflowMenu } from "@/components/ui/OverflowMenu"
 import { Tab } from "../core-components/Tabbar"
 import { FileTab } from "../Prompt/fileTab"
 import { SmartEditor } from "../ui/SmartTextEditor"
 import { OutlinePanel } from "../Prompt/OutlinePanel"
-import { AIAssistant } from "../ai/AIAssistant"
 import { HomeMenu } from "./HomeMenu"
-
-type OutputTab = "markdown" | "json" | "xml"
 
 // How far from the bottom-right corner the pointer must be for the bar to surface.
 const CORNER_ZONE = 200
@@ -157,12 +156,10 @@ function BarAction({
 }
 
 export function HomeView() {
-  const { body, output, setBody, generate, reset, loadKey, hasContent, close } = useQuicksStore()
-  const [activeTab, setActiveTab] = useState<OutputTab>("markdown")
-  const [copied, setCopied] = useState(false)
+  const { body, setBody, loadKey, hasContent, close } = useQuicksStore()
+  const [copiedBody, setCopiedBody] = useState(false)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
-  const [showAI, setShowAI] = useState(false)
   const [rectifyKey, setRectifyKey] = useState(0)
   const [rectifyCase, setRectifyCase] = useState(false)
   const [rectifyWord, setRectifyWord] = useState(false)
@@ -173,49 +170,40 @@ export function HomeView() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); handleSave() }
       if ((e.metaKey || e.ctrlKey) && e.key === "r") { e.preventDefault(); setShowRectify((v) => !v) }
       if ((e.metaKey || e.ctrlKey) && e.key === "o") { e.preventDefault(); setShowOutline((v) => !v) }
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [body, output])
+  }, [])
 
   const handleBodyChange = useCallback((markdown: string) => {
     setBody(markdown)
   }, [setBody])
 
-  const handleGenerate = () => { generate(); setActiveTab("markdown") }
-  const handleCopy = () => {
-    if (!output) return
-    navigator.clipboard.writeText(output[activeTab])
-    setCopied(true); setTimeout(() => setCopied(false), 1500)
-  }
-  const handleReset = () => { reset() }
-
-  const handleSave = async () => {
-    const id = await useQuicksStore.getState().save()
-    if (id) {
-      useNotifications.getState().notify("Quick saved")
-      useTabViewStore.getState().addTab({ id, label: useQuicksStore.getState().name, type: "prompt" })
-    } else {
-      useNotifications.getState().notify("Failed to save quick", true)
-    }
+  // Copy the markdown straight out of the editor — no need to generate first.
+  const handleCopyBody = async () => {
+    if (!body) return
+    await navigator.clipboard.writeText(body)
+    setCopiedBody(true)
+    setTimeout(() => setCopiedBody(false), 1500)
   }
 
-  const handleSaveOutput = async () => {
-    if (!output) return
+  const handleCopyBodyFormat = async (format: "json" | "xml") => {
+    if (!body) return
+    await navigator.clipboard.writeText(buildOutput(body, format))
+    useNotifications.getState().notify(`Copied as ${format.toUpperCase()}`)
+  }
+
+  const handleExport = async () => {
+    if (!body) return
     try {
-      const { getDB } = await import("@/lib/db")
-      const db = await getDB()
-      const outputId = crypto.randomUUID()
-      const now = new Date().toISOString()
-      await db.execute(
-        `INSERT INTO outputs (id, text, json, xml, meta_json, created_at, updated_at) VALUES (?, ?, ?, ?, '{}', ?, ?)`,
-        [outputId, output.markdown, output.json, output.xml, now, now]
-      )
-      useNotifications.getState().notify("Output saved")
-    } catch { useNotifications.getState().notify("Failed to save output", true) }
+      const name = useQuicksStore.getState().name || "quick"
+      const exported = await exportMarkdownToFile(name, body)
+      if (exported) useNotifications.getState().notify("Quick exported")
+    } catch {
+      useNotifications.getState().notify("Failed to export quick", true)
+    }
   }
 
   if (!hasContent) return <HomeMenu />
@@ -223,7 +211,7 @@ export function HomeView() {
   return (
     <div className="relative h-full w-full flex flex-col">
       <div className="w-full flex flex-col h-full min-h-0 relative">
-        {showRectify && !output && (
+        {showRectify && (
           <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-surface border-b border-border">
             <Search className="h-3 w-3 text-muted shrink-0" />
             <input id="rectify-find" placeholder="Find"
@@ -267,72 +255,48 @@ export function HomeView() {
           >
             ← quicks
           </button>
-          {charCount > 0 && !output && (
+          {charCount > 0 && (
             <div className="flex items-center gap-3 text-[10px] font-mono text-muted">
               <span>{charCount} chars</span><span>·</span><span>{wordCount} words</span><span>·</span><span>~{tokenEstimate} tokens</span>
             </div>
           )}
         </div>
-        <div className="flex-1 min-h-0">
-          <AnimatePresence mode="wait">
-          {!output ? (
-            <motion.div
-              key="editor"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-              className="h-full overflow-y-auto overflow-x-hidden px-6 w-full"
-            >
-              <SmartEditor
-                key={`${loadKey}-${rectifyKey}`}
-                initialContent={body}
-                contentType="markdown"
-                onChange={(_plain, _doc, markdown) => handleBodyChange(markdown)}
-                placeholder="Paste markdown, or start typing…"
-                minHeight={60}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="output"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-              className="h-full overflow-y-auto overflow-x-hidden px-6"
-            >
-              <div className="flex gap-2 mb-4 pt-4">
-                {(["markdown", "json", "xml"] as OutputTab[]).map((tab) => (
-                  <button key={tab} onClick={() => setActiveTab(tab)}
-                    className={`text-xs font-mono px-3 py-1 rounded transition-colors ${activeTab === tab ? "bg-foreground/10 text-foreground" : "text-muted hover:text-foreground"}`}
-                  >{tab}</button>
-                ))}
-              </div>
-              <pre className="pb-6 text-sm font-mono text-foreground leading-relaxed whitespace-pre-wrap break-words">
-                {output ? output[activeTab] : ""}
-              </pre>
-            </motion.div>
-          )}
-          </AnimatePresence>
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 w-full">
+          <SmartEditor
+            key={`${loadKey}-${rectifyKey}`}
+            initialContent={body}
+            contentType="markdown"
+            onChange={(_plain, _doc, markdown) => handleBodyChange(markdown)}
+            placeholder="Paste markdown, or start typing…"
+            minHeight={60}
+          />
         </div>
       </div>
 
-      {body.length > 0 && !output && (
+      {body.length > 0 && (
         <FloatingBar>
-          <BarAction label="Save" text="Save" onClick={handleSave} />
+          <BarAction label="Copy markdown" text={copiedBody ? "copied" : "copy"} onClick={handleCopyBody}>
+            {copiedBody ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
+          </BarAction>
+          <BarAction label="Export as .md" text="export" onClick={handleExport}>
+            <Download size={11} aria-hidden="true" />
+          </BarAction>
           <BarAction label="Outline" active={showOutline} onClick={() => setShowOutline((v) => !v)}>
             <ListTree size={14} aria-hidden="true" />
           </BarAction>
           <BarAction label="Find and replace" active={showRectify} onClick={() => setShowRectify((v) => !v)}>
             <Search size={14} aria-hidden="true" />
           </BarAction>
-          <BarAction label="AI assistant" active={showAI} onClick={() => setShowAI((v) => !v)}>
-            <Brain size={14} aria-hidden="true" />
-          </BarAction>
-          <BarAction label="Generate output" primary onClick={handleGenerate}>
-            <ArrowUpRight size={16} aria-hidden="true" />
-          </BarAction>
+          <OverflowMenu
+            label="Copy as…"
+            panelWidth={190}
+            className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-background hover:text-foreground"
+            items={[
+              { label: "Copy as markdown", onClick: handleCopyBody },
+              { label: "Copy as JSON", onClick: () => handleCopyBodyFormat("json") },
+              { label: "Copy as XML", onClick: () => handleCopyBodyFormat("xml") },
+            ]}
+          />
           {showOutline && (
             <div className="absolute bottom-full right-0 mb-2 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto overflow-x-hidden">
               <OutlinePanel doc={body} />
@@ -340,34 +304,14 @@ export function HomeView() {
           )}
         </FloatingBar>
       )}
-      {output && (
-        <FloatingBar>
-          <BarAction label="Copy output" text={copied ? "copied" : "copy"} onClick={handleCopy}>
-            {copied && <Check size={11} aria-hidden="true" />}
-          </BarAction>
-          <BarAction label="Save output" text="save" onClick={handleSaveOutput} />
-          <BarAction label="Discard output" onClick={handleReset}>
-            <Undo2 size={14} aria-hidden="true" />
-          </BarAction>
-        </FloatingBar>
-      )}
-
-      {showAI && (
-        <AIAssistant
-          onClose={() => setShowAI(false)}
-          editorContent={body}
-          documentTitle="Quick Editor"
-          documentType="quick"
-        />
-      )}
     </div>
   )
 }
 
 export function PromptView({ tab }: { tab: Tab }) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 flex items-center justify-center">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex-1 min-h-0">
         <FileTab tab={tab} />
       </div>
     </div>

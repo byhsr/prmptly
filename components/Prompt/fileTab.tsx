@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Search, ListTree, Brain } from "lucide-react"
+import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Search, ListTree } from "lucide-react"
 import { BuilderPanel} from "./BuilderPanel"
 import { ScratchpadPanel } from "./scratchpadPanel"
 import { PromptPanel } from "./GeneratedPromptPanel"
 import { OutlinePanel } from "./OutlinePanel"
 import { RectifyBar } from "./RectifyBar"
-import { AIAssistant } from "../ai/AIAssistant"
 import { Tab } from "../core-components/Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
@@ -34,7 +33,6 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [docName, setDocName] = useState(tab.label)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
-  const [showAI, setShowAI] = useState(false)
   // Each split mode keeps its own pane proportions, the same mechanism the
   // sidebar/workspace layout uses.
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -203,17 +201,6 @@ export function FileTab({ tab }: { tab: Tab }) {
                 ))}
               </div>
 
-              <Tooltip label="AI Assistant">
-                <motion.button
-                  onClick={() => setShowAI((v) => !v)}
-                  whileTap={{ scale: 0.88 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                  className={`rounded-lg p-2 transition-colors ${showAI ? "bg-accent text-accent-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
-                >
-                  <Brain className="h-3.5 w-3.5" />
-                </motion.button>
-              </Tooltip>
-
               <Tooltip
                 label={
                   splitMode === "none" ? "Split view" : splitMode === "two" ? "Builder + Prompt" : splitMode === "two-prompt" ? "Builder + Scratchpad" : "Show all three"
@@ -273,15 +260,6 @@ export function FileTab({ tab }: { tab: Tab }) {
         </div>
       </div>
 
-      {showAI && (
-        <AIAssistant
-          onClose={() => setShowAI(false)}
-          editorContent={body}
-          documentTitle={docName}
-          documentType={tab.type}
-          scratchpad={usePromptStore.getState().scratchpadText || undefined}
-        />
-      )}
     </div>
   )
 }

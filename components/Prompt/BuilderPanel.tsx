@@ -7,7 +7,9 @@ import { usePromptStore } from "@/hooks/store/PromptStore"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { useNotifications } from "@/hooks/store/SidebarStore"
 import { exportMarkdownToFile } from "@/lib/exportMarkdown"
+import { buildOutput } from "@/lib/editor/outputs"
 import { Tooltip } from "@/components/ui/Tooltip"
+import { OverflowMenu } from "@/components/ui/OverflowMenu"
 import { SmartEditor } from "../ui/SmartTextEditor"
 
 // Global ref for RectifyBar — last focused editor
@@ -57,6 +59,13 @@ export function BuilderPanel() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // The prompt is markdown-first, but the target may want it as JSON or XML.
+  const handleCopyFormat = async (format: "json" | "xml") => {
+    if (!body) return
+    await navigator.clipboard.writeText(buildOutput(body, format))
+    useNotifications.getState().notify(`Copied as ${format.toUpperCase()}`)
+  }
+
   const handleExport = async () => {
     if (!body) return
     try {
@@ -77,8 +86,8 @@ export function BuilderPanel() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 w-full">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 w-full">
         <SmartEditor
           key={loadKey}
           initialContent={body}
@@ -90,7 +99,8 @@ export function BuilderPanel() {
         />
       </div>
 
-      <div className="shrink-0 flex items-center justify-end gap-2 px-6 pb-6">
+      {/* Sticky so a pasted prompt taller than the pane can never push these out of view. */}
+      <div className="sticky bottom-0 z-10 shrink-0 flex items-center justify-end gap-2 bg-background px-6 pb-6">
         <BuilderAction label="Copy markdown" onClick={handleCopy} disabled={!body}>
           {copied ? (
             <>
@@ -109,6 +119,18 @@ export function BuilderPanel() {
           <Download size={11} aria-hidden="true" />
           export .md
         </BuilderAction>
+
+        <OverflowMenu
+          label="Copy as…"
+          disabled={!body}
+          panelWidth={190}
+          className="focus-ring inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-muted shadow-lg transition-colors hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          items={[
+            { label: "Copy as markdown", onClick: handleCopy },
+            { label: "Copy as JSON", onClick: () => handleCopyFormat("json") },
+            { label: "Copy as XML", onClick: () => handleCopyFormat("xml") },
+          ]}
+        />
       </div>
     </div>
   )

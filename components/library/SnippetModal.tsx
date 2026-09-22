@@ -314,7 +314,7 @@ const Field = ({ label, optional, children, className }: {
   <div className={cn("flex flex-col gap-1 w-full h-full", className)}>
     <label style={{ textTransform: "uppercase", fontWeight: "300", letterSpacing: "0.06em", display: "flex", alignItems: "center", }}>
       {label}
-      {optional && <span style={{ fontSize: 9, textTransform: "none", letterSpacing: 0, color: "var(--color-text-secondary)", background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: 3, padding: "0 4px" }}>optional</span>}
+      {optional && <span style={{ fontSize: 9, textTransform: "none", letterSpacing: 0, color: "var(--muted)", background: "var(--surface)", border: "0.5px solid var(--border)", borderRadius: 3, padding: "0 4px" }}>optional</span>}
     </label>
     {children}
   </div>

@@ -160,7 +160,10 @@ export default function Promptly({ dbReady }: { dbReady: boolean }) {
               setActiveView={setActiveView}
             />
           </Panel>
-          <Separator style={{ cursor: "col-resize" }} />
+          <Separator
+            className="bg-border transition-colors hover:bg-foreground/40"
+            style={{ cursor: "col-resize" }}
+          />
           <Panel id="workspace">
             <Workspace
               tabs={tabs}

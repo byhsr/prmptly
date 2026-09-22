@@ -2,14 +2,12 @@ import { useState } from "react"
 import { Appearance } from "./Appearance"
 import { Editor } from "./Editor"
 import { General } from "./General"
-import { AI } from "./AI"
 import { About } from "./About"
 
 const TABS = {
   appearance: { label: "Appearance", component: Appearance },
   editor: { label: "Editor", component: Editor },
   general: { label: "General", component: General },
-  ai: { label: "AI", component: AI },
   about: { label: "About", component: About },
 } as const
 

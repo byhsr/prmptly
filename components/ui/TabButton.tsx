@@ -57,14 +57,14 @@ export const TabButton = ({
                 <path
                     d={path}
                     fill={isActive ? "var(--color-background)" : "var(--color-surface)"}
-                    stroke="var(--color-border-secondary)"
+                    stroke="var(--border)"
                     strokeWidth="0.5"
                 />
                 {isActive && (
                     <line
                         x1={-flare + 1} y1={h}
                         x2={w + flare - 1} y2={h}
-                        stroke="var(--color-background-primary)"
+                        stroke="var(--foreground)"
                         strokeWidth="1.5"
                     />
                 )}

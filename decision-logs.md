@@ -328,3 +328,72 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 * `node --check` passes on both edited ark scripts; all 11 local refs in `public/ark/index.html` exist, and `bridge.js` is confirmed last in load order (after `main.js`, so `FD.app`/`FD.bus` exist when it runs).
 * Not verified in the running app: the iframe bridge round-trip (draw → vault file → reopen) and graph edge persistence. Those need a real `tauri dev` session.
 
+---
+
+## Session Log — 22/09 · full width, vault transition, copy anywhere
+
+### Decision: drop the line cap · brand the vault swap · make copying reachable everywhere
+
+**Why**
+
+* The `72ch` measure cap added to `.smart-editor-content` was the only thing keeping quicks and prompts from running full width. It is now removed (the rule contained nothing else). Breathing room stays — the cap was the constraint, not the padding.
+* Vault switching reloads the webview, which looked like a bare spinner (and a white frame before that). It should read as one continuous branded moment.
+* Copying a prompt was only possible in the output sub-tab, and copying a quick required pressing **Generate** first — even though the markdown is right there in the editor.
+
+**Pipeline**
+
+* `src/styles/TextEditor.css` — removed `.smart-editor-content { max-width: 72ch }`. `SmartEditor` is mounted in exactly two places (`BuilderPanel`, `HomeView`), so nothing else is affected.
+* **`VaultTransition`** (new) — logo + accent bloom + indeterminate sweep + label. Used twice: as the `!dbReady` screen (was a spinner), and as an `overlay` when `useVaultStore.switching` is true, which `switchVault`/`createVault` set before reloading. `reopen()` now waits two frames so the overlay is painted before the webview navigates.
+* **Boot splash in `index.html`** — an inline `<style>` + `#boot` mark, so even the pre-JS frame of a reload is branded instead of white. `#root:not(:empty) ~ #boot` hides it the moment React renders, and an 8 s inline timer removes it outright so it can never mask the app or an error screen.
+* **`OverflowMenu`** (new, `components/ui/`) — a kebab action menu in the app's dropdown grammar (portal, `bg-surface`/`border-border`/`shadow-lg`/`rounded-xl`, motion fade, mousedown-outside + Escape, viewport-clamped, opens upward when low). Extracted as a component rather than a third ad-hoc menu; `ContextMenu` (right-click, `bg-zinc-900`, dismiss-on-mouseleave) was not a fit.
+* Builder: keeps the default-visible **copy** + **export .md** row, and gains the kebab → copy as markdown / JSON / XML.
+* Quicks: the editor's hover bar gains a direct **copy** (markdown, no Generate needed) and the same kebab. Both use `buildOutput(body, format)` — the existing single writer.
+
+**Files**
+
+* New: `components/ui/OverflowMenu.tsx`, `components/core-components/VaultTransition.tsx`.
+* Modified: `src/styles/TextEditor.css`, `index.html`, `hooks/store/VaultStore.ts`, `src/App.tsx`, `components/Prompt/BuilderPanel.tsx`, `components/Home/HomeView.tsx`.
+
+**Verification**
+
+* `tsc --noEmit` clean.
+* Vite dev on a spare port: `/`, `/favicon.ico.png`, `/ark/index.html`, `/ark/bridge.js`, `/ark/js/main.js`, `/ark/css/styles.css`, `/src/main.tsx` all 200; the boot splash survives Vite's HTML transform.
+
+**Assumption worth confirming**
+
+* The builder's copy lives in an always-visible action row ("by default"). If it was meant to be hover-revealed like the quicks bar, that is a one-line move into a `FloatingBar`-style wrapper.
+
+---
+
+## Session Log — 22/09 · remove the AI assistant, one action set for quicks and prompts
+
+### Decision: no in-app assistant · copy/export only · subtle borders
+
+**Why**
+
+* The assistant panel was more surface than the workflow needed — copying the prompt out is the job. The builder and quicks now expose the same small action set.
+* Autosave already saves, so an explicit **Save** button was ceremony, and **Generate output** only existed to reveal json/xml — which "copy as JSON/XML" does directly.
+* The first border fix over-corrected: `#3a3a3a` read as a bright rule on the near-black theme.
+
+**Pipeline**
+
+* **AI assistant removed** from the UI: the Brain button + panel mount in `fileTab`, the AI action + panel mount in `HomeView`, and the **Settings → AI** tab. `components/ai/AIAssistant.tsx` and `components/settings/AI.tsx` stay on disk unused (nothing imports them).
+* **Quicks lost its output view entirely.** With Generate gone the markdown/json/xml reader was unreachable, so `output`, `generate`, the `activeTab` reader, save-output and discard all came out of `HomeView`. The bar is now **copy · export · outline · find · ‹copy as…›**, and Ctrl+S is no longer bound there.
+* **Export added to quicks** (`exportMarkdownToFile`), matching the builder's `export .md`.
+* `BuilderPanel` hardened against the reported bug: root `h-full min-h-0`, the editor `flex-1 min-h-0`, and the action row `sticky bottom-0` on `bg-background`. A pasted prompt taller than the pane can no longer push copy/export out of view — the editor scrolls internally and the row stays put.
+* `PromptView`'s wrapper dropped `items-center justify-center` — centring a full-height child is a foot-gun for exactly this overflow case.
+* Borders back to subtle: dark `#2a2a2a`, light `#dddddd`, cyberpunk `#1e3a1e`. The **selection** borders (active tab) are `border-primary` = foreground, so they stay clearly visible while `--border` goes quiet again.
+
+**Files**
+
+* Modified: `components/Home/HomeView.tsx`, `components/Prompt/fileTab.tsx`, `components/Prompt/BuilderPanel.tsx`, `components/settings/SettingsView.tsx`, `src/App.css`.
+
+**Verification**
+
+* `tsc --noEmit` clean; grep confirms nothing imports `AIAssistant`/`AI` any more.
+* Vite dev: `/` and every changed module (HomeView, BuilderPanel, fileTab, SettingsView) transform with 200.
+
+**Open question**
+
+* Quicks' floating bar only surfaces when the pointer nears the bottom-right corner (its own requested behaviour), so it will still *appear* hidden after a paste. If the bug report meant that bar rather than the builder's row, say so and I'll pin it visible.
+
