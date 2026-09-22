@@ -258,3 +258,73 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 * `tsc --noEmit` clean.
 * Headless round-trip check: parse → serialize is identity; section derivation returns the expected sections for a two-`##` document.
 
+---
+
+## Session Log — 22/09
+
+### Decision: builder collapses to one markdown body · Home becomes a launcher · Templates + Library merge into "Library"
+
+**Why**
+
+* The builder was still one editor per template section with drag-ordering. Sections only earn their keep as *derived* views (quicks already proved this), so the builder now edits a single markdown body and `##` headings are parsed on demand — the same pipeline quicks use.
+* Home was the quicks editor with no entry surface. It is now a launcher whose idle state is a menu (recents, quick actions, new quick). Quicks still open *in* Home, so the "quicks live in Home" rule holds.
+* Templates and Library were two rail tabs both holding reusable resources; they are now one **Library** tab (Templates | Snippets | Skills | Graph).
+
+**Pipeline**
+
+* `PromptStore` — `sections` / `filledSections` / `filledSectionDocs` + hand-rolled `compile()` → a single `body: string` + `loadKey` (remount trigger, same as quicks). Persistence reuses the quicks shape: one `sections_json` entry (`id: "body"`). No migration.
+* New `lib/editor/outputs.ts` — `buildOutput(body, format)` / `buildOutputs(body)`, lifted out of `quickStore.generate`; quicks and prompts now share one writer. Prompt output format is `markdown` (default) | `json` | `xml`; prompt-side `plain` is gone. The output panel derives on demand (`useMemo`), so nothing serializes per keystroke.
+* Builder gained in-place **copy** (markdown→clipboard) and **export** (`.md` via the Tauri save dialog, `lib/exportMarkdown.ts`), styled like the quicks save bar.
+* Template selection seeds the body with a `## <section>` scaffold; the previous body is dumped to the scratchpad first (behaviour unchanged).
+* `ViewType` → `home | prompt | library`. `LibraryTab = templates | snippets | skills | graph` lives in `skillStore`; `templateStore.templateTab` is gone. One sidebar list per active sub-tab, no in-panel mode toggle.
+* Recents = `listDocuments()` (already `updated_at DESC`) — no new tracking table.
+
+**Files**
+
+* New: `lib/editor/outputs.ts`, `lib/exportMarkdown.ts`, `components/Home/HomeMenu.tsx`.
+* Deleted: `components/template/TemplateSidebar.tsx` (folded into `components/Sidebar/LibSidebar.tsx`; recoverable via git).
+* Modified: `hooks/store/{PromptStore,quickStore,skillStore,templateStore}.ts`, `lib/types/DashTypes.ts`, `components/Prompt/{BuilderPanel,GeneratedPromptPanel,fileTab,RectifyBar}.tsx`, `components/Home/HomeView.tsx`, `components/library/LibraryView.tsx`, `components/template/TemplateView.tsx` (now exports `TemplateForm`), `components/Sidebar/LibSidebar.tsx`, `components/core-components/{SideBars,Workspaces,Tabbar}.tsx`.
+
+**Verification**
+
+* `tsc --noEmit` clean.
+* Runtime hand-off (user runs `tauri dev`): launch → quicks menu; new/open quick swaps in the editor; `← quicks` returns. Builder edits as markdown, copy + export work, template selection seeds the body. Library shows all four sub-tabs with a matching sidebar.
+* Not yet verified in the running app — the section-record removal (`filledSections` etc.) touches the builder's save path, so a save→reopen round-trip is the thing to check first.
+
+---
+
+## Session Log — 22/09 · ark canvas tab + topbar vault graph
+
+### Decision: embed ark as a Canvas tab · new editable vault graph in the topbar · drop the builder canvas
+
+**Why**
+
+* Ark (sibling project) is a no-build free-form flow designer with nested canvases, groups, stickies/shapes, JSON import/export and an agent bundle. Reimplementing it would be a many-thousand-line port for no behavioural gain, so it is **vendored as-is** and hosted in an iframe.
+* The prompt builder's canvas was a per-document React-Flow panel with per-type accent colours (which the single-accent rule rejects) and no nesting. It is superseded by the ark tab, so it comes out of the builder.
+* There was no vault-level view of how things relate. A graph where nodes are the vault's entities and edges are user-made connections is the "see things and connect things" surface, opened from the topbar.
+
+**Pipeline**
+
+* **Vendored** `public/ark/` — `index.html`, `css/`, `js/` (8 modules), `fonts/`, `icons/`, `manifest.webmanifest`. Excluded `tools/`, `.git/`, `dist/`, `.smoke/`, `examples/`, and `sw.js`. Only three deviations from upstream: an added `<script src="bridge.js">` in `index.html`, the new `bridge.js`, and `registerServiceWorker()` commented out in `main.js` (sw.js isn't shipped, so it only produced a 404 per boot). Re-copying ark later means re-applying those three.
+* **Bridge** (`public/ark/bridge.js`) uses ark's existing public surface only — `FD.app.toJSON()`, `FD.app.importText()`, `FD.bus`, `data-theme`. ark → host on debounced `doc`, host → ark on `ark:load`, plus `ark:ready` (bounded poll on `FD.app.ready`, since `boot()` is async).
+* **Storage**: content at `vault/canvases/<id>.json`, metadata in a new `canvases` table (migration 7). `WORKSPACE_DIRS`/`dirs` gained `canvases`; `getCanvasDocPath` is distinct from the older `getCanvasPath` (`documents/<id>/scratchpad.flow.json`).
+* **Graph** (migration 8): `graph_nodes(node_id, x, y)` + `graph_edges(id, source_id, target_id, label)`. Nodes are always derived live from `documents`/`templates`/`skills`/`deterministic_assets`, so only edges and positions are user state; node ids are `<kind>:<id>` (`snippet:<scope>:<key>` since snippets have no row id). Edges whose endpoints no longer exist are dropped on read.
+* `ViewType` → `home | prompt | library | canvas`. Canvas gets a rail button, a sidebar list, and `CanvasView` (iframe + bridge). The graph is an overlay opened from a `Waypoints` button in the topbar, gated by `isGraphOpen` in `TabStore` and rendered in `AppFlow` beside `SettingsModal`.
+* Builder: `canvas` removed from `SubTab`/`SUB_TABS`/`renderPanel`; `PromptStore` lost `canvasFlow`/`updateCanvas`/`debouncedCanvasPersist`; the AI panel no longer receives `canvasContext`.
+
+**Files**
+
+* New: `public/ark/**`, `components/canvas/CanvasView.tsx`, `components/Sidebar/CanvasSidebar.tsx`, `services/service.canvas.ts`, `hooks/store/canvasStore.ts`, `lib/types/canvasDoc.ts`, `lib/types/graph.ts`, `lib/db/graph.ts`, `lib/graph/buildVaultGraph.ts`, `components/graph/{VaultGraph,EntityNode,GraphView}.tsx`.
+* Modified: `lib/db/index.ts` (migrations 7 + 8), `lib/fs/fs.ts`, `lib/fs/fsHelpers.ts`, `lib/types/DashTypes.ts`, `components/core-components/{SideBars,Workspaces,Tabbar}.tsx`, `hooks/store/TabStore.ts`, `src/App.tsx`, `components/Prompt/fileTab.tsx`, `hooks/store/PromptStore.ts`.
+* Left unused on disk: `components/canvas/{Canvas,CanvasNode,NodePalette,NodePropertiesPanel}.tsx`, `lib/types/canvas.types.ts`.
+
+**Known leftover**
+
+* `createPrompt()` still writes an empty `documents/<id>/scratchpad.flow.json` (nothing reads it now). Left alone deliberately — it's on the prompt-creation path and writes no user data.
+
+**Verification**
+
+* `tsc --noEmit` clean across the app.
+* `node --check` passes on both edited ark scripts; all 11 local refs in `public/ark/index.html` exist, and `bridge.js` is confirmed last in load order (after `main.js`, so `FD.app`/`FD.bus` exist when it runs).
+* Not verified in the running app: the iframe bridge round-trip (draw → vault file → reopen) and graph edge persistence. Those need a real `tauri dev` session.
+

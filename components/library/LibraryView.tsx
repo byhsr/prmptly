@@ -1,12 +1,18 @@
 import { useEffect } from "react"
-import { Blocks, Workflow } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Blocks, Layout, SquareAsterisk, Workflow } from "lucide-react"
 import { SkillsPanel } from "./SkillsPanel"
+import { SnippetsPanel } from "./SnippetsPanel"
+import { TemplateForm } from "../template/TemplateView"
 import { SkillGraph } from "../graph/SkillGraph"
 import { Select } from "../ui/Select"
 import { TabButton } from "../ui/TabButton"
-import { useSkillStore, type LibraryPanelTab } from "@/hooks/store/skillStore"
+import { useSkillStore, type LibraryTab } from "@/hooks/store/skillStore"
+import { useTemplateStore } from "@/hooks/store/templateStore"
 
-const TABS: { id: LibraryPanelTab; icon: typeof Blocks; label: string }[] = [
+const TABS: { id: LibraryTab; icon: typeof Blocks; label: string }[] = [
+  { id: "templates", icon: Layout, label: "Templates" },
+  { id: "snippets", icon: SquareAsterisk, label: "Snippets" },
   { id: "skills", icon: Blocks, label: "Skills" },
   { id: "graph", icon: Workflow, label: "Graph" },
 ]
@@ -15,9 +21,11 @@ export const LibraryView = () => {
   const libraryTab = useSkillStore((s) => s.libraryTab)
   const setLibraryTab = useSkillStore((s) => s.setLibraryTab)
   const loadSkills = useSkillStore((s) => s.load)
+  const loadTemplates = useTemplateStore((s) => s.loadTemplates)
 
   useEffect(() => {
     loadSkills()
+    loadTemplates()
   }, [])
 
   return (
@@ -40,9 +48,32 @@ export const LibraryView = () => {
         </div>
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
+        {libraryTab === "templates" && <TemplatesPanel />}
+        {libraryTab === "snippets" && <SnippetsPanel />}
         {libraryTab === "skills" && <SkillsPanel />}
         {libraryTab === "graph" && <GraphPanel />}
       </div>
+    </div>
+  )
+}
+
+const TemplatesPanel = () => {
+  const selectedTemplateId = useTemplateStore((s) => s.selectedTemplateId)
+
+  return (
+    <div className="h-full overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectedTemplateId ?? "new"}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.15 }}
+          className="h-full flex justify-start px-20"
+        >
+          <TemplateForm />
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

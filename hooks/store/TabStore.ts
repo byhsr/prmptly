@@ -10,6 +10,8 @@ type TabsState = {
   sidebarOpen: boolean
   isSettingsOpen: boolean,
   setIsSettingsOpen: (v: boolean) => void
+  isGraphOpen: boolean,
+  setIsGraphOpen: (v: boolean) => void
   setDash : () => void // this toggles off the sidebar collapse button if not on dash 
   setActiveView : (view : ViewType) => void
   setTabs: (tabs: Tab[]) => void
@@ -28,6 +30,8 @@ export const useTabViewStore = create<TabsState>((set) => ({
   isDash : false,
   isSettingsOpen: false,
   setIsSettingsOpen: (v: boolean) => set({ isSettingsOpen: v }),
+  isGraphOpen: false,
+  setIsGraphOpen: (v: boolean) => set({ isGraphOpen: v }),
   setDash : () => set({ isDash : true }),
   setActiveView : (view : ViewType) => set({ activeView : view }),
   setTabs: (tabs) => set({ tabs }),

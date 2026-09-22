@@ -7,6 +7,7 @@ export const dirs = {
   assets: "assets",
   library: "library",
   skills: "skills",
+  canvases: "canvases",
 } as const;
 
 let WORKSPACE: string | null = null;
@@ -62,3 +63,8 @@ export const getSkillDir = (id: string) =>
 
 export const getSkillFile = (id: string) =>
   buildPath("skills", id, "SKILL.md");
+
+// ── Canvases (ark flow documents) ─────────────────
+
+export const getCanvasDocPath = (id: string) =>
+  buildPath("canvases", `${id}.json`);

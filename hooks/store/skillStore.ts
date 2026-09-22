@@ -8,7 +8,7 @@ import {
   SkillGroupNode,
 } from "@/lib/types/skill"
 
-export type LibraryPanelTab = "skills" | "graph"
+export type LibraryTab = "templates" | "snippets" | "skills" | "graph"
 
 type SkillStore = {
   skills: Skill[]
@@ -16,9 +16,9 @@ type SkillStore = {
   tree: SkillGroupNode[]
   loading: boolean
 
-  // which panel the Library view is showing
-  libraryTab: LibraryPanelTab
-  setLibraryTab: (tab: LibraryPanelTab) => void
+  // which panel the Library view (and its sidebar) is showing
+  libraryTab: LibraryTab
+  setLibraryTab: (tab: LibraryTab) => void
 
   // selection
   selectedSkillId: string | null
@@ -61,7 +61,7 @@ export const useSkillStore = create<SkillStore>((set, get) => ({
   tree: [],
   loading: false,
 
-  libraryTab: "skills",
+  libraryTab: "templates",
   setLibraryTab: (libraryTab) => set({ libraryTab }),
 
   selectedSkillId: null,

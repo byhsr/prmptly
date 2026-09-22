@@ -11,6 +11,7 @@ import { FileTab } from "../Prompt/fileTab"
 import { SmartEditor } from "../ui/SmartTextEditor"
 import { OutlinePanel } from "../Prompt/OutlinePanel"
 import { AIAssistant } from "../ai/AIAssistant"
+import { HomeMenu } from "./HomeMenu"
 
 type OutputTab = "markdown" | "json" | "xml"
 
@@ -156,7 +157,7 @@ function BarAction({
 }
 
 export function HomeView() {
-  const { body, output, setBody, generate, reset, loadKey } = useQuicksStore()
+  const { body, output, setBody, generate, reset, loadKey, hasContent, close } = useQuicksStore()
   const [activeTab, setActiveTab] = useState<OutputTab>("markdown")
   const [copied, setCopied] = useState(false)
   const [showRectify, setShowRectify] = useState(false)
@@ -217,6 +218,8 @@ export function HomeView() {
     } catch { useNotifications.getState().notify("Failed to save output", true) }
   }
 
+  if (!hasContent) return <HomeMenu />
+
   return (
     <div className="relative h-full w-full flex flex-col">
       <div className="w-full flex flex-col h-full min-h-0 relative">
@@ -257,11 +260,19 @@ export function HomeView() {
             <button onClick={() => setShowRectify(false)} className="rounded p-1 text-muted hover:text-foreground transition-colors ml-auto"><X className="h-3 w-3" /></button>
           </div>
         )}
-        {charCount > 0 && !output && (
-          <div className="flex items-center gap-3 px-6 py-1.5 text-[10px] font-mono text-muted shrink-0 ml-auto justify-end">
-            <span>{charCount} chars</span><span>·</span><span>{wordCount} words</span><span>·</span><span>~{tokenEstimate} tokens</span>
-          </div>
-        )}
+        <div className="flex items-center justify-between px-6 py-1.5 shrink-0">
+          <button
+            onClick={close}
+            className="text-[10px] font-mono text-muted hover:text-foreground transition-colors"
+          >
+            ← quicks
+          </button>
+          {charCount > 0 && !output && (
+            <div className="flex items-center gap-3 text-[10px] font-mono text-muted">
+              <span>{charCount} chars</span><span>·</span><span>{wordCount} words</span><span>·</span><span>~{tokenEstimate} tokens</span>
+            </div>
+          )}
+        </div>
         <div className="flex-1 min-h-0">
           <AnimatePresence mode="wait">
           {!output ? (

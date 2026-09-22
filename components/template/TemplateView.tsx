@@ -15,11 +15,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Layout, SquareAsterisk } from "lucide-react";
 import { useTemplateStore } from "@/hooks/store/templateStore";
 import { TemplateSection } from "@/lib/db/template";
-import { TabButton } from "../ui/TabButton";
-import { SnippetsPanel } from "../library/SnippetsPanel";
 
 // ── Sortable Section Row ──────────────────────────────────────────────────────
 
@@ -88,7 +85,7 @@ function SectionRow({ section }: { section: TemplateSection }) {
 
 // ── Template Form ─────────────────────────────────────────────────────────────
 
-function TemplateForm() {
+export function TemplateForm() {
   const {
     templates,
     selectedTemplateId,
@@ -258,55 +255,3 @@ function TemplateForm() {
   );
 }
 
-// ── Template View ─────────────────────────────────────────────────────────────
-
-export function TemplateView() {
-  const { selectedTemplateId, templateTab, setTemplateTab } = useTemplateStore();
-
-  return (
-    <div className="flex flex-col h-full w-full">
-      <div className="flex bg-surface px-4 items-end shrink-0">
-        <TabButton
-          isActive={templateTab === "templates"}
-          onClick={() => setTemplateTab("templates")}
-          width={140}
-          collapsedWidth={140}
-          className="flex items-center justify-center gap-2 px-4"
-        >
-          <Layout style={{ width: 13, height: 13, flexShrink: 0 }} />
-          <span>Templates</span>
-        </TabButton>
-        <TabButton
-          isActive={templateTab === "snippets"}
-          onClick={() => setTemplateTab("snippets")}
-          width={140}
-          collapsedWidth={140}
-          className="flex items-center justify-center gap-2 px-4"
-        >
-          <SquareAsterisk style={{ width: 13, height: 13, flexShrink: 0 }} />
-          <span>Snippets</span>
-        </TabButton>
-      </div>
-
-      {/* content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {templateTab === "snippets" ? (
-          <SnippetsPanel />
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selectedTemplateId ?? "new"}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.15 }}
-              className="h-full flex justify-start px-20"
-            >
-              <TemplateForm />
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </div>
-    </div>
-  );
-}

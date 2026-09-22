@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, useRef, MutableRefObject } from "react"
+import { useState, useCallback, useEffect, useRef, MutableRefObject } from "react"
 import { Search, X, Replace, CaseSensitive, WholeWord } from "lucide-react"
 import type { Editor } from "@tiptap/core"
-import type { JSONContent } from "@tiptap/react"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Tooltip } from "@/components/ui/Tooltip"
 
@@ -10,17 +9,6 @@ interface RectifyBarProps {
   onClose: () => void
   floating?: boolean
   clickOff?: boolean
-}
-
-function plainFromDoc(doc: JSONContent | undefined): string {
-  if (!doc) return ""
-  let out = ""
-  const walk = (node: JSONContent) => {
-    if (typeof node.text === "string") out += node.text + " "
-    if (Array.isArray(node.content)) node.content.forEach(walk)
-  }
-  walk(doc)
-  return out
 }
 
 export function RectifyBar({ editorRef: externalRef, onClose, floating = false, clickOff = false }: RectifyBarProps) {
@@ -32,19 +20,10 @@ export function RectifyBar({ editorRef: externalRef, onClose, floating = false, 
   const findRef = useRef<HTMLInputElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
 
-  const filledSections = usePromptStore((s) => s.filledSections)
-  const filledSectionDocs = usePromptStore((s) => s.filledSectionDocs)
+  const body = usePromptStore((s) => s.body)
 
   // Searchable text for when no Tiptap editor is focused (e.g. Builder not mounted)
-  const fallbackText = useMemo(() => {
-    const parts: string[] = []
-    const ids = new Set([...Object.keys(filledSections), ...Object.keys(filledSectionDocs)])
-    for (const id of ids) {
-      const doc = filledSectionDocs[id]
-      parts.push(doc && typeof doc !== "string" ? plainFromDoc(doc) : filledSections[id] ?? "")
-    }
-    return parts.join("\n")
-  }, [filledSections, filledSectionDocs])
+  const fallbackText = body
 
   useEffect(() => {
     findRef.current?.focus()

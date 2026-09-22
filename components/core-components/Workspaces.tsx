@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { Tab } from "./Tabbar"
 import { LibraryView } from "../library/LibraryView"
+import { CanvasView } from "../canvas/CanvasView"
 import { ViewType } from "@/lib/types/DashTypes"
 import { HomeView, PromptView } from "../Home/HomeView"
-import { TemplateView } from "../template/TemplateView"
 
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -28,8 +28,8 @@ export function Workspace({ activeTab, activeView }: WorkspaceProps) {
     </div>
   )
 }
-    if (view === "template") return <TemplateView />
     if (view === "library") return <LibraryView />
+    if (view === "canvas") return <CanvasView />
   }
 
   return (

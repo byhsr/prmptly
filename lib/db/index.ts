@@ -264,6 +264,47 @@ CREATE INDEX IF NOT EXISTS idx_template_sections_template_id
     id: 6,
     run: (db) => addColumnIfMissing(db, "collections", "type", "TEXT NOT NULL DEFAULT 'prompt'")
   },
+  // migration 7: canvases (ark flow documents). The document itself lives at
+  // vault/canvases/<id>.json — this table is only metadata (name + timestamps).
+  {
+    id: 7,
+    sql: `
+CREATE TABLE IF NOT EXISTS canvases (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  meta_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_canvases_updated_at ON canvases(updated_at);
+`
+  },
+  // migration 8: the vault graph. Nodes are always derived from the live tables, so only
+  // user-made edges and node positions are stored here.
+  {
+    id: 8,
+    sql: `
+CREATE TABLE IF NOT EXISTS graph_nodes (
+  node_id TEXT PRIMARY KEY,
+  x REAL NOT NULL,
+  y REAL NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS graph_edges (
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  label TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE(source_id, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_id);
+CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_id);
+`
+  },
 ];
 
 async function runMigrations(db: Database) {

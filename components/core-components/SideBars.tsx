@@ -1,13 +1,13 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Home, FileText, Layout, BookOpen } from "lucide-react"
+import { Home, FileText, BookOpen, Shapes } from "lucide-react"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { Tab } from "./Tabbar"
 import { CollectionTree } from "@/services/service.collections"
 import {PromptSidebarPanel} from "../Sidebar/PromptSidebar"
 import {QuicksSidebarPanel} from "../Sidebar/QuicksSidebar"
 import {LibrarySidebarPanel} from "../Sidebar/LibSidebar"
-import {TemplateSidebarPanel }from "../template/TemplateSidebar"
+import {CanvasSidebarPanel} from "../Sidebar/CanvasSidebar"
 import {ViewType} from "@/lib/types/DashTypes"
 import { PendingCreate } from "../Sidebar/PromptSidebar"
 
@@ -158,16 +158,16 @@ export function Sidebar({
                 onClick={() => toggleSection("prompt")}
               />
               <RailButton
-                icon={Layout}
-                label="Templates"
-                isActive={activeView === "template"}
-                onClick={() => toggleSection("template")}
-              />
-              <RailButton
                 icon={BookOpen}
                 label="Library"
                 isActive={activeView === "library"}
                 onClick={() => toggleSection("library")}
+              />
+              <RailButton
+                icon={Shapes}
+                label="Canvas"
+                isActive={activeView === "canvas"}
+                onClick={() => toggleSection("canvas")}
               />
             </motion.div>
           </motion.div>
@@ -209,8 +209,8 @@ export function Sidebar({
               </span>
             )}
 
-            {activeView === "template" && <TemplateSidebarPanel />}
             {activeView === "library" && <LibrarySidebarPanel />}
+            {activeView === "canvas" && <CanvasSidebarPanel />}
           </div>
         </div>
       )}

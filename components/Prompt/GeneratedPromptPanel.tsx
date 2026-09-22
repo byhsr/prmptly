@@ -1,16 +1,20 @@
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
 import { Copy, Check } from "lucide-react"
 import { codeToHtml } from "shiki"
 import { usePromptStore, OutputFormat } from "@/hooks/store/PromptStore"
+import { buildOutput } from "@/lib/editor/outputs"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 
 export function PromptPanel() {
   const reduced = usePrefersReducedMotion()
   const [copied, setCopied] = useState(false)
   const [highlighted, setHighlighted] = useState("")
-  const { compiledOutput, outputFormat, setOutputFormat } = usePromptStore()
+  const { body, outputFormat, setOutputFormat } = usePromptStore()
+
+  // Derived on demand rather than stored — no per-keystroke serialization.
+  const compiledOutput = useMemo(() => buildOutput(body, outputFormat), [body, outputFormat])
 
   useEffect(() => {
     if (!compiledOutput) return setHighlighted("")
@@ -33,7 +37,7 @@ export function PromptPanel() {
       {/* Format Selector */}
       <div className="border-b border-border p-4">
         <div className="inline-flex rounded-lg bg-background p-1">
-          {(["plain", "json", "xml"] as OutputFormat[]).map((f) => (
+          {(["markdown", "json", "xml"] as OutputFormat[]).map((f) => (
             <button
               key={f}
               onClick={() => setOutputFormat(f)}

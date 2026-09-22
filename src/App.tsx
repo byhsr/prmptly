@@ -8,6 +8,7 @@ import { TabBar } from "@/components/core-components/Tabbar";
 import { SidebarNotifications } from "@/components/ui/Notifier";
 import { UpdateNotice } from "@/components/ui/UpdateNotice";
 import { SettingsModal } from "@/components/settings/SettingsModal";
+import { GraphView } from "@/components/graph/GraphView";
 
 import { ErrorBoundary } from "../components/core-components/ErrorBoundary";
 
@@ -47,6 +48,8 @@ export const AppFlow = () => {
   const [bootError, setBootError] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState("");
   const { isSettingsOpen, setIsSettingsOpen } = useTabViewStore();
+  const isGraphOpen = useTabViewStore((s) => s.isGraphOpen);
+  const setIsGraphOpen = useTabViewStore((s) => s.setIsGraphOpen);
   const settings = useSettingsStore((s) => s.settings);
 
   useEffect(() => { bootstrap(); }, []);
@@ -166,6 +169,7 @@ export const AppFlow = () => {
   return (
     <>
       {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      {isGraphOpen && <GraphView onClose={() => setIsGraphOpen(false)} />}
       <SidebarNotifications />
       <Dash dbReady={dbReady} />
     </>

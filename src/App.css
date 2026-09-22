@@ -34,10 +34,10 @@ body {
 
 .dark {
   /* Dark Mode */
-  --background: #181818;
-  --foreground: #e8e8e8;
-  --surface: #222222;
-  --border: #2e2e2e;
+  --background: #191919;
+  --foreground: #f0efed;
+  --surface: #202020;
+  --border: #232323;
   --muted: #8a8a8a;
   --accent: #c8f135;
   --accent-foreground: #111111;

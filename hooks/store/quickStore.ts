@@ -1,13 +1,7 @@
 import { create } from "zustand"
-import type { JSONContent } from "@tiptap/react"
-import { docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
-import { deriveSections, parseMarkdown } from "@/lib/editor/markdown"
+import { buildOutputs, type PromptOutputs } from "@/lib/editor/outputs"
 
-export interface QuickOutput {
-  markdown: string
-  json: string
-  xml: string
-}
+export type QuickOutput = PromptOutputs
 
 export interface QuickEntry {
   id: string
@@ -31,15 +25,12 @@ interface QuicksStore {
   loadEntry: (entry: QuickEntry) => void
   save: () => Promise<string | null>
   reset: () => void
+  close: () => void
 }
 
 function generateName(markdown: string): string {
   const cleaned = markdown.replace(/^#{1,6}\s+/gm, "").replace(/@\w+/g, "").trim()
   return cleaned.split(/\s+/).slice(0, 5).join(" ") || "Untitled Quick"
-}
-
-function asDoc(nodes: JSONContent[]): JSONContent {
-  return { type: "doc", content: nodes }
 }
 
 export const useQuicksStore = create<QuicksStore>((set, get) => ({
@@ -69,25 +60,7 @@ export const useQuicksStore = create<QuicksStore>((set, get) => ({
     const { body, save } = get()
     if (!body.trim()) return
 
-    const sections = deriveSections(parseMarkdown(body))
-
-    const json = JSON.stringify(
-      sections.map((s) => ({
-        title: s.title || null,
-        content: docToCleanJson(asDoc(s.nodes)),
-      })),
-      null,
-      2
-    )
-
-    const xml = sections
-      .map((s) => {
-        const inner = nodeToXml(asDoc(s.nodes), s.title ? 1 : 0)
-        return s.title ? `<${s.title}>\n${inner}\n</${s.title}>` : inner
-      })
-      .join("\n")
-
-    set({ output: { markdown: body, json, xml }, name: generateName(body), hasContent: true })
+    set({ output: buildOutputs(body), name: generateName(body), hasContent: true })
     save()
   },
 
@@ -113,6 +86,17 @@ export const useQuicksStore = create<QuicksStore>((set, get) => ({
 
   reset: () =>
     set((s) => ({ body: "", output: null, name: "", savedDocId: null, loadKey: s.loadKey + 1 })),
+
+  // Return to the quicks menu with a clean slate.
+  close: () =>
+    set((s) => ({
+      body: "",
+      output: null,
+      name: "",
+      savedDocId: null,
+      hasContent: false,
+      loadKey: s.loadKey + 1,
+    })),
 }))
 
 // ── Store-level debounced autosave ────────────────────────────────────────────

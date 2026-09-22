@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeft, Settings2Icon } from "lucide-react";
+import { PanelLeftClose, PanelLeft, Settings2Icon, Waypoints } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTabViewStore } from "@/hooks/store/TabStore";
 import { ViewType } from "@/lib/types/DashTypes";
@@ -17,8 +17,8 @@ function TabTypeDot({ type }: { type: ViewType }) {
   const colors: Record<ViewType, string> = {
     home: "transparent",
     prompt: "#c8f135",
-    template: "#6ee7f7",
     library: "#a78bfa",
+    canvas: "#6ee7f7",
   };
   //   if (type === "home") return null;
   return (
@@ -40,7 +40,7 @@ function TabTypeDot({ type }: { type: ViewType }) {
 
 
 export function TabBar() {
-  const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar, setActiveView, isSettingsOpen, setIsSettingsOpen } = useTabViewStore()
+  const { tabs, activeTabId, isDash, setActiveTab, closeTab, sidebarOpen, toggleSidebar, setActiveView, isSettingsOpen, setIsSettingsOpen, isGraphOpen, setIsGraphOpen } = useTabViewStore()
   return (
     <div data-tauri-drag-region className="min-h-8 border-b w-full items-center flex justify-between">
       <div className="items-center flex ">
@@ -77,6 +77,15 @@ export function TabBar() {
               }`}
           >
             <Settings2Icon className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setIsGraphOpen(!isGraphOpen)}
+            title="Graph"
+            aria-label="Graph"
+            className={`rounded-lg p-1.5 transition-colors ${isGraphOpen ? "text-primary bg-background" : "text-muted hover:text-foreground hover:bg-background"
+              }`}
+          >
+            <Waypoints className="h-3.5 w-3.5" />
           </button>
           <VaultSwitcher />
         </div>

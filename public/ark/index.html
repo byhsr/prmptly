@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ark — visual flow designer</title>
+<meta name="description" content="Ark — a free-form flow designer that runs in your browser. Nested canvases, local storage, JSON import/export and shareable links.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%2317171a'/><path d='M9 9.5h8.5a5.5 5.5 0 0 1 0 11H12' stroke='%23f1f1f4' stroke-width='2.4' fill='none' stroke-linecap='round'/><circle cx='12' cy='9.5' r='2.6' fill='%23f1f1f4'/><circle cx='12' cy='20.5' r='2.6' fill='%23f1f1f4'/></svg>">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-flow" viewBox="0 0 24 24"><path d="M5 6.5h7.5a4.5 4.5 0 0 1 0 9H8"/><circle cx="5" cy="6.5" r="2.1"/><circle cx="5" cy="15.5" r="2.1"/></symbol>
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M10 4v16"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h9.5a5.5 5.5 0 0 1 0 11H8"/><path d="M8 5 4 9l4 4"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 9h-9.5a5.5 5.5 0 0 0 0 11H16"/><path d="M16 5l4 4-4 4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M8 12l4 4 4-4"/><path d="M4 17v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="17.5" cy="6" r="2.6"/><circle cx="6.5" cy="12" r="2.6"/><circle cx="17.5" cy="18" r="2.6"/><path d="M8.9 10.7 15.1 7.3M8.9 13.3l6.2 3.4"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="M6 9.5 12 15l6-5.5"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9.5 6 15 12l-5.5 6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 6.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h.5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7"/><path d="M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12"/><path d="M10.5 11v6M13.5 11v6"/></symbol>
+    <symbol id="i-duplicate" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 5.5A2.5 2.5 0 0 0 13.5 3H6a3 3 0 0 0-3 3v7.5A2.5 2.5 0 0 0 5.5 16"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z"/><path d="M14.5 6.5 17.5 9.5"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17.5 19 7"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 8.5 4.5L12 12 3.5 7.5 12 3Z"/><path d="m4 12.5 8 4.3 8-4.3"/><path d="m4 16.8 8 4.2 8-4.2"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="6" rx="2"/><rect x="14" y="4" width="7" height="6" rx="2"/><rect x="3" y="14" width="7" height="6" rx="2"/><rect x="14" y="14" width="7" height="6" rx="2"/></symbol>
+    <symbol id="i-machine" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+    <symbol id="i-align-left" viewBox="0 0 24 24"><path d="M4 4v16"/><rect x="7" y="6" width="12" height="4" rx="1.5"/><rect x="7" y="14" width="8" height="4" rx="1.5"/></symbol>
+    <symbol id="i-align-center-h" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="5" y="6" width="14" height="4" rx="1.5"/><rect x="8" y="14" width="8" height="4" rx="1.5"/></symbol>
+    <symbol id="i-align-right" viewBox="0 0 24 24"><path d="M20 4v16"/><rect x="5" y="6" width="12" height="4" rx="1.5"/><rect x="9" y="14" width="8" height="4" rx="1.5"/></symbol>
+    <symbol id="i-align-top" viewBox="0 0 24 24"><path d="M4 4h16"/><rect x="6" y="7" width="4" height="12" rx="1.5"/><rect x="14" y="7" width="4" height="8" rx="1.5"/></symbol>
+    <symbol id="i-align-center-v" viewBox="0 0 24 24"><path d="M3 12h18"/><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="8" width="4" height="8" rx="1.5"/></symbol>
+    <symbol id="i-align-bottom" viewBox="0 0 24 24"><path d="M4 20h16"/><rect x="6" y="5" width="4" height="12" rx="1.5"/><rect x="14" y="9" width="4" height="8" rx="1.5"/></symbol>
+    <symbol id="i-dist-h" viewBox="0 0 24 24"><path d="M4 4v16M20 4v16"/><rect x="9.5" y="8" width="5" height="8" rx="1.5"/></symbol>
+    <symbol id="i-dist-v" viewBox="0 0 24 24"><path d="M4 4h16M4 20h16"/><rect x="8" y="9.5" width="8" height="5" rx="1.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.8-2.8a4 4 0 1 0-5.7-5.7l-1.2 1.2"/><path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.8 2.8a4 4 0 1 0 5.7 5.7l1.2-1.2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9l-6-6Z"/><path d="M13 3v6h6"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m9 8-4 4 4 4M15 8l4 4-4 4"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="9.5" r="1.6"/><path d="m4.5 17.5 4.6-4.6a2 2 0 0 1 2.8 0l4.6 4.6"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></symbol>
+    <symbol id="i-enter" viewBox="0 0 24 24"><path d="M20 6v6a3 3 0 0 1-3 3H6"/><path d="m9.5 11.5-4 3.5 4 3.5"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7L4.5 10.9 10.1 9 12 3.5Z"/></symbol>
+    <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></symbol>
+    <symbol id="i-node" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="3"/><path d="M7 12h6"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5.5 3.6 18 11.2l-5.4 1.7-2.3 5.3L5.5 3.6Z"/></symbol>
+    <symbol id="i-sticky" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5V14l-6 6H6.5A2.5 2.5 0 0 1 4 17.5v-11Z"/><path d="M20 14h-4a2 2 0 0 0-2 2v4"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V5h14v2"/><path d="M12 5v14"/><path d="M9 19h6"/></symbol>
+    <symbol id="i-sticker" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2a4.6 4.6 0 0 0 7.2 0"/><path d="M9.3 9.4h.01M14.7 9.4h.01"/></symbol>
+    <symbol id="i-shape-rect" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="12" rx="2.5"/></symbol>
+    <symbol id="i-shape-ellipse" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8.5" ry="6.5"/></symbol>
+    <symbol id="i-shape-diamond" viewBox="0 0 24 24"><path d="M12 3.6 20.4 12 12 20.4 3.6 12 12 3.6Z"/></symbol>
+    <symbol id="i-dock" viewBox="0 0 24 24"><rect x="3" y="13.5" width="18" height="7" rx="3.5"/><path d="M8 8h8M10 4.5h4"/></symbol>
+    <symbol id="i-minimap" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><rect x="12.5" y="12.5" width="5" height="4" rx="1.2"/></symbol>
+    <symbol id="i-group" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24"><path d="M6 14.5 12 9l6 5.5"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 2.6a1.6 1.6 0 0 1 1.5 1.1l.4 1.2 1.3-.4a1.6 1.6 0 0 1 1.7 2.4l-.7 1.1 1.1.7a1.6 1.6 0 0 1 0 2.6l-1.1.7.7 1.1a1.6 1.6 0 0 1-1.7 2.4l-1.3-.4-.4 1.2a1.6 1.6 0 0 1-3 0l-.4-1.2-1.3.4a1.6 1.6 0 0 1-1.7-2.4l.7-1.1-1.1-.7a1.6 1.6 0 0 1 0-2.6l1.1-.7-.7-1.1a1.6 1.6 0 0 1 1.7-2.4l1.3.4.4-1.2A1.6 1.6 0 0 1 12 2.6Z"/></symbol>
+    <symbol id="i-preview" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h6M7 13h10M7 17h4"/></symbol>
+    <symbol id="i-align" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></symbol>
+    <symbol id="i-inspector" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+
+  <nav class="crumbs" id="crumbs" aria-label="Canvas path"></nav>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div class="tb-group tb-left">
+        <button class="icon-btn" id="btn-outline" title="Outline (Ctrl+B)" aria-label="Outline"><svg class="icon"><use href="#i-panel"/></svg></button>
+        <span class="tb-sep"></span>
+        <button class="canvas-pill" id="canvas-menu" title="Canvas actions — new, rename, delete">
+          <svg class="icon"><use href="#i-layers"/></svg>
+          <span class="canvas-pill-name" id="canvas-name">Main flow</span>
+          <svg class="icon caret"><use href="#i-chevron-down"/></svg>
+        </button>
+      </div>
+
+      <div class="tb-group tb-right">
+        <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="icon"><use href="#i-undo"/></svg></button>
+        <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg class="icon"><use href="#i-redo"/></svg></button>
+        <button class="icon-btn" id="btn-more" title="More — share, theme, import, export" aria-label="More"><svg class="icon"><use href="#i-more"/></svg></button>
+      </div>
+    </header>
+
+    <aside class="sidebar collapsed" id="sidebar">
+      <div class="panel-head">
+        <span class="panel-title"><svg class="icon"><use href="#i-layers"/></svg> Outline</span>
+        <div class="panel-actions">
+          <button class="icon-btn sm" id="btn-new-flow" title="New canvas" aria-label="New canvas"><svg class="icon"><use href="#i-plus"/></svg></button>
+          <button class="icon-btn sm" id="btn-close-outline" title="Close (Ctrl+B)" aria-label="Close outline"><svg class="icon"><use href="#i-x"/></svg></button>
+        </div>
+      </div>
+      <div class="tree" id="tree"></div>
+    </aside>
+
+    <section class="canvas-wrap" id="canvas-wrap">
+      <div class="canvas" id="canvas" tabindex="0">
+        <svg class="edge-svg" id="edge-svg" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0.6 L9 5 L0 9.4 z" fill="context-stroke"/>
+            </marker>
+          </defs>
+          <g id="edge-g"></g>
+          <g id="draft-g"></g>
+        </svg>
+        <div class="node-layer" id="node-g"></div>
+        <div class="marquee" id="marquee" hidden></div>
+        <div class="create-preview" id="create-preview" hidden></div>
+      </div>
+
+      <div class="dock" id="dock">
+        <div class="dock-options" id="dock-options" hidden></div>
+        <div class="dock-row" id="dock-tools">
+          <button class="dock-tool" data-tool="select" title="Select and move (V)" aria-label="Select"><svg class="icon"><use href="#i-cursor"/></svg></button>
+          <span class="dock-sep"></span>
+          <button class="dock-tool" data-tool="node" title="Flow node — can hold its own canvas (N)" aria-label="Flow node"><svg class="icon"><use href="#i-node"/></svg></button>
+          <button class="dock-tool" data-tool="sticky" title="Sticky note (S)" aria-label="Sticky note"><svg class="icon"><use href="#i-sticky"/></svg></button>
+          <button class="dock-tool" data-tool="text" title="Text label (T)" aria-label="Text label"><svg class="icon"><use href="#i-text"/></svg></button>
+          <button class="dock-tool" data-tool="shape" title="Shape (R)" aria-label="Shape"><svg class="icon"><use href="#i-shape-rect"/></svg><svg class="icon caret"><use href="#i-chevron-down"/></svg></button>
+          <button class="dock-tool" data-tool="sticker" title="Sticker (E)" aria-label="Sticker"><svg class="icon"><use href="#i-sticker"/></svg></button>
+          <button class="dock-tool" data-tool="group" title="Group frame — hold things together (G)" aria-label="Group frame"><svg class="icon"><use href="#i-group"/></svg></button>
+          <button class="dock-tool" data-tool="preview" title="Preview node — shows a canvas as text (P)" aria-label="Preview node"><svg class="icon"><use href="#i-preview"/></svg></button>
+          <span class="dock-sep"></span>
+          <button class="dock-tool dock-close" id="dock-hide" title="Hide the toolbar (.)" aria-label="Hide toolbar"><svg class="icon"><use href="#i-chevron-down"/></svg></button>
+        </div>
+      </div>
+
+      <button class="dock-restore" id="dock-restore" title="Show the toolbar (.)" hidden>
+        <svg class="icon"><use href="#i-dock"/></svg>
+      </button>
+
+      <div class="minimap hidden" id="minimap" title="Click to jump">
+        <canvas id="mm-canvas"></canvas>
+      </div>
+    </section>
+
+    <div class="settings-panel" id="settings-panel" hidden>
+      <div class="panel-head">
+        <span class="panel-title"><svg class="icon"><use href="#i-gear"/></svg> Settings</span>
+        <button class="icon-btn sm" id="btn-settings-close" title="Close" aria-label="Close settings"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-row">
+          <span class="setting-label">Theme</span>
+          <div class="segmented">
+            <button id="theme-dark">Dark</button>
+            <button id="theme-light">Light</button>
+          </div>
+        </div>
+        <label class="setting-row">
+          <span class="setting-label">Snap to grid</span>
+          <input type="checkbox" id="opt-snap">
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+        <label class="setting-row">
+          <span class="setting-label">Animated edges</span>
+          <input type="checkbox" id="opt-anim">
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+        <label class="setting-row">
+          <span class="setting-label">Overview map</span>
+          <input type="checkbox" id="opt-map">
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+        <p class="muted">Dots mark every 12 units; snapping uses 24. Settings are remembered in this browser.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <button class="status-btn status-settings" id="btn-settings" title="Settings" aria-label="Settings" aria-pressed="false"><svg class="icon sm"><use href="#i-gear"/></svg></button>
+    <span id="status-left"></span>
+    <span class="spacer"></span>
+    <span id="status-right"></span>
+    <span class="status-controls">
+      <button class="status-btn" id="status-zoom-out" title="Zoom out (Ctrl −)" aria-label="Zoom out"><svg class="icon sm"><use href="#i-minus"/></svg></button>
+      <button class="status-zoom" id="status-zoom" title="Reset to 100% (Ctrl+0)">100%</button>
+      <button class="status-btn" id="status-zoom-in" title="Zoom in (Ctrl +)" aria-label="Zoom in"><svg class="icon sm"><use href="#i-plus"/></svg></button>
+      <span class="status-sep"></span>
+      <button class="status-btn" id="status-fit" title="Fit to screen (F)" aria-label="Fit to screen"><svg class="icon sm"><use href="#i-fit"/></svg></button>
+      <button class="status-btn" id="status-map" title="Overview map (M)" aria-label="Overview map" aria-pressed="false"><svg class="icon sm"><use href="#i-minimap"/></svg></button>
+    </span>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="ctx-menu" id="menu" hidden></div>
+<div class="modals" id="modals"></div>
+
+<noscript>
+  <div class="noscript">Ark needs JavaScript enabled — everything runs locally in your browser.</div>
+</noscript>
+
+<script src="js/md.js"></script>
+<script src="js/store.js"></script>
+<script src="js/share.js"></script>
+<script src="js/render.js"></script>
+<script src="js/interact.js"></script>
+<script src="js/export.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+<script src="bridge.js"></script>
+</body>
+</html>

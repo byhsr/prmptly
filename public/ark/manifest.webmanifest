@@ -1,0 +1,26 @@
+{
+  "name": "Ark — visual flow designer",
+  "short_name": "Ark",
+  "description": "A free-form flow designer with nested canvases, local storage and shareable links. Runs entirely in your browser.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "categories": ["productivity", "design", "developer"],
+  "icons": [
+    {
+      "src": "icons/ark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/ark-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

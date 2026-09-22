@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Workflow, Search, ListTree, Brain } from "lucide-react"
+import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Search, ListTree, Brain } from "lucide-react"
 import { BuilderPanel} from "./BuilderPanel"
 import { ScratchpadPanel } from "./scratchpadPanel"
 import { PromptPanel } from "./GeneratedPromptPanel"
-import { Canvas } from "../canvas/Canvas"
 import { OutlinePanel } from "./OutlinePanel"
 import { RectifyBar } from "./RectifyBar"
 import { AIAssistant } from "../ai/AIAssistant"
@@ -12,20 +11,18 @@ import { Tab } from "../core-components/Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
 import { TemplateSelector } from "./TemplateSelector"
-import { CanvasFlow } from "@/lib/types/canvas.types"
 import { activeEditorRef } from "./BuilderPanel"
 import { documentNameOverrides } from "@/lib/state"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
 
 
-type SubTab = "builder" | "scratchpad" | "prompt" | "canvas"
+type SubTab = "builder" | "scratchpad" | "prompt"
 type SplitMode = "none" | "two" | "two-prompt" | "three"
 
 const SUB_TABS = [
   { id: "builder" as SubTab, icon: PenLine, label: "Builder" },
   { id: "scratchpad" as SubTab, icon: StickyNote, label: "Scratchpad" },
-  { id: "canvas" as SubTab, icon: Workflow, label: "Canvas" },
   { id: "prompt" as SubTab, icon: Terminal, label: "Prompt" },
 ]
 
@@ -33,12 +30,7 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("builder")
   const [splitMode, setSplitMode] = useState<SplitMode>("none")
   const { loadDocument, reset, activeDocument, updateTemplate, clearTemplate, persist } = usePromptStore()
-  const compiledOutput = usePromptStore((s) => s.compiledOutput)
-  const sections = usePromptStore((s) => s.sections)
-  const filledSections = usePromptStore((s) => s.filledSections)
-  const filledSectionDocs = usePromptStore((s) => s.filledSectionDocs)
-  const canvasFlow = usePromptStore((s) => s.canvasFlow)
-  const updateCanvas = usePromptStore((s) => s.updateCanvas)
+  const body = usePromptStore((s) => s.body)
   const [docName, setDocName] = useState(tab.label)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
@@ -49,14 +41,6 @@ export function FileTab({ tab }: { tab: Tab }) {
     groupId: `filetab-split-${splitMode}`,
     storage: localStorage,
   })
-
-  const outlineSections = Array.isArray(sections) && sections.length > 0
-    ? sections.map((s) => ({
-        title: s?.title || "",
-        doc: filledSectionDocs[s.id] ?? null,
-        value: filledSections[s.id] ?? "",
-      }))
-    : undefined
 
   useEffect(() => {
     loadDocument(tab.id)
@@ -128,14 +112,6 @@ export function FileTab({ tab }: { tab: Tab }) {
         return <BuilderPanel />
       case "scratchpad":
         return <ScratchpadPanel />
-      case "canvas":
-        return (
-          <Canvas
-            key={tab.id}
-            initialFlow={canvasFlow}
-            onChange={updateCanvas}
-          />
-        )
       case "prompt":
         return <PromptPanel />
     }
@@ -291,7 +267,7 @@ export function FileTab({ tab }: { tab: Tab }) {
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto shrink-0">
-              <OutlinePanel doc={compiledOutput} sections={outlineSections} />
+              <OutlinePanel doc={body} />
             </div>
           )}
         </div>
@@ -300,35 +276,13 @@ export function FileTab({ tab }: { tab: Tab }) {
       {showAI && (
         <AIAssistant
           onClose={() => setShowAI(false)}
-          editorContent={compiledOutput || sections?.map((s: any) => typeof s === "string" ? s : "").join("\n") || ""}
+          editorContent={body}
           documentTitle={docName}
           documentType={tab.type}
-          canvasContext={canvasFlow.nodes.length > 0 ? formatCanvasForAgent(canvasFlow) : undefined}
           scratchpad={usePromptStore.getState().scratchpadText || undefined}
-          templateSections={sections?.length > 0 ? sections.map((s: any) => ({ title: s.title || "", content: (typeof s === "object" && s?.content_json) || "" })) : undefined}
         />
       )}
     </div>
   )
 }
 
-/** Format a CanvasFlow into a textual description for the AI */
-function formatCanvasForAgent(flow: CanvasFlow): string {
-  const parts: string[] = []
-  parts.push(`Nodes (${flow.nodes.length}):`)
-  for (const n of flow.nodes) {
-    let desc = `  [${n.type.toUpperCase()}] "${n.label}"`
-    if (n.detail) desc += ` — ${n.detail.slice(0, 150)}`
-    if (n.config) {
-      if ("model" in (n.config as any) && (n.config as any).model) desc += ` | model: ${(n.config as any).model}`
-      if ("actionType" in (n.config as any) && (n.config as any).actionType) desc += ` | action: ${(n.config as any).actionType}`
-      if ("operator" in (n.config as any) && (n.config as any).operator) desc += ` | ${(n.config as any).operator} ${(n.config as any).field || ""}`
-    }
-    parts.push(desc)
-  }
-  parts.push(`Edges (${flow.edges.length}):`)
-  for (const e of flow.edges) {
-    parts.push(`  ${e.source} → ${e.target}${e.label ? ` [${e.label}]` : ""}`)
-  }
-  return parts.join("\n")
-}

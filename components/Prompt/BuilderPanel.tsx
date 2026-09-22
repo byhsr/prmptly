@@ -1,108 +1,72 @@
 "use client"
 
+import { useState, type ReactNode } from "react"
+import { motion } from "framer-motion"
+import { Check, Copy, Download } from "lucide-react"
 import { usePromptStore } from "@/hooks/store/PromptStore"
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core"
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical } from "lucide-react"
-import { TemplateSection } from "@/lib/db/template"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
+import { useNotifications } from "@/hooks/store/SidebarStore"
+import { exportMarkdownToFile } from "@/lib/exportMarkdown"
+import { Tooltip } from "@/components/ui/Tooltip"
 import { SmartEditor } from "../ui/SmartTextEditor"
 
 // Global ref for RectifyBar — last focused editor
 export const activeEditorRef = { current: null as any }
 
-
-// ── SectionBlock ───────────────────────────────────────────────────────────────
-
-// `content_json` is a free-text field, so in practice it often holds plain text rather
-// than JSON. Parsing it unguarded threw during render and took the builder down with it.
-function placeholderFor(section: TemplateSection): string {
-  const fallback = `Enter ${section.title.toLowerCase()}...`
-  if (!section.content_json) return fallback
-  try {
-    const parsed = JSON.parse(section.content_json)
-    return typeof parsed?.placeholder === "string" ? parsed.placeholder : fallback
-  } catch {
-    return fallback
-  }
-}
-
-interface SectionBlockProps {
-  section: TemplateSection
-  value: string
-}
-
-function SectionBlock({ section, value }: SectionBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: section.id,
-  })
-  const { updateSection } = usePromptStore()
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  }
-
+// Same control grammar as the quicks save bar / output copy button.
+function BuilderAction({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  children: ReactNode
+}) {
+  const reduced = usePrefersReducedMotion()
   return (
-    <div ref={setNodeRef} style={style} className="space-y-2">
-      <div className="flex items-center gap-2">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab text-muted opacity-0 group-hover:opacity-100 transition-opacity active:cursor-grabbing"
-          tabIndex={-1}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
-        <label className="text-xs font-medium uppercase tracking-wide text-muted">
-          {section.title}
-        </label>
-      </div>
-      <SmartEditor
-        initialContent={value}
-        onChange={(plain, doc) => updateSection(section.id, plain, doc)}
-        placeholder={placeholderFor(section)}
-        onEditorReady={(e) => { activeEditorRef.current = e }}
-      />
-    </div>
+    <Tooltip label={label}>
+      <motion.button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        whileHover={reduced ? undefined : { scale: 1.05 }}
+        whileTap={reduced ? undefined : { scale: 0.88 }}
+        transition={{ type: "spring", stiffness: 500, damping: 20 }}
+        className="focus-ring inline-flex h-10 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 font-mono text-[11px] text-muted shadow-lg transition-colors hover:text-foreground hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {children}
+      </motion.button>
+    </Tooltip>
   )
 }
 
-
-// ── BuilderPanel ───────────────────────────────────────────────────────────────
-
 export function BuilderPanel() {
-  const {
-    sections,
-    filledSections,
-    loading,
-    updateSection,
-    reorderSections,
-  } = usePromptStore()
+  const body = usePromptStore((s) => s.body)
+  const loadKey = usePromptStore((s) => s.loadKey)
+  const loading = usePromptStore((s) => s.loading)
+  const setBody = usePromptStore((s) => s.setBody)
+  const [copied, setCopied] = useState(false)
 
-  const sensors = useSensors(useSensor(PointerSensor))
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIndex = sections.findIndex((s) => s.id === active.id)
-    const newIndex = sections.findIndex((s) => s.id === over.id)
-    reorderSections(arrayMove(sections, oldIndex, newIndex))
+  const handleCopy = async () => {
+    if (!body) return
+    await navigator.clipboard.writeText(body)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
-  
+  const handleExport = async () => {
+    if (!body) return
+    try {
+      const name = usePromptStore.getState().activeDocument?.name || "prompt"
+      const exported = await exportMarkdownToFile(name, body)
+      if (exported) useNotifications.getState().notify("Prompt exported")
+    } catch {
+      useNotifications.getState().notify("Failed to export prompt", true)
+    }
+  }
 
   if (loading) {
     return (
@@ -114,27 +78,37 @@ export function BuilderPanel() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto p-6 w-full">
-        {!sections.length ? (
-          <SmartEditor
-            initialContent={filledSections["__freeform__"] || ""}
-            onChange={(plain, doc) => updateSection("__freeform__", plain, doc)}
-            minHeight={300}
-            onEditorReady={(e) => { activeEditorRef.current = e }}
-          />
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-              {sections.map((section) => (
-                <SectionBlock
-                  key={section.id}
-                  section={section}
-                  value={filledSections[section.id] || ""}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        )}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 w-full">
+        <SmartEditor
+          key={loadKey}
+          initialContent={body}
+          contentType="markdown"
+          onChange={(_plain, _doc, markdown) => setBody(markdown)}
+          placeholder="Write your prompt in markdown — use ## for sections…"
+          minHeight={300}
+          onEditorReady={(e) => { activeEditorRef.current = e }}
+        />
+      </div>
+
+      <div className="shrink-0 flex items-center justify-end gap-2 px-6 pb-6">
+        <BuilderAction label="Copy markdown" onClick={handleCopy} disabled={!body}>
+          {copied ? (
+            <>
+              <Check size={11} className="text-accent" aria-hidden="true" />
+              copied
+            </>
+          ) : (
+            <>
+              <Copy size={11} aria-hidden="true" />
+              copy
+            </>
+          )}
+        </BuilderAction>
+
+        <BuilderAction label="Export as .md" onClick={handleExport} disabled={!body}>
+          <Download size={11} aria-hidden="true" />
+          export .md
+        </BuilderAction>
       </div>
     </div>
   )
