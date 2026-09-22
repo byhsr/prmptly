@@ -108,13 +108,6 @@ export function HomeMenu() {
   return (
     <div className="h-full w-full overflow-y-auto overflow-x-hidden">
       <div className="flex flex-col gap-10 px-10 py-12 w-full">
-        <header className="flex flex-col gap-1">
-          <h1 className="text-base font-semibold text-foreground">quicks</h1>
-          <p className="text-sm text-muted">
-            Start something new, or jump back into recent work.
-          </p>
-        </header>
-
         <section className="flex flex-col gap-3">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
             Quick actions
@@ -129,8 +122,10 @@ export function HomeMenu() {
                 transition={{ type: "spring", stiffness: 500, damping: 24 }}
                 className="focus-ring group flex flex-col items-start gap-1 rounded-xl border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-background"
               >
-                <Icon size={14} className="text-muted group-hover:text-foreground transition-colors" aria-hidden="true" />
-                <span className="text-xs text-foreground">{label}</span>
+                <span className="flex flex-row items-center gap-2">
+                  <Icon size={14} className="shrink-0 text-muted transition-colors group-hover:text-foreground" aria-hidden="true" />
+                  <span className="text-xs text-foreground">{label}</span>
+                </span>
                 <span className="font-mono text-[10px] text-muted">{hint}</span>
               </motion.button>
             ))}

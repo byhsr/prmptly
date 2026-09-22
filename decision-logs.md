@@ -397,3 +397,29 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 
 * Quicks' floating bar only surfaces when the pointer nears the bottom-right corner (its own requested behaviour), so it will still *appear* hidden after a paste. If the bug report meant that bar rather than the builder's row, say so and I'll pin it visible.
 
+---
+
+## Session Log — 22/09 · one floating bar for both editors
+
+### Decision: share the bar instead of re-styling it per surface
+
+**Why**
+
+* The builder's actions were a hardcoded always-visible row; quicks' are a floating bar that appears on approach. Two grammars for the same job, and the row was the thing a tall paste could push out of view.
+
+**Pipeline**
+
+* `FloatingBar` + `BarAction` moved out of `HomeView` into **`components/ui/FloatingBar.tsx`** and used by both editors. The builder's row is gone; copy / export / ‹copy as…› now live in the same fixed-positioned bar as quicks.
+* Because the bar is `position: fixed`, editor content can no longer displace it — that removes the push-out class of bug at the root, so the `sticky`/`bg-background` workaround from the previous entry is deleted. The `min-h-0` hardening on the pane stays (correct on its own merits).
+* Home menu: dropped the `quicks` heading and the "Start something new…" line — it goes straight to **Quick actions** and **Recents**. Action cards now put the icon and label on one row with the hint beneath.
+* Active document tab: `border-primary` (a near-white hairline — read as a stray focus ring) → `border-border`. The selected tab is still obvious from the `bg-surface` fill, the type dot and the label; `--color-primary` remains foreground for *text* states, which is where it looked right.
+
+**Files**
+
+* New: `components/ui/FloatingBar.tsx`.
+* Modified: `components/Prompt/BuilderPanel.tsx`, `components/Home/HomeView.tsx`, `components/Home/HomeMenu.tsx`, `components/core-components/Tabbar.tsx`.
+
+**Verification**
+
+* `tsc --noEmit` clean; Vite dev serves `/` and every changed module with 200.
+

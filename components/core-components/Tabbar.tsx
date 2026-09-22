@@ -106,7 +106,7 @@ export function TabBar() {
                 style={{ height: 28, maxWidth: 160 }}
                 className={`flex items-center gap-1 px-3 cursor-pointer text-xs font-mono transition-colors
                 ${isActive
-                    ? "bg-surface border border-primary text-foreground"
+                    ? "bg-surface border border-border text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   }`}
               >
