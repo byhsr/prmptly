@@ -17,11 +17,12 @@ export interface VaultGraphData {
 // Nodes are derived from the live tables every time — nothing is duplicated into the
 // graph tables. Only edges and positions are user state.
 export async function buildVaultGraph(): Promise<VaultGraphData> {
-  const [documents, templates, skills, snippets, allEdges, stored] = await Promise.all([
+  const [documents, templates, skills, snippets, canvases, allEdges, stored] = await Promise.all([
     listDocuments(),
     templateService.getAll(),
     skillService.getAll(),
     libraryService.getAll(),
+    canvasService.list(),
     graphService.getEdges(),
     graphService.getPositions(),
   ])
@@ -44,6 +45,12 @@ export async function buildVaultGraph(): Promise<VaultGraphData> {
       kind: "skill" as const,
       ref: skill.id,
       label: skill.name,
+    })),
+    ...canvases.map((canvas) => ({
+      nodeId: `canvas:${canvas.id}`,
+      kind: "canvas" as const,
+      ref: canvas.id,
+      label: canvas.name,
     })),
     // snippets are keyed by namespace+key, not by a row id
     ...snippets.map((snippet) => {

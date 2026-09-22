@@ -21,6 +21,7 @@ import { useTabViewStore } from "@/hooks/store/TabStore"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { useSkillStore } from "@/hooks/store/skillStore"
 import { useTemplateStore } from "@/hooks/store/templateStore"
+import { useCanvasStore } from "@/hooks/store/canvasStore"
 import { getDocument } from "@/lib/db/document"
 
 const nodeTypes = { entity: EntityNode }
@@ -117,6 +118,12 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
 
       const skillStore = useSkillStore.getState()
       const templateStore = useTemplateStore.getState()
+      if (entity.kind === "canvas") {
+        useCanvasStore.getState().selectCanvas(entity.ref)
+        tabView.setActiveView("canvas")
+        onClose()
+        return
+      }
       if (entity.kind === "template") {
         await templateStore.selectTemplate(entity.ref)
         skillStore.setLibraryTab("templates")

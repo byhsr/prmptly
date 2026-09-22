@@ -423,3 +423,50 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 
 * `tsc --noEmit` clean; Vite dev serves `/` and every changed module with 200.
 
+---
+
+## Session Log — 22/09 · canvases reach the menu and the graph
+
+### Decision: canvases are first-class in both vault-wide surfaces
+
+**Why**
+
+* Canvases live in their own `canvases` table, so they were invisible to anything derived from `documents` — the Home menu's recents and the vault graph both silently skipped them.
+
+**Pipeline**
+
+* **Recents** now merges `listDocuments()` with `canvasService.list()` into one `{id, kind, label, updatedAt}` list, sorted by `updatedAt` and capped at 8 — the same shape recents will need if more kinds are added later. Canvas rows get a `Shapes` icon and open into the Canvas tab (select + `setActiveView("canvas")`).
+* **Graph**: `GraphEntityKind` gained `canvas`; `buildVaultGraph` pulls `canvasService.list()` and emits `canvas:<id>` nodes. Double-click sets the canvas selection and switches view. No schema change — nodes are still derived live, only edges/positions are stored.
+* Quick-action cards: `gap-1` → `gap-2` between the icon/title row and the hint.
+
+**Files**
+
+* Modified: `components/Home/HomeMenu.tsx`, `lib/types/graph.ts`, `lib/graph/buildVaultGraph.ts`, `components/graph/VaultGraph.tsx`.
+
+**Verification**
+
+* `tsc --noEmit` clean; Vite dev serves `/` and every changed module with 200.
+
+---
+
+## Session Log — 22/09 · settings matches the graph overlay
+
+### Decision: one overlay shell for the two full-screen panels
+
+**Why**
+
+* Settings was still the old small undecorated box (no border, square-ish corners, instant appearance, no visible close) while the graph had moved to a bordered panel with a header and a fade. Two looks for the same kind of surface.
+
+**Pipeline**
+
+* `SettingsModal` now uses the graph's shell verbatim: dim `rgba(0,0,0,0.6)` backdrop, `motion.div` fade + `scale 0.99 → 1` over 0.14s, `rounded-xl border border-border`, a header row (`border-b`, title on the left, `X` close on the right, same button styling), Escape to close, and `z-[9998]` so it sits in the same layer as the graph. Size went `720×480` → `min(92vw, 960px) × min(88vh, 680px)`.
+* `SettingsView`'s nav was using raw `bg-neutral-800` / `text-accent` / `text-neutral-400` — off-theme hardcoded greys. Switched to tokens (`bg-background text-foreground` when active, `text-muted` otherwise), rounded rows, tighter padding, `shrink-0` on the rail and `min-w-0` on the content.
+
+**Files**
+
+* Modified: `components/settings/SettingsModal.tsx`, `components/settings/SettingsView.tsx`.
+
+**Verification**
+
+* `tsc --noEmit` clean; Vite dev serves `/` and both settings modules with 200.
+

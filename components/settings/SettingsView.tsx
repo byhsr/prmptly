@@ -19,13 +19,15 @@ export function SettingsView() {
 
   return (
     <div className="flex h-full">
-      <div className="w-48 border-r border-border p-4 space-y-1">
+      <div className="w-48 shrink-0 border-r border-border p-3 space-y-0.5">
         {(Object.entries(TABS) as [TabKey, typeof TABS[TabKey]][]).map(([key, tab]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`block w-full text-left px-3 py-2 text-sm ${
-              activeTab === key ? "bg-neutral-800 text-accent" : "text-neutral-400"
+            className={`block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+              activeTab === key
+                ? "bg-background text-foreground"
+                : "text-muted hover:bg-background/60 hover:text-foreground"
             }`}
           >
             {tab.label}
@@ -33,7 +35,7 @@ export function SettingsView() {
         ))}
       </div>
 
-      <div className="flex-1 p-6 overflow-y-auto">
+      <div className="flex-1 min-w-0 p-6 overflow-y-auto">
         <ActiveComponent />
       </div>
     </div>
