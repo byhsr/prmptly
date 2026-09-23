@@ -10,10 +10,12 @@ import {
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Share2 } from "lucide-react"
 import { GlobNode, type GlobNodeData } from "./GlobNode"
+import { DeletableEdge } from "./DeletableEdge"
 import { buildVaultGraph } from "@/lib/graph/buildVaultGraph"
 import { graphService } from "@/lib/db/graph"
 import { hashColor } from "@/lib/graph/color"
@@ -26,20 +28,17 @@ import { useCanvasStore } from "@/hooks/store/canvasStore"
 import { getDocument } from "@/lib/db/document"
 
 const nodeTypes = { entity: GlobNode }
+const edgeTypes = { deletable: DeletableEdge }
 const EDGE_STYLE = { stroke: "var(--border, #3a3a3a)" }
 
-function toFlowEdge(edge: GraphEdge): Edge {
+function toFlowEdge(edge: GraphEdge, onDelete: (id: string) => void): Edge {
   return {
     id: edge.id,
     source: edge.sourceId,
     target: edge.targetId,
-    label: edge.label ?? undefined,
+    type: "deletable",
+    data: { onDelete },
     style: EDGE_STYLE,
-    labelStyle: {
-      fill: "var(--accent, #c8f135)",
-      fontFamily: "'Share Tech Mono', monospace",
-      fontSize: 10,
-    },
   }
 }
 
@@ -50,6 +49,25 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const entityByNodeId = useRef(new Map<string, GraphEntity>())
   const { getNodes } = useReactFlow()
+
+  // Drops the link locally and in the DB. Used by the selected-edge delete button; the
+  // keyboard path goes through ReactFlow's own `onEdgesDelete`.
+  const handleDeleteEdge = useCallback(
+    (id: string) => {
+      setEdges((current) => current.filter((edge) => edge.id !== id))
+      graphService.removeEdge(id).catch(() => {})
+    },
+    [setEdges]
+  )
+
+  // Nodes are derived from the vault's own tables, so only links are user state. Swallow
+  // node removals rather than letting the delete keys drop a node until the next reload.
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<Node<GlobNodeData>>[]) => {
+      onNodesChange(changes.filter((change) => change.type !== "remove"))
+    },
+    [onNodesChange]
+  )
 
   const load = useCallback(async () => {
     const data = await buildVaultGraph()
@@ -77,17 +95,21 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
         },
       }))
     )
-    setEdges(data.edges.map(toFlowEdge))
+    setEdges(data.edges.map((edge) => toFlowEdge(edge, handleDeleteEdge)))
     setLoading(false)
-  }, [setNodes, setEdges])
+  }, [setNodes, setEdges, handleDeleteEdge])
 
   // Only edges are re-read after a connect/delete — positions may be mid-drag and
   // aren't persisted until the drag stops.
   const refreshEdges = useCallback(async () => {
     const known = new Set(getNodes().map((n) => n.id))
     const stored = await graphService.getEdges()
-    setEdges(stored.filter((e) => known.has(e.sourceId) && known.has(e.targetId)).map(toFlowEdge))
-  }, [getNodes, setEdges])
+    setEdges(
+      stored
+        .filter((e) => known.has(e.sourceId) && known.has(e.targetId))
+        .map((edge) => toFlowEdge(edge, handleDeleteEdge))
+    )
+  }, [getNodes, setEdges, handleDeleteEdge])
 
   useEffect(() => {
     load()
@@ -181,7 +203,7 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
@@ -193,6 +215,8 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
           if (entity) openEntity(entity)
         }}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        deleteKeyCode={["Delete", "Backspace"]}
         fitView
         minZoom={0.15}
         proOptions={{ hideAttribution: true }}

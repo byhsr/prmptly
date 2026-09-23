@@ -31,7 +31,7 @@ export function GraphView({ onClose }: { onClose: () => void }) {
           <div className="flex items-baseline gap-3">
             <span className="text-sm font-medium text-foreground">graph</span>
             <span className="font-mono text-[10px] text-muted">
-              drag node → node to connect · select a link and press delete · double-click to open
+              drag node → node to connect · click a link, then its × or delete · double-click to open
             </span>
           </div>
           <Tooltip label="Close">
