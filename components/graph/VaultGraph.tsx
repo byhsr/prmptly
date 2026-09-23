@@ -13,9 +13,10 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Share2 } from "lucide-react"
-import { EntityNode, type EntityNodeData } from "./EntityNode"
+import { GlobNode, type GlobNodeData } from "./GlobNode"
 import { buildVaultGraph } from "@/lib/graph/buildVaultGraph"
 import { graphService } from "@/lib/db/graph"
+import { hashColor } from "@/lib/graph/color"
 import type { GraphEdge, GraphEntity } from "@/lib/types/graph"
 import { useTabViewStore } from "@/hooks/store/TabStore"
 import { useQuicksStore } from "@/hooks/store/quickStore"
@@ -24,7 +25,7 @@ import { useTemplateStore } from "@/hooks/store/templateStore"
 import { useCanvasStore } from "@/hooks/store/canvasStore"
 import { getDocument } from "@/lib/db/document"
 
-const nodeTypes = { entity: EntityNode }
+const nodeTypes = { entity: GlobNode }
 const EDGE_STYLE = { stroke: "var(--border, #3a3a3a)" }
 
 function toFlowEdge(edge: GraphEdge): Edge {
@@ -45,7 +46,7 @@ function toFlowEdge(edge: GraphEdge): Edge {
 function VaultGraphInner({ onClose }: { onClose: () => void }) {
   const [entities, setEntities] = useState<GraphEntity[]>([])
   const [loading, setLoading] = useState(true)
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<EntityNodeData>>([])
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<GlobNodeData>>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const entityByNodeId = useRef(new Map<string, GraphEntity>())
   const { getNodes } = useReactFlow()
@@ -54,13 +55,26 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
     const data = await buildVaultGraph()
     entityByNodeId.current = new Map(data.entities.map((e) => [e.nodeId, e]))
 
+    // Degree drives glob size, the way the library graph sizes its dots.
+    const degree = new Map<string, number>()
+    for (const edge of data.edges) {
+      degree.set(edge.sourceId, (degree.get(edge.sourceId) ?? 0) + 1)
+      degree.set(edge.targetId, (degree.get(edge.targetId) ?? 0) + 1)
+    }
+
     setEntities(data.entities)
     setNodes(
       data.entities.map((entity) => ({
         id: entity.nodeId,
         type: "entity",
         position: data.positions.get(entity.nodeId) ?? { x: 0, y: 0 },
-        data: { kind: entity.kind, label: entity.label },
+        data: {
+          label: entity.label,
+          color: hashColor(entity.kind),
+          size: 16 + Math.min(degree.get(entity.nodeId) ?? 0, 6) * 3,
+          connectable: true,
+          labelMaxWidth: 200,
+        },
       }))
     )
     setEdges(data.edges.map(toFlowEdge))
@@ -194,8 +208,12 @@ function VaultGraphInner({ onClose }: { onClose: () => void }) {
         {counts.map(([kind, count]) => (
           <span
             key={kind}
-            className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] text-muted"
+            className="flex items-center gap-1.5 rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] text-muted"
           >
+            <span
+              style={{ width: 7, height: 7, borderRadius: "50%", background: hashColor(kind) }}
+              aria-hidden="true"
+            />
             {kind} {count}
           </span>
         ))}

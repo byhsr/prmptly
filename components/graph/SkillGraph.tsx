@@ -11,23 +11,14 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Workflow } from "lucide-react"
-import { SkillDotNode, type SkillDotData } from "./SkillGraphNode"
+import { GlobNode, type GlobNodeData } from "./GlobNode"
 import { useSkillStore } from "@/hooks/store/skillStore"
 import { Skill, SkillGroupNode } from "@/lib/types/skill"
 import { forceLayout } from "@/lib/graph/force"
+import { hashColor } from "@/lib/graph/color"
 
-const nodeTypes = { skill: SkillDotNode }
+const nodeTypes = { skill: GlobNode }
 const EDGE_STYLE = { stroke: "var(--border, #3a3a3a)" }
-
-// Stable per-group hue so clusters read as clusters
-function groupColor(groupId: string | null): string {
-  if (!groupId) return "var(--muted, #8a8a8a)"
-  let hash = 0
-  for (let i = 0; i < groupId.length; i++) {
-    hash = (hash * 31 + groupId.charCodeAt(i)) | 0
-  }
-  return `hsl(${Math.abs(hash) % 360}, 60%, 60%)`
-}
 
 function collectSkills(node: SkillGroupNode): Skill[] {
   return [...node.skills, ...node.children.flatMap(collectSkills)]
@@ -79,7 +70,7 @@ function buildGraph(
   tree: SkillGroupNode[],
   allSkills: Skill[],
   scopeId: string | null
-): { nodes: Node<SkillDotData>[]; edges: Edge[]; signature: string } {
+): { nodes: Node<GlobNodeData>[]; edges: Edge[]; signature: string } {
   const scoped = scopeId ? findGroup(tree, scopeId) : null
   const skills = scoped ? collectSkills(scoped) : allSkills
 
@@ -100,13 +91,13 @@ function buildGraph(
     edges.map((e) => ({ source: e.source, target: e.target }))
   )
 
-  const nodes: Node<SkillDotData>[] = skills.map((skill) => ({
+  const nodes: Node<GlobNodeData>[] = skills.map((skill) => ({
     id: skill.id,
     type: "skill",
     position: positions.get(skill.id) ?? { x: 0, y: 0 },
     data: {
       label: skill.name,
-      color: groupColor(skill.groupId),
+      color: hashColor(skill.groupId),
       size: 14 + Math.min(degree.get(skill.id) ?? 0, 5) * 3,
     },
   }))
@@ -122,7 +113,7 @@ function SkillGraphInner() {
   const setLibraryTab = useSkillStore((s) => s.setLibraryTab)
 
   const computed = useMemo(() => buildGraph(tree, skills, scopeId), [tree, skills, scopeId])
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<SkillDotData>>(computed.nodes)
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<GlobNodeData>>(computed.nodes)
   const [seeded, setSeeded] = useState(computed.signature)
   const { fitView } = useReactFlow()
 
