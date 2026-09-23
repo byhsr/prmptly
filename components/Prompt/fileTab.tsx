@@ -253,7 +253,7 @@ export function FileTab({ tab }: { tab: Tab }) {
             )}
           </div>
           {showOutline && (
-            <div className="w-56 border-l border-border overflow-y-auto shrink-0">
+            <div className="w-56 border-l border-border overflow-y-auto overflow-x-hidden shrink-0">
               <OutlinePanel doc={body} />
             </div>
           )}

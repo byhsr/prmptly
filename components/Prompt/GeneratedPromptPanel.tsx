@@ -56,11 +56,11 @@ export function PromptPanel() {
       <div className="relative flex-1 overflow-hidden p-4">
         {highlighted ? (
           <div
-            className="h-full overflow-y-auto rounded-lg bg-background p-4 text-sm font-mono leading-relaxed [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_code]:whitespace-pre-wrap [&_code]:break-words"
+            className="h-full overflow-y-auto overflow-x-hidden rounded-lg bg-background p-4 text-sm font-mono leading-relaxed [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_code]:whitespace-pre-wrap [&_code]:break-words"
             dangerouslySetInnerHTML={{ __html: highlighted }}
           />
         ) : (
-          <pre className="h-full overflow-y-auto rounded-lg bg-background p-4 text-sm text-foreground font-mono leading-relaxed whitespace-pre-wrap break-words">
+          <pre className="h-full overflow-y-auto overflow-x-hidden rounded-lg bg-background p-4 text-sm text-foreground font-mono leading-relaxed whitespace-pre-wrap break-words">
             {compiledOutput || (
               <span className="text-muted">
                 Fill in the builder to see your prompt here.

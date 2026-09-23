@@ -54,7 +54,7 @@ export function BuilderPanel() {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 w-full">
         <SmartEditor
           key={loadKey}
