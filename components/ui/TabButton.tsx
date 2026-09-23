@@ -60,14 +60,6 @@ export const TabButton = ({
                     stroke="var(--border)"
                     strokeWidth="0.5"
                 />
-                {isActive && (
-                    <line
-                        x1={-flare + 1} y1={h}
-                        x2={w + flare - 1} y2={h}
-                        stroke="var(--foreground)"
-                        strokeWidth="1.5"
-                    />
-                )}
             </svg>
 
             <span className={cn(

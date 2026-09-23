@@ -54,7 +54,7 @@ export function BuilderPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 w-full">
         <SmartEditor
           key={loadKey}
@@ -67,10 +67,12 @@ export function BuilderPanel() {
         />
       </div>
 
-      {/* Same floating bar as quicks — fixed-positioned, so a pasted prompt taller than
-          the pane can never push it out of view. */}
+      {/* Same floating bar as quicks, but anchored to this pane rather than the viewport so
+          it stays on the editor's corner — opening the outline shrinks the column instead
+          of stranding the bar over the outline. Positioned, so taller content can't push
+          it out of view. */}
       {body.length > 0 && (
-        <FloatingBar>
+        <FloatingBar contained>
           <BarAction label="Copy markdown" text={copied ? "copied" : "copy"} onClick={handleCopy}>
             {copied ? <Check size={11} className="text-accent" aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
           </BarAction>

@@ -1,6 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from "react"
-import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react"
-import { Node, mergeAttributes } from "@tiptap/core"
+import { useEditor, useEditorState, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react"
+import { BubbleMenu } from "@tiptap/react/menus"
+import { Node, mergeAttributes, type Editor } from "@tiptap/core"
+import { Bold, Code, Heading1, Heading2, Italic, List, ListOrdered, Quote, Strikethrough } from "lucide-react"
+import { Tooltip } from "@/components/ui/Tooltip"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import Mention from "@tiptap/extension-mention"
@@ -241,6 +244,59 @@ function MentionList({ items, command, onClose, stage, ragQuery, onRagQueryChang
     )
 }
 
+// ─── Selection Toolbar ────────────────────────────────────────────────────────
+// Format bar that rides above a text selection. Styled in the app's surface/border
+// grammar and appended to <body> with a fixed strategy, so a scrolling editor can
+// never clip it.
+
+function SelectionToolbar({ editor }: { editor: Editor }) {
+    const active = useEditorState({
+        editor,
+        selector: ({ editor }) => ({
+            bold: editor.isActive("bold"),
+            italic: editor.isActive("italic"),
+            strike: editor.isActive("strike"),
+            code: editor.isActive("code"),
+            h1: editor.isActive("heading", { level: 1 }),
+            h2: editor.isActive("heading", { level: 2 }),
+            bulletList: editor.isActive("bulletList"),
+            orderedList: editor.isActive("orderedList"),
+            blockquote: editor.isActive("blockquote"),
+        }),
+    })
+
+    const items = [
+        { label: "Bold", icon: Bold, on: active.bold, run: () => editor.chain().focus().toggleBold().run() },
+        { label: "Italic", icon: Italic, on: active.italic, run: () => editor.chain().focus().toggleItalic().run() },
+        { label: "Strikethrough", icon: Strikethrough, on: active.strike, run: () => editor.chain().focus().toggleStrike().run() },
+        { label: "Inline code", icon: Code, on: active.code, run: () => editor.chain().focus().toggleCode().run() },
+        { label: "Heading 1", icon: Heading1, on: active.h1, run: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+        { label: "Heading 2", icon: Heading2, on: active.h2, run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+        { label: "Bullet list", icon: List, on: active.bulletList, run: () => editor.chain().focus().toggleBulletList().run() },
+        { label: "Numbered list", icon: ListOrdered, on: active.orderedList, run: () => editor.chain().focus().toggleOrderedList().run() },
+        { label: "Quote", icon: Quote, on: active.blockquote, run: () => editor.chain().focus().toggleBlockquote().run() },
+    ]
+
+    return (
+        <div className="flex items-center gap-0.5">
+            {items.map(({ label, icon: Icon, on, run }) => (
+                <Tooltip key={label} label={label} side="top">
+                    <button
+                        type="button"
+                        aria-label={label}
+                        aria-pressed={on}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={run}
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${on ? "bg-accent/20 text-foreground" : "text-muted hover:bg-background hover:text-foreground"}`}
+                    >
+                        <Icon size={13} aria-hidden="true" />
+                    </button>
+                </Tooltip>
+            ))}
+        </div>
+    )
+}
+
 // ─── SmartEditor ──────────────────────────────────────────────────────────────
 
 export function SmartEditor({
@@ -434,6 +490,17 @@ export function SmartEditor({
         <>
             <div className={cn(`smart-editor-wrapper relative w-full rounded-lg px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)}>
                 <EditorContent editor={editor} />
+                {editor && (
+                    <BubbleMenu
+                        editor={editor}
+                        updateDelay={100}
+                        appendTo={() => document.body}
+                        options={{ strategy: "fixed", placement: "top", offset: 8, flip: true, shift: { padding: 8 } }}
+                        className="z-[9999] flex items-center gap-0.5 rounded-xl border border-border bg-surface px-1.5 py-1 shadow-lg"
+                    >
+                        <SelectionToolbar editor={editor} />
+                    </BubbleMenu>
+                )}
             </div>
 
             {mentionState.show && createPortal(

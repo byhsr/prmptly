@@ -201,7 +201,7 @@ export const SnippetModal = ({ onClose, snippet, isCreating }: SnippetModalProps
 
     } catch (e) {
       if (e instanceof Error) {
-        if (e.message === "Snippet key already exists") {
+        if (e.message.includes("already exists")) {
           notify("Snippet key already exists", true)
         } else {
           notify("failed to create snippet", true)

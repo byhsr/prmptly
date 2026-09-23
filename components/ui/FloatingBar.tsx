@@ -8,19 +8,30 @@ const CORNER_ZONE = 200
 
 // Floating action bar shared by the quicks editor and the prompt builder: stays out of the
 // way until the pointer reaches the bottom-right corner, or focus lands inside it. Focus
-// counts so hover is never the only way in. Fixed-positioned, so no amount of editor
-// content can push it out of view.
-export function FloatingBar({ children }: { children: ReactNode }) {
+// counts so hover is never the only way in. Defaults to `fixed` on the viewport, so no
+// amount of editor content can push it out of view; `contained` pins it to the nearest
+// positioned ancestor instead, which lets it follow a pane (e.g. the builder's editor
+// column) when a sibling column like the outline opens.
+export function FloatingBar({ children, contained = false }: { children: ReactNode; contained?: boolean }) {
   const [nearCorner, setNearCorner] = useState(false)
   const [overBar, setOverBar] = useState(false)
   const [focused, setFocused] = useState(false)
+  const barRef = useRef<HTMLDivElement>(null)
   const reduced = usePrefersReducedMotion()
 
   const revealed = nearCorner || overBar || focused
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      const near = e.clientX >= window.innerWidth - CORNER_ZONE && e.clientY >= window.innerHeight - CORNER_ZONE
+      // A contained bar sits at its pane's corner, not the viewport's, so the reveal zone
+      // tracks the pane (offsetParent) — otherwise it would only appear when the pointer
+      // reached the window corner while the bar itself is elsewhere. Fixed bars have no
+      // offsetParent, so they fall back to the window.
+      const pane = barRef.current?.offsetParent as HTMLElement | null
+      const rect = pane?.getBoundingClientRect()
+      const right = rect?.right ?? window.innerWidth
+      const bottom = rect?.bottom ?? window.innerHeight
+      const near = e.clientX >= right - CORNER_ZONE && e.clientY >= bottom - CORNER_ZONE
       setNearCorner((prev) => (prev === near ? prev : near))
     }
     const onLeave = () => setNearCorner(false)
@@ -34,6 +45,7 @@ export function FloatingBar({ children }: { children: ReactNode }) {
 
   return (
     <motion.div
+      ref={barRef}
       initial={false}
       animate={
         revealed
@@ -51,7 +63,7 @@ export function FloatingBar({ children }: { children: ReactNode }) {
           : { duration: 0.14, ease: [0.2, 0, 0, 1] }
       }
       style={{ transformOrigin: "bottom right" }}
-      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg ${
+      className={`${contained ? "absolute" : "fixed"} bottom-6 right-6 z-[9999] flex items-center gap-1 rounded-xl border border-border bg-surface px-2 py-1.5 shadow-lg ${
         revealed ? "" : "pointer-events-none"
       }`}
       onMouseEnter={() => setOverBar(true)}
