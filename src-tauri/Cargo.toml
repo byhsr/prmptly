@@ -1,6 +1,6 @@
 [package]
 name = "pr0mptly"
-version = "0.1.4"
+version = "0.1.5"
 description = "pr0mptly"
 authors = ["you"]
 edition = "2021"

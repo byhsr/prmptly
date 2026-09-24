@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react"
+import { useRef, useState, useEffect, useCallback, type MouseEvent as ReactMouseEvent } from "react"
 import { useEditor, useEditorState, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react"
 import { BubbleMenu } from "@tiptap/react/menus"
 import { Node, mergeAttributes, type Editor } from "@tiptap/core"
@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
 import { parseMarkdown } from "@/lib/editor/markdown"
 import { NoteDecoration } from "@/lib/editor/noteDecoration"
+import { findNoteAt, noteSnippet, noteWrap, NOTE_LABEL, type NoteColorKey } from "@/lib/editor/notes"
+import { NoteContextMenu } from "@/components/ui/NoteContextMenu"
 import { getNamespaces, type Namespace } from "@/services/contextInjection"
 import "@/src/styles/TextEditor.css"
 
@@ -60,6 +62,17 @@ interface MentionStateType {
 const RESET_MENTION: MentionStateType = {
     show: false, query: "", pos: { top: 0, left: 0 },
     command: null, stage: "namespace", selectedNamespace: null, subItems: [],
+}
+
+// The comment token enclosing the caret, in absolute document positions. Notes are plain
+// text, so they are found by scanning the current textblock's text.
+function noteAtCaret(editor: Editor) {
+    const { from } = editor.state.selection
+    const $from = editor.state.doc.resolve(from)
+    const blockStart = $from.start()
+    const hit = findNoteAt($from.parent.textContent, from - blockStart)
+    if (!hit) return null
+    return { ...hit, from: blockStart + hit.from, to: blockStart + hit.to }
 }
 
 // ─── Context Chip Node ────────────────────────────────────────────────────────
@@ -316,6 +329,12 @@ export function SmartEditor({
         { ...RESET_MENTION, ragQuery: "" }
     )
     const markdownMode = contentType === "markdown" && typeof initialContent === "string"
+    const [noteMenu, setNoteMenu] = useState<{
+        x: number
+        y: number
+        activeColor: NoteColorKey | null
+        canRemove: boolean
+    } | null>(null)
 
     useEffect(() => {
         getNamespaces().then((ns) => { namespacesRef.current = ns })
@@ -483,6 +502,42 @@ export function SmartEditor({
 
     const handleRagCommit = useCallback(() => {}, [])
 
+    // Right-click opens the comment menu: pick a color to comment the selection (or recolor
+    // the comment under the caret), or remove it.
+    const openNoteMenu = (e: ReactMouseEvent) => {
+        e.preventDefault()
+        if (!editor) return
+        const hit = noteAtCaret(editor)
+        setNoteMenu({
+            x: e.clientX,
+            y: e.clientY,
+            activeColor: hit?.color ?? null,
+            canRemove: !!hit,
+        })
+    }
+
+    const applyNoteColor = (color: NoteColorKey) => {
+        if (!editor) return
+        const hit = noteAtCaret(editor)
+        if (hit) {
+            editor.chain().focus().insertContentAt({ from: hit.from, to: hit.to }, noteWrap(hit.text, color)).run()
+            return
+        }
+        const { from, to } = editor.state.selection
+        if (from !== to) {
+            const selected = editor.state.doc.textBetween(from, to, " ")
+            editor.chain().focus().insertContentAt({ from, to }, noteWrap(selected, color)).run()
+            return
+        }
+        editor.chain().focus().insertContent(noteSnippet(NOTE_LABEL, color)).run()
+    }
+
+    const removeNote = () => {
+        if (!editor) return
+        const hit = noteAtCaret(editor)
+        if (hit) editor.chain().focus().deleteRange({ from: hit.from, to: hit.to }).run()
+    }
+
     const visibleItems: MentionItem[] =
         snippetsRef.current
             .filter((s) => s.label.toLowerCase().includes(mentionState.query.toLowerCase()))
@@ -490,7 +545,7 @@ export function SmartEditor({
 
     return (
         <>
-            <div className={cn(`smart-editor-wrapper relative w-full rounded-lg px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)}>
+            <div className={cn(`smart-editor-wrapper relative w-full rounded-lg px-3 py-2 text-sm text-foreground transition-colors focus-within:border-foreground/30 ${className}`)} onContextMenu={openNoteMenu}>
                 <EditorContent editor={editor} />
                 {editor && (
                     <BubbleMenu
@@ -518,6 +573,18 @@ export function SmartEditor({
                     />
                 </div>,
                 document.body
+            )}
+
+            {noteMenu && (
+                <NoteContextMenu
+                    x={noteMenu.x}
+                    y={noteMenu.y}
+                    activeColor={noteMenu.activeColor}
+                    canRemove={noteMenu.canRemove}
+                    onPick={applyNoteColor}
+                    onRemove={removeNote}
+                    onClose={() => setNoteMenu(null)}
+                />
             )}
         </>
     )

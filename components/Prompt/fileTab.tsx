@@ -12,7 +12,6 @@ import { Template } from "@/lib/db/template"
 import { TemplateSelector } from "./TemplateSelector"
 import { activeEditorRef } from "@/lib/editor/activeEditors"
 import { useSettingsStore } from "@/hooks/store/settingsStore"
-import { useAddNote } from "@/hooks/useAddNote"
 import { documentNameOverrides } from "@/lib/state"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
@@ -37,8 +36,6 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [showOutline, setShowOutline] = useState(false)
   const editorMode = useSettingsStore((s) => s.settings.editorMode)
   const updateSetting = useSettingsStore((s) => s.updateSetting)
-  const setBody = usePromptStore((s) => s.setBody)
-  const handleAddNote = useAddNote(body, setBody)
   // Each split mode keeps its own pane proportions, the same mechanism the
   // sidebar/workspace layout uses.
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -273,7 +270,7 @@ export function FileTab({ tab }: { tab: Tab }) {
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto overflow-x-hidden shrink-0">
-              <OutlinePanel doc={body} onAddNote={handleAddNote} />
+              <OutlinePanel doc={body} />
             </div>
           )}
         </div>

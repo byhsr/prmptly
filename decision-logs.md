@@ -512,3 +512,38 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 * Headless suite (removed after running): extract/strip/insert offsets, notes-only body, lone `%`, idempotence, and the Tiptap round-trip fixed-point proof above — all pass.
 * Not yet exercised in the running app — the caret/backdrop alignment and the note navigation are worth a look in `tauri dev`.
 
+---
+
+## Session Log — 24/09 · comments via right-click, with colors
+
+### Decision: notes become colored comments added from a right-click menu
+
+**Why**
+
+* Commenting had drifted into two toolbar buttons (`note` in the floating bar, `+ note` in the Outline). Both are gone — the only way to add a comment is now a **right-click** in the editor. The native webview menu is already suppressed in release builds (`src/main.tsx`), so the right-click surface was free.
+* A comment can carry one of **5 colors + neutral default**. The color rides **inside the token** (`%%{amber} note %%`; no key = default) rather than a sidecar, so markdown stays the single source of truth and the color travels with the document.
+* The `%%` markers (and the `{key}`) were visible prose in pretty mode. The decoration now emits three view-only spans per note: the opening `%%{key}` and the closing `%%` get `md-note-delim` (`display: none`), and only the note body is painted with its color class. Serialization is untouched — decorations still cannot reach it.
+
+**Pipeline**
+
+* `lib/editor/notes.ts` — `NOTE_SPAN` now `%%(?:\{(\w+)\})?([^\n]*?)%%`, so `extractNotes` returns `color` and `stripNotes`/`BLOCK_NOTE_LINE` strip colored tokens unchanged. Added `NOTE_COLORS`, `noteWrap`, `noteOpenLength`, `findNoteAt` (locates the token enclosing a source offset, used by both editors).
+* `lib/editor/noteDecoration.ts` — three decorations per match; unknown/absent key falls back to `md-note--default`.
+* `src/styles/TextEditor.css` — `.md-note-delim` hidden; `.md-note--{default,amber,rose,green,blue,violet}` (semi-transparent fills read on light and dark themes).
+* `components/ui/ContextMenu.tsx` — rewritten in the app's dropdown grammar (portal, viewport-clamped, mousedown-outside + Escape, `bg-surface`/`border-border`/`shadow-lg`/`rounded-xl`) and extended with an optional swatch row. Items API stays `{ label, onClick, danger }`-compatible, so the 7 sidebar/tree call sites are unchanged.
+* `components/ui/NoteContextMenu.tsx` — new; swatch row + `Remove comment` (only when the caret is inside a comment), shared by both editors.
+* `SmartTextEditor` — `onContextMenu` on the editor wrapper; picks a color to comment the selection, recolor the comment under the caret, or insert a fresh one. `RawMarkdownEditor` mirrors it against the textarea, capturing the selection at right-click (focus moves to the menu) and restoring the caret afterward.
+* `OutlinePanel` — `+ note` removed, `onAddNote` prop dropped; the Notes list stays and now shows a color dot per note. `hooks/useAddNote.ts` deleted.
+
+**Files**
+
+* New: `components/ui/NoteContextMenu.tsx`.
+* Modified: `lib/editor/notes.ts`, `lib/editor/noteDecoration.ts`, `src/styles/TextEditor.css`, `components/ui/ContextMenu.tsx`, `components/ui/SmartTextEditor.tsx`, `components/Prompt/RawMarkdownEditor.tsx`, `components/Prompt/OutlinePanel.tsx`, `components/Prompt/BuilderPanel.tsx`, `components/Prompt/fileTab.tsx`, `components/Home/HomeView.tsx`.
+* Deleted: `hooks/useAddNote.ts`.
+
+**Verification**
+
+* `tsc --noEmit` clean.
+* Headless suite (removed after running): `%%{amber} … %%` round-trips **byte-for-byte** through `lib/editor/markdown.ts`'s builder for inline and block cases, and `stripNotes` leaves no `%%` in any case — all pass.
+* Not yet exercised in the running app — right-click in pretty and raw mode, the hidden-delimiter rendering, and swatch selection are worth a look in `tauri dev`.
+
+

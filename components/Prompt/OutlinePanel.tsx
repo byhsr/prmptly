@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from "react"
-import { MessageSquarePlus } from "lucide-react"
 import type { JSONContent } from "@tiptap/react"
-import { extractNotes, type NoteRef } from "@/lib/editor/notes"
+import { extractNotes, NOTE_COLORS, type NoteRef } from "@/lib/editor/notes"
 
 export interface OutlineSection {
   title: string
@@ -12,8 +11,6 @@ export interface OutlineSection {
 interface OutlinePanelProps {
   doc?: string | null
   sections?: OutlineSection[]
-  /** Inserts a new `%% note %%`; omitted where there is no body to write to. */
-  onAddNote?: () => void
 }
 
 interface OutlineEntry {
@@ -26,6 +23,10 @@ const FLASH_MS = 1000
 const FLASH_DELAY_MS = 160
 const FADE_MS = 220
 const ACCENT_FALLBACK = "200, 241, 53"
+
+const NOTE_SWATCH: Record<string, string> = Object.fromEntries(
+  NOTE_COLORS.map((c) => [c.key, c.swatch])
+)
 
 // Scans flat markdown text for `#` / `##` heading lines
 function headingsFromString(text: string): { level: 1 | 2; text: string }[] {
@@ -106,7 +107,7 @@ function clearHighlight(el: HTMLElement) {
   el.style.removeProperty("transition")
 }
 
-export function OutlinePanel({ doc, sections, onAddNote }: OutlinePanelProps) {
+export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
   const flashRef = useRef<{ el: HTMLElement | null; timers: ReturnType<typeof setTimeout>[] }>({
     el: null,
     timers: [],
@@ -215,22 +216,10 @@ export function OutlinePanel({ doc, sections, onAddNote }: OutlinePanelProps) {
       </div>
 
       <div className="shrink-0 border-t border-border pt-2">
-        <div className="flex items-center justify-between mb-1 pl-1 pr-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted">Notes</span>
-          {onAddNote && (
-            <button
-              type="button"
-              onClick={onAddNote}
-              aria-label="Add note"
-              className="rounded p-1 text-muted transition-colors hover:bg-background hover:text-foreground"
-            >
-              <MessageSquarePlus className="h-3 w-3" aria-hidden="true" />
-            </button>
-          )}
-        </div>
+        <span className="mb-1 block pl-1 text-[10px] font-medium uppercase tracking-wider text-muted">Notes</span>
 
         {notes.length === 0 ? (
-          <p className="text-[11px] text-muted px-1">No notes yet — use the note button</p>
+          <p className="text-[11px] text-muted px-1">No notes yet — right-click to add</p>
         ) : (
           <div className="max-h-40 overflow-y-auto overflow-x-hidden space-y-0.5">
             {notes.map((note, i) => (
@@ -238,9 +227,13 @@ export function OutlinePanel({ doc, sections, onAddNote }: OutlinePanelProps) {
                 key={`${note.from}-${i}`}
                 onClick={() => revealNote(note)}
                 title={note.text}
-                className="w-full text-left px-2 py-1.5 rounded text-[11px] italic text-muted hover:text-foreground hover:bg-background transition-colors truncate"
+                className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-[11px] italic text-muted transition-colors hover:bg-background hover:text-foreground"
               >
-                {note.text || "empty note"}
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: note.color ? NOTE_SWATCH[note.color] : "var(--color-muted, #8a8a8a)" }}
+                />
+                <span className="truncate">{note.text || "empty note"}</span>
               </button>
             ))}
           </div>

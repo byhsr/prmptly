@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Copy, Download, MessageSquarePlus } from "lucide-react"
+import { Check, Copy, Download } from "lucide-react"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { useNotifications } from "@/hooks/store/SidebarStore"
 import { useSettingsStore } from "@/hooks/store/settingsStore"
-import { useAddNote } from "@/hooks/useAddNote"
 import { exportMarkdownToFile } from "@/lib/exportMarkdown"
 import { buildOutput } from "@/lib/editor/outputs"
 import { activeEditorRef } from "@/lib/editor/activeEditors"
@@ -21,7 +20,6 @@ export function BuilderPanel() {
   const setBody = usePromptStore((s) => s.setBody)
   const editorMode = useSettingsStore((s) => s.settings.editorMode)
   const [copied, setCopied] = useState(false)
-  const handleAddNote = useAddNote(body, setBody)
 
   // Copy and export run through `buildOutput` so `%% note %%` annotations — the author's
   // own — never leave the builder.
@@ -92,10 +90,6 @@ export function BuilderPanel() {
         <FloatingBar contained>
           <BarAction label="Copy markdown" text={copied ? "copied" : "copy"} onClick={handleCopy}>
             {copied ? <Check size={11} className="text-accent" aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
-          </BarAction>
-
-          <BarAction label="Add note" text="note" onClick={handleAddNote}>
-            <MessageSquarePlus size={11} aria-hidden="true" />
           </BarAction>
 
           <BarAction label="Export as .md" text="export" onClick={handleExport}>

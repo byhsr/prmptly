@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect } from "react"
-import { Search, ListTree, Check, Code, Copy, X, Replace, CaseSensitive, WholeWord, Download, MessageSquarePlus, Pilcrow } from "lucide-react"
+import { Search, ListTree, Check, Code, Copy, X, Replace, CaseSensitive, WholeWord, Download, Pilcrow } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { useNotifications } from "@/hooks/store/SidebarStore"
 import { useSettingsStore } from "@/hooks/store/settingsStore"
-import { useAddNote } from "@/hooks/useAddNote"
 import { buildOutput } from "@/lib/editor/outputs"
 import { activeEditorRef } from "@/lib/editor/activeEditors"
 import { exportMarkdownToFile } from "@/lib/exportMarkdown"
@@ -26,7 +25,6 @@ export function HomeView() {
   const [rectifyWord, setRectifyWord] = useState(false)
   const editorMode = useSettingsStore((s) => s.settings.editorMode)
   const updateSetting = useSettingsStore((s) => s.updateSetting)
-  const handleAddNote = useAddNote(body, setBody)
 
   const charCount = body.length
   const wordCount = body ? body.trim().split(/\s+/).length : 0
@@ -156,9 +154,6 @@ export function HomeView() {
           <BarAction label="Copy markdown" text={copiedBody ? "copied" : "copy"} onClick={handleCopyBody}>
             {copiedBody ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
           </BarAction>
-          <BarAction label="Add note" text="note" onClick={handleAddNote}>
-            <MessageSquarePlus size={11} aria-hidden="true" />
-          </BarAction>
           <BarAction label="Export as .md" text="export" onClick={handleExport}>
             <Download size={11} aria-hidden="true" />
           </BarAction>
@@ -187,7 +182,7 @@ export function HomeView() {
           />
           {showOutline && (
             <div className="absolute bottom-full right-0 mb-2 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto overflow-x-hidden">
-              <OutlinePanel doc={body} onAddNote={handleAddNote} />
+              <OutlinePanel doc={body} />
             </div>
           )}
         </FloatingBar>

@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react"
 import type { Highlighter } from "shiki"
 import { cn } from "@/lib/utils"
 import { getHighlighter, HIGHLIGHT_THEME, SHIKI_CONTENT_CLASS } from "@/lib/editor/highlighter"
 import { activeRawTextareaRef } from "@/lib/editor/activeEditors"
+import { findNoteAt, noteCaretRange, noteSnippet, noteWrap, NOTE_LABEL, type NoteColorKey } from "@/lib/editor/notes"
+import { NoteContextMenu } from "@/components/ui/NoteContextMenu"
 
 // Highlighting synchronously is what keeps the colour exactly under the caret, so Shiki's
 // cost per keystroke is the limit. Measured warm, it runs ~2ms per 1k chars (1k ≈ 6ms,
@@ -55,6 +57,14 @@ export function RawMarkdownEditor({
 }: RawMarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null)
+  const [noteMenu, setNoteMenu] = useState<{
+    x: number
+    y: number
+    activeColor: NoteColorKey | null
+    canRemove: boolean
+    selStart: number
+    selEnd: number
+  } | null>(null)
 
   useEffect(() => {
     let live = true
@@ -107,6 +117,66 @@ export function RawMarkdownEditor({
 
   const html = syncHtml || (settled?.value === value ? settled.html : "")
 
+  // Right-click opens the comment menu against the textarea's current selection. The
+  // selection is captured here because focus moves to the menu before a swatch is picked.
+  const openNoteMenu = (e: ReactMouseEvent<HTMLTextAreaElement>) => {
+    e.preventDefault()
+    const el = textareaRef.current
+    if (!el) return
+    const selStart = el.selectionStart
+    const selEnd = el.selectionEnd
+    const hit = findNoteAt(value, selStart)
+    setNoteMenu({
+      x: e.clientX,
+      y: e.clientY,
+      activeColor: hit?.color ?? null,
+      canRemove: !!hit,
+      selStart,
+      selEnd,
+    })
+  }
+
+  const setCaret = (pos: number, to = pos) => {
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(pos, to)
+    })
+  }
+
+  const applyNoteColor = (color: NoteColorKey) => {
+    if (!noteMenu) return
+    const { selStart, selEnd } = noteMenu
+    const hit = findNoteAt(value, selStart)
+
+    if (hit) {
+      const token = noteWrap(hit.text, color)
+      onChange(value.slice(0, hit.from) + token + value.slice(hit.to))
+      setCaret(hit.from + token.length)
+      return
+    }
+
+    if (selEnd > selStart) {
+      const token = noteWrap(value.slice(selStart, selEnd), color)
+      onChange(value.slice(0, selStart) + token + value.slice(selEnd))
+      setCaret(selStart + token.length)
+      return
+    }
+
+    onChange(value.slice(0, selStart) + noteSnippet(NOTE_LABEL, color) + value.slice(selStart))
+    const caret = noteCaretRange(selStart, NOTE_LABEL, color)
+    setCaret(caret.from, caret.to)
+  }
+
+  const removeNote = () => {
+    if (!noteMenu) return
+    const hit = findNoteAt(value, noteMenu.selStart)
+    if (!hit) return
+    onChange(value.slice(0, hit.from) + value.slice(hit.to))
+    setCaret(hit.from)
+  }
+
   return (
     <div className="relative w-full">
       {html && (
@@ -123,6 +193,7 @@ export function RawMarkdownEditor({
         data-raw-editor=""
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onContextMenu={openNoteMenu}
         placeholder={placeholder}
         spellCheck={false}
         autoCapitalize="off"
@@ -134,6 +205,18 @@ export function RawMarkdownEditor({
         )}
         style={{ ...SKIN, minHeight }}
       />
+
+      {noteMenu && (
+        <NoteContextMenu
+          x={noteMenu.x}
+          y={noteMenu.y}
+          activeColor={noteMenu.activeColor}
+          canRemove={noteMenu.canRemove}
+          onPick={applyNoteColor}
+          onRemove={removeNote}
+          onClose={() => setNoteMenu(null)}
+        />
+      )}
     </div>
   )
 }
