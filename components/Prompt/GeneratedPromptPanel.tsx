@@ -2,10 +2,11 @@
 import { useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
 import { Copy, Check } from "lucide-react"
-import { codeToHtml } from "shiki"
 import { usePromptStore, OutputFormat } from "@/hooks/store/PromptStore"
 import { buildOutput } from "@/lib/editor/outputs"
+import { getHighlighter, HIGHLIGHT_THEME, SHIKI_BLOCK_CLASS, type HighlightLang } from "@/lib/editor/highlighter"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
+import { cn } from "@/lib/utils"
 
 export function PromptPanel() {
   const reduced = usePrefersReducedMotion()
@@ -17,13 +18,22 @@ export function PromptPanel() {
   const compiledOutput = useMemo(() => buildOutput(body, outputFormat), [body, outputFormat])
 
   useEffect(() => {
-    if (!compiledOutput) return setHighlighted("")
-    const lang =
+    if (!compiledOutput) {
+      setHighlighted("")
+      return
+    }
+    const lang: HighlightLang =
       outputFormat === "json" ? "json" : outputFormat === "xml" ? "xml" : "markdown"
-    codeToHtml(compiledOutput, {
-      lang,
-      theme: "vesper",
-    }).then(setHighlighted)
+
+    let live = true
+    getHighlighter()
+      .then((hl) => hl.codeToHtml(compiledOutput, { lang, theme: HIGHLIGHT_THEME }))
+      .then((html) => {
+        if (live) setHighlighted(html)
+      })
+    return () => {
+      live = false
+    }
   }, [compiledOutput, outputFormat])
 
   const handleCopy = async () => {
@@ -56,7 +66,10 @@ export function PromptPanel() {
       <div className="relative flex-1 overflow-hidden p-4">
         {highlighted ? (
           <div
-            className="h-full overflow-y-auto overflow-x-hidden rounded-lg bg-background p-4 text-sm font-mono leading-relaxed [&_pre]:!bg-transparent [&_pre]:!p-0 [&_pre]:!m-0 [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_code]:whitespace-pre-wrap [&_code]:break-words"
+            className={cn(
+              SHIKI_BLOCK_CLASS,
+              "h-full overflow-y-auto overflow-x-hidden rounded-lg bg-background p-4"
+            )}
             dangerouslySetInnerHTML={{ __html: highlighted }}
           />
         ) : (

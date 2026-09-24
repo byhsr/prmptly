@@ -1,6 +1,7 @@
 import type { JSONContent } from "@tiptap/react"
 import { deriveSections, parseMarkdown, type DerivedSection } from "@/lib/editor/markdown"
 import { docToCleanJson, nodeToXml } from "@/lib/client/textEditorFuncs"
+import { stripNotes } from "@/lib/editor/notes"
 
 export type PromptFormat = "markdown" | "json" | "xml"
 
@@ -36,17 +37,20 @@ function xmlFrom(sections: DerivedSection[]): string {
 
 // One canonical writer: markdown in, a derived representation out.
 // The markdown is the source of truth — json/xml are views over `##` sections.
+// `%% note %%` annotations are the author's own and never reach a compiled output.
 export function buildOutput(body: string, format: PromptFormat): string {
-  if (!body.trim()) return ""
-  if (format === "markdown") return body
+  const clean = stripNotes(body)
+  if (!clean.trim()) return ""
+  if (format === "markdown") return clean
 
-  const sections = deriveSections(parseMarkdown(body))
+  const sections = deriveSections(parseMarkdown(clean))
   return format === "json" ? jsonFrom(sections) : xmlFrom(sections)
 }
 
 export function buildOutputs(body: string): PromptOutputs {
-  if (!body.trim()) return { markdown: "", json: "", xml: "" }
+  const clean = stripNotes(body)
+  if (!clean.trim()) return { markdown: "", json: "", xml: "" }
 
-  const sections = deriveSections(parseMarkdown(body))
-  return { markdown: body, json: jsonFrom(sections), xml: xmlFrom(sections) }
+  const sections = deriveSections(parseMarkdown(clean))
+  return { markdown: clean, json: jsonFrom(sections), xml: xmlFrom(sections) }
 }

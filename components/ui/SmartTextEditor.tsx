@@ -15,6 +15,7 @@ import type { JSONContent } from "@tiptap/react"
 import { cn } from "@/lib/utils"
 import { nodeToPlain } from "@/lib/client/textEditorFuncs"
 import { parseMarkdown } from "@/lib/editor/markdown"
+import { NoteDecoration } from "@/lib/editor/noteDecoration"
 import { getNamespaces, type Namespace } from "@/services/contextInjection"
 import "@/src/styles/TextEditor.css"
 
@@ -394,6 +395,7 @@ export function SmartEditor({
                 },
             }),
             Markdown,
+            NoteDecoration,
         ],
         content: initialContent || "",
         contentType: markdownMode ? "markdown" : undefined,

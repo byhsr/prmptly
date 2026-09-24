@@ -1,14 +1,18 @@
 import { useState, useCallback, useEffect } from "react"
-import { Search, ListTree, Check, Copy, X, Replace, CaseSensitive, WholeWord, Download } from "lucide-react"
+import { Search, ListTree, Check, Code, Copy, X, Replace, CaseSensitive, WholeWord, Download, MessageSquarePlus, Pilcrow } from "lucide-react"
 import { useQuicksStore } from "@/hooks/store/quickStore"
 import { useNotifications } from "@/hooks/store/SidebarStore"
+import { useSettingsStore } from "@/hooks/store/settingsStore"
+import { useAddNote } from "@/hooks/useAddNote"
 import { buildOutput } from "@/lib/editor/outputs"
+import { activeEditorRef } from "@/lib/editor/activeEditors"
 import { exportMarkdownToFile } from "@/lib/exportMarkdown"
 import { OverflowMenu } from "@/components/ui/OverflowMenu"
 import { FloatingBar, BarAction } from "@/components/ui/FloatingBar"
 import { Tab } from "../core-components/Tabbar"
 import { FileTab } from "../Prompt/fileTab"
 import { SmartEditor } from "../ui/SmartTextEditor"
+import { RawMarkdownEditor } from "../Prompt/RawMarkdownEditor"
 import { OutlinePanel } from "../Prompt/OutlinePanel"
 import { HomeMenu } from "./HomeMenu"
 
@@ -20,6 +24,9 @@ export function HomeView() {
   const [rectifyKey, setRectifyKey] = useState(0)
   const [rectifyCase, setRectifyCase] = useState(false)
   const [rectifyWord, setRectifyWord] = useState(false)
+  const editorMode = useSettingsStore((s) => s.settings.editorMode)
+  const updateSetting = useSettingsStore((s) => s.updateSetting)
+  const handleAddNote = useAddNote(body, setBody)
 
   const charCount = body.length
   const wordCount = body ? body.trim().split(/\s+/).length : 0
@@ -39,9 +46,11 @@ export function HomeView() {
   }, [setBody])
 
   // Copy the markdown straight out of the editor — no need to generate first.
+  // Routed through `buildOutput` so `%% note %%` annotations stay behind.
   const handleCopyBody = async () => {
-    if (!body) return
-    await navigator.clipboard.writeText(body)
+    const markdown = buildOutput(body, "markdown")
+    if (!markdown) return
+    await navigator.clipboard.writeText(markdown)
     setCopiedBody(true)
     setTimeout(() => setCopiedBody(false), 1500)
   }
@@ -54,9 +63,11 @@ export function HomeView() {
 
   const handleExport = async () => {
     if (!body) return
+    const markdown = buildOutput(body, "markdown")
+    if (!markdown) return
     try {
       const name = useQuicksStore.getState().name || "quick"
-      const exported = await exportMarkdownToFile(name, body)
+      const exported = await exportMarkdownToFile(name, markdown)
       if (exported) useNotifications.getState().notify("Quick exported")
     } catch {
       useNotifications.getState().notify("Failed to export quick", true)
@@ -119,14 +130,24 @@ export function HomeView() {
           )}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 w-full">
-          <SmartEditor
-            key={`${loadKey}-${rectifyKey}`}
-            initialContent={body}
-            contentType="markdown"
-            onChange={(_plain, _doc, markdown) => handleBodyChange(markdown)}
-            placeholder="Paste markdown, or start typing…"
-            minHeight={60}
-          />
+          {editorMode === "raw" ? (
+            <RawMarkdownEditor
+              value={body}
+              onChange={handleBodyChange}
+              placeholder="Paste markdown, or start typing…"
+              minHeight={60}
+            />
+          ) : (
+            <SmartEditor
+              key={`${loadKey}-${rectifyKey}`}
+              initialContent={body}
+              contentType="markdown"
+              onChange={(_plain, _doc, markdown) => handleBodyChange(markdown)}
+              placeholder="Paste markdown, or start typing…"
+              minHeight={60}
+              onEditorReady={(e) => { activeEditorRef.current = e }}
+            />
+          )}
         </div>
       </div>
 
@@ -135,8 +156,18 @@ export function HomeView() {
           <BarAction label="Copy markdown" text={copiedBody ? "copied" : "copy"} onClick={handleCopyBody}>
             {copiedBody ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
           </BarAction>
+          <BarAction label="Add note" text="note" onClick={handleAddNote}>
+            <MessageSquarePlus size={11} aria-hidden="true" />
+          </BarAction>
           <BarAction label="Export as .md" text="export" onClick={handleExport}>
             <Download size={11} aria-hidden="true" />
+          </BarAction>
+          <BarAction
+            label={editorMode === "raw" ? "Pretty markdown" : "Raw markdown"}
+            active={editorMode === "raw"}
+            onClick={() => updateSetting("editorMode", editorMode === "raw" ? "pretty" : "raw")}
+          >
+            {editorMode === "raw" ? <Pilcrow size={14} aria-hidden="true" /> : <Code size={14} aria-hidden="true" />}
           </BarAction>
           <BarAction label="Outline" active={showOutline} onClick={() => setShowOutline((v) => !v)}>
             <ListTree size={14} aria-hidden="true" />
@@ -156,7 +187,7 @@ export function HomeView() {
           />
           {showOutline && (
             <div className="absolute bottom-full right-0 mb-2 w-56 max-h-72 border border-border rounded-lg bg-surface shadow-lg overflow-y-auto overflow-x-hidden">
-              <OutlinePanel doc={body} />
+              <OutlinePanel doc={body} onAddNote={handleAddNote} />
             </div>
           )}
         </FloatingBar>

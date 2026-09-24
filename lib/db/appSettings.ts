@@ -3,17 +3,18 @@ import { getSetting, setSetting } from "./index"
 import { DEFAULT_SETTINGS } from "../config/settings"
 import type { AppSettings } from "../config/settings"
 
-export type { AppSettings, FontKey, ThemeKey, HeadingSizes, ModuleVariants } from "../config/settings"
+export type { AppSettings, FontKey, ThemeKey, HeadingSizes, ModuleVariants, EditorMode } from "../config/settings"
 export { DEFAULT_SETTINGS } from "../config/settings"
 
 export async function loadAppSettings(): Promise<AppSettings> {
-  const [fontsRaw, variantsRaw, sizesRaw, delayRaw, mdRaw, outlineRaw] = await Promise.all([
+  const [fontsRaw, variantsRaw, sizesRaw, delayRaw, mdRaw, outlineRaw, modeRaw] = await Promise.all([
     getSetting("fonts"),
     getSetting("moduleVariants"),
     getSetting("headingSizes"),
     getSetting("autosaveDelay"),
     getSetting("markdownShortcuts"),
     getSetting("outlineEnabled"),
+    getSetting("editorMode"),
   ])
 
   return {
@@ -23,6 +24,7 @@ export async function loadAppSettings(): Promise<AppSettings> {
     autosaveDelay: delayRaw ? JSON.parse(delayRaw) : DEFAULT_SETTINGS.autosaveDelay,
     markdownShortcuts: mdRaw ? JSON.parse(mdRaw) : DEFAULT_SETTINGS.markdownShortcuts,
     outlineEnabled: outlineRaw ? JSON.parse(outlineRaw) : DEFAULT_SETTINGS.outlineEnabled,
+    editorMode: modeRaw && JSON.parse(modeRaw) === "raw" ? "raw" : DEFAULT_SETTINGS.editorMode,
   }
 }
 

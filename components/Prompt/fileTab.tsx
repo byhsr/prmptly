@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { Columns2, Columns3, LayoutPanelTop, PenLine, StickyNote, Terminal, Search, ListTree } from "lucide-react"
+import { Code, Columns2, Columns3, LayoutPanelTop, PenLine, Pilcrow, StickyNote, Terminal, Search, ListTree } from "lucide-react"
 import { BuilderPanel} from "./BuilderPanel"
 import { ScratchpadPanel } from "./scratchpadPanel"
 import { PromptPanel } from "./GeneratedPromptPanel"
@@ -10,7 +10,9 @@ import { Tab } from "../core-components/Tabbar"
 import { usePromptStore } from "@/hooks/store/PromptStore"
 import { Template } from "@/lib/db/template"
 import { TemplateSelector } from "./TemplateSelector"
-import { activeEditorRef } from "./BuilderPanel"
+import { activeEditorRef } from "@/lib/editor/activeEditors"
+import { useSettingsStore } from "@/hooks/store/settingsStore"
+import { useAddNote } from "@/hooks/useAddNote"
 import { documentNameOverrides } from "@/lib/state"
 import { Tooltip } from "@/components/ui/Tooltip"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels"
@@ -33,6 +35,10 @@ export function FileTab({ tab }: { tab: Tab }) {
   const [docName, setDocName] = useState(tab.label)
   const [showRectify, setShowRectify] = useState(false)
   const [showOutline, setShowOutline] = useState(false)
+  const editorMode = useSettingsStore((s) => s.settings.editorMode)
+  const updateSetting = useSettingsStore((s) => s.updateSetting)
+  const setBody = usePromptStore((s) => s.setBody)
+  const handleAddNote = useAddNote(body, setBody)
   // Each split mode keeps its own pane proportions, the same mechanism the
   // sidebar/workspace layout uses.
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -164,6 +170,19 @@ export function FileTab({ tab }: { tab: Tab }) {
             </div>
 
             <div className="flex items-center justify-end gap-1 px-4 pt-2">
+              {showTemplate && (
+                <Tooltip label={editorMode === "raw" ? "Pretty markdown" : "Raw markdown"}>
+                  <motion.button
+                    onClick={() => updateSetting("editorMode", editorMode === "raw" ? "pretty" : "raw")}
+                    whileTap={{ scale: 0.88 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    className={`rounded-lg p-2 transition-colors ${editorMode === "raw" ? "bg-background text-foreground" : "text-muted hover:text-foreground hover:bg-background"}`}
+                  >
+                    {editorMode === "raw" ? <Pilcrow className="h-3.5 w-3.5" /> : <Code className="h-3.5 w-3.5" />}
+                  </motion.button>
+                </Tooltip>
+              )}
+
               <Tooltip label="Outline">
                 <motion.button
                   onClick={() => setShowOutline((v) => !v)}
@@ -254,7 +273,7 @@ export function FileTab({ tab }: { tab: Tab }) {
           </div>
           {showOutline && (
             <div className="w-56 border-l border-border overflow-y-auto overflow-x-hidden shrink-0">
-              <OutlinePanel doc={body} />
+              <OutlinePanel doc={body} onAddNote={handleAddNote} />
             </div>
           )}
         </div>

@@ -43,6 +43,9 @@ export interface HeadingSizes {
   h3: number
 }
 
+/** `pretty` is the parsed WYSIWYG editor, `raw` is the editable markdown source. */
+export type EditorMode = "pretty" | "raw"
+
 export interface AppSettings {
   fonts: {
     heading: FontKey
@@ -54,6 +57,7 @@ export interface AppSettings {
   autosaveDelay: number
   markdownShortcuts: boolean
   outlineEnabled: boolean
+  editorMode: EditorMode
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -69,4 +73,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autosaveDelay: 2000,
   markdownShortcuts: true,
   outlineEnabled: true,
+  editorMode: "pretty",
 }

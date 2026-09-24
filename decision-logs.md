@@ -470,3 +470,45 @@ Skills are portable markdown capabilities (à la `SKILL.md`) that live in the Li
 
 * `tsc --noEmit` clean; Vite dev serves `/` and both settings modules with 200.
 
+---
+
+## Session Log — 24/09 · raw markdown mode + inline notes
+
+### Decision: the builder and quicks can be edited as colored markdown source
+
+**Why**
+
+* The builder was WYSIWYG only — the markdown body is a *derived* value (`editor.getMarkdown()`), never shown as editable source. Being able to see and edit the actual markdown is the point of a markdown-first app.
+
+**Pipeline**
+
+* `editorMode: "pretty" | "raw"` lives in `AppSettings` (persisted via `settingsStore.updateSetting`), so one toggle means the same thing on both surfaces and survives a restart. Toggle is an icon button in the FileTab header (`Code` / `Pilcrow`) and a `BarAction` in the quicks floating bar.
+* `RawMarkdownEditor` puts a transparent `<textarea>` over a Shiki backdrop. Both layers share one `SKIN` style object — any divergence in font metrics, padding or wrapping shows up as the caret drifting off its own colored text. The textarea auto-grows, so there is no scroll to sync and nothing is clipped.
+* Highlighting is **synchronous** (computed in `useMemo`, so the backdrop and caret change in the same paint); `lib/editor/highlighter.ts` holds a lazily-created Shiki singleton, because Shiki's top-level `codeToHtml` builds a new highlighter per call — far too slow per keystroke. Measured warm: ~2ms per 1k chars (1k ≈ 6ms, 10k ≈ 18ms). Below 10k chars it highlights live; above that it waits 180ms for a typing pause and shows plain text meanwhile, so a large paste never makes typing lag. The measured 127ms first call is cold-start only and `GeneratedPromptPanel` now shares the same singleton.
+
+### Decision: notes are `%% note %%`, stripped from every compiled output
+
+**Why**
+
+* Tested `<!-- note -->` and `[//]: # (…)` headlessly through this repo's own Tiptap pipeline: comments get **escaped** to `&lt;!--` and link-ref definitions are **dropped** outright — both silently corrupt or lose the note the moment you switch pretty ↔ raw. `%% … %%` reaches a fixed point, byte-for-byte, block and inline (verified: 2nd and 3rd round-trips identical). It is also Obsidian's convention for the same job.
+
+**Pipeline**
+
+* Notes live inline in the body, so they travel with the document. `lib/editor/notes.ts` handles extract / strip / insert; the regexes are line-scoped (`[^\n]`) so one mistyped `%%` can never swallow the document.
+* Stripping happens in one place — `buildOutput` / `buildOutputs` — so it covers the Prompt panel, Copy as markdown/JSON/XML and both exports. `BuilderPanel`/`HomeView` copy handlers now route through `buildOutput(body, "markdown")` instead of copying `body` raw.
+* `stripNotes` only removes note spans and the blank lines they leave; no `.trim()` of surrounding content.
+* The navigator panel gained a **Notes** group. Clicking a note selects it in the raw textarea (jump *and* ready to edit) or scrolls and flashes it in pretty mode. `+ note` in that group and the `note` floating-bar action both insert `%%  %%` at the caret via `hooks/useAddNote`, which targets whichever editor is live.
+* `activeEditorRef` (previously exported from `BuilderPanel`) and the new `activeRawTextareaRef` moved to `lib/editor/activeEditors.ts` so the shared note action can reach both without a circular import.
+* `lib/editor/noteDecoration.ts` adds a **view-only** ProseMirror decoration so `%%` notes read as notes in pretty mode. Decorations never reach serialization, so this cannot affect the round-trip — which is exactly why a real node/mark was rejected.
+
+**Files**
+
+* New: `lib/editor/notes.ts`, `lib/editor/highlighter.ts`, `lib/editor/noteDecoration.ts`, `lib/editor/activeEditors.ts`, `components/Prompt/RawMarkdownEditor.tsx`, `hooks/useAddNote.ts`.
+* Modified: `lib/editor/outputs.ts`, `lib/config/settings.ts`, `lib/db/appSettings.ts`, `components/Prompt/BuilderPanel.tsx`, `components/Prompt/fileTab.tsx`, `components/Prompt/OutlinePanel.tsx`, `components/Prompt/GeneratedPromptPanel.tsx`, `components/Home/HomeView.tsx`, `components/ui/SmartTextEditor.tsx`, `src/styles/TextEditor.css`.
+
+**Verification**
+
+* `tsc --noEmit` clean; Vite dev (temp port, 1420 left free) serves `/` and every new/changed module with 200; confirmed Tailwind emits `caret-foreground` / `text-transparent` and that `.md-note` is in the served CSS.
+* Headless suite (removed after running): extract/strip/insert offsets, notes-only body, lone `%`, idempotence, and the Tiptap round-trip fixed-point proof above — all pass.
+* Not yet exercised in the running app — the caret/backdrop alignment and the note navigation are worth a look in `tauri dev`.
+

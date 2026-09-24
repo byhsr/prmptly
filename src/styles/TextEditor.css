@@ -180,3 +180,16 @@
         .smart-editor-content.resize-cursor {
           cursor: col-resize;
         }
+
+        /* `%% note %%` is plain text in the document (see lib/editor/notes.ts). This only
+           tints the decoration, so it cannot affect the markdown round-trip. */
+        .smart-editor-content .md-note {
+          font-family: var(--font-code, monospace);
+          font-size: 0.85em;
+          font-style: italic;
+          color: var(--color-muted, #8a8a8a);
+          background: var(--color-surface, #222);
+          border: 1px solid var(--color-border, #2e2e2e);
+          border-radius: 4px;
+          padding: 0.05em 0.3em;
+        }

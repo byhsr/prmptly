@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef } from "react"
+import { MessageSquarePlus } from "lucide-react"
 import type { JSONContent } from "@tiptap/react"
+import { extractNotes, type NoteRef } from "@/lib/editor/notes"
 
 export interface OutlineSection {
   title: string
@@ -10,6 +12,8 @@ export interface OutlineSection {
 interface OutlinePanelProps {
   doc?: string | null
   sections?: OutlineSection[]
+  /** Inserts a new `%% note %%`; omitted where there is no body to write to. */
+  onAddNote?: () => void
 }
 
 interface OutlineEntry {
@@ -71,6 +75,19 @@ function findHeadingElement(text: string): HTMLElement | null {
   return null
 }
 
+// In pretty mode a note is ordinary text, so it is found by the block that contains it.
+function findNoteElement(text: string): HTMLElement | null {
+  for (const editorEl of Array.from(document.querySelectorAll<HTMLElement>(".smart-editor-content"))) {
+    for (const el of Array.from(
+      editorEl.querySelectorAll<HTMLElement>("p, li, blockquote, td, th, h1, h2, h3")
+    )) {
+      const content = el.textContent ?? ""
+      if (content.includes("%%") && content.includes(text)) return el
+    }
+  }
+  return null
+}
+
 // Resolves the theme accent to rgba() without relying on color-mix()
 function accentTint(el: HTMLElement, alpha: number): string {
   const raw = getComputedStyle(el).getPropertyValue("--accent").trim()
@@ -89,7 +106,7 @@ function clearHighlight(el: HTMLElement) {
   el.style.removeProperty("transition")
 }
 
-export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
+export function OutlinePanel({ doc, sections, onAddNote }: OutlinePanelProps) {
   const flashRef = useRef<{ el: HTMLElement | null; timers: ReturnType<typeof setTimeout>[] }>({
     el: null,
     timers: [],
@@ -104,10 +121,7 @@ export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
 
   useEffect(() => () => clearFlash(), [])
 
-  const goTo = (entry: OutlineEntry) => {
-    const target = findHeadingElement(entry.text)
-    if (!target) return
-
+  const flash = (target: HTMLElement) => {
     clearFlash()
     target.scrollIntoView({ behavior: "smooth", block: "start" })
 
@@ -127,6 +141,25 @@ export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
       }, FLASH_DELAY_MS + FLASH_MS),
       setTimeout(() => clearHighlight(target), FLASH_DELAY_MS + FLASH_MS + FADE_MS)
     )
+  }
+
+  const goTo = (entry: OutlineEntry) => {
+    const target = findHeadingElement(entry.text)
+    if (target) flash(target)
+  }
+
+  // Raw mode is a textarea, so the note can be selected outright — jump *and* ready to edit.
+  // Pretty mode only has the note as text, so it scrolls and flashes instead.
+  const revealNote = (note: NoteRef) => {
+    const textarea = document.querySelector<HTMLTextAreaElement>("textarea[data-raw-editor]")
+    if (textarea) {
+      textarea.focus()
+      textarea.setSelectionRange(note.from, note.to)
+      return
+    }
+
+    const target = findNoteElement(note.text)
+    if (target) flash(target)
   }
 
   const headings = useMemo<OutlineEntry[]>(() => {
@@ -155,6 +188,11 @@ export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
     return headingsFromString(doc).map((h, i) => ({ id: `h-${i}`, level: h.level, text: h.text }))
   }, [doc, sections])
 
+  const notes = useMemo<NoteRef[]>(
+    () => (typeof doc === "string" && doc ? extractNotes(doc) : []),
+    [doc]
+  )
+
   return (
     <div className="flex flex-col h-full p-3 space-y-1">
       <span className="text-[10px] font-medium uppercase tracking-wider text-muted mb-2 px-1">Outline</span>
@@ -173,6 +211,39 @@ export function OutlinePanel({ doc, sections }: OutlinePanelProps) {
               {h.text}
             </button>
           ))
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-border pt-2">
+        <div className="flex items-center justify-between mb-1 pl-1 pr-0.5">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted">Notes</span>
+          {onAddNote && (
+            <button
+              type="button"
+              onClick={onAddNote}
+              aria-label="Add note"
+              className="rounded p-1 text-muted transition-colors hover:bg-background hover:text-foreground"
+            >
+              <MessageSquarePlus className="h-3 w-3" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        {notes.length === 0 ? (
+          <p className="text-[11px] text-muted px-1">No notes yet — use the note button</p>
+        ) : (
+          <div className="max-h-40 overflow-y-auto overflow-x-hidden space-y-0.5">
+            {notes.map((note, i) => (
+              <button
+                key={`${note.from}-${i}`}
+                onClick={() => revealNote(note)}
+                title={note.text}
+                className="w-full text-left px-2 py-1.5 rounded text-[11px] italic text-muted hover:text-foreground hover:bg-background transition-colors truncate"
+              >
+                {note.text || "empty note"}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
